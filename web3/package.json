@@ -1,0 +1,87 @@
+{
+  "name": "@prb/effect-web3",
+  "description": "Effect-TS integration for Web3 and viem",
+  "version": "1.0.0-beta.2",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "author": {
+    "name": "Paul Razvan Berg",
+    "url": "https://github.com/PaulRBerg"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PaulRBerg/prb-effect.git",
+    "directory": "web3"
+  },
+  "bugs": {
+    "url": "https://github.com/PaulRBerg/prb-effect/issues"
+  },
+  "homepage": "https://github.com/PaulRBerg/prb-effect/tree/main/web3#readme",
+  "devDependencies": {
+    "@effect/platform": "catalog:effect",
+    "effect": "catalog:effect",
+    "viem": "catalog:web3",
+    "@biomejs/biome": "catalog:dev",
+    "@effect/vitest": "catalog:dev",
+    "@sablier/devkit": "catalog:dev",
+    "@safe-global/safe-apps-sdk": "catalog:web3",
+    "@types/node": "catalog:dev",
+    "@types/react": "catalog:dev",
+    "@types/react-dom": "catalog:dev",
+    "@typescript/native-preview": "catalog:dev",
+    "@vitest/ui": "catalog:dev",
+    "@wagmi/core": "catalog:web3",
+    "jsdom": "catalog:dev",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "tsc-alias": "catalog:dev",
+    "typescript": "catalog:dev",
+    "vitest": "catalog:dev",
+    "wagmi": "catalog:web3"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./internal/*": null,
+    "./*": {
+      "types": "./dist/*/index.d.ts",
+      "import": "./dist/*/index.js"
+    }
+  },
+  "files": [
+    "dist/**",
+    "README.md",
+    "DOCS.md",
+    "CONTRIBUTING.md"
+  ],
+  "peerDependencies": {
+    "@effect/platform": "catalog:peers",
+    "@safe-global/safe-apps-sdk": "catalog:peers",
+    "@wagmi/core": "catalog:peers",
+    "effect": "catalog:peers",
+    "react": "catalog:peers",
+    "react-dom": "catalog:peers",
+    "viem": "catalog:peers"
+  },
+  "peerDependenciesMeta": {
+    "@safe-global/safe-apps-sdk": {
+      "optional": true
+    },
+    "@wagmi/core": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "typescript.experimental.useTsgo": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.biome": "explicit",
+    "source.organizeImports.biome": "explicit"
+  },
+  "search.exclude": {
+    "**/.husky": true,
+    "**/dist": true,
+    "**/node_modules": true
+  },
+  "[md][yaml]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[javascript][json][jsonc][typescript]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  }
+}

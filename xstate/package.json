@@ -1,0 +1,61 @@
+{
+  "name": "@prb/effect-xstate",
+  "description": "Effect-TS and xState v5 workflow utilities",
+  "version": "1.0.0-beta.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "author": {
+    "name": "Paul Razvan Berg",
+    "url": "https://github.com/PaulRBerg"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@biomejs/biome": "catalog:dev",
+    "@effect/vitest": "catalog:dev",
+    "@sablier/devkit": "catalog:dev",
+    "@types/node": "catalog:dev",
+    "@types/react": "catalog:dev",
+    "@typescript/native-preview": "catalog:dev",
+    "@vitest/ui": "catalog:dev",
+    "@xstate/react": "^6.0.0",
+    "effect": "catalog:effect",
+    "react": "catalog:",
+    "tsc-alias": "catalog:dev",
+    "typescript": "catalog:dev",
+    "vitest": "catalog:dev",
+    "xstate": "^5.25.0"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./internal/*": null,
+    "./*": {
+      "types": "./dist/*/index.d.ts",
+      "import": "./dist/*/index.js"
+    }
+  },
+  "files": [
+    "dist/**",
+    "README.md"
+  ],
+  "peerDependencies": {
+    "@xstate/react": "catalog:peers",
+    "effect": "catalog:peers",
+    "react": "catalog:peers",
+    "xstate": "catalog:peers"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "@xstate/react": {
+      "optional": true
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

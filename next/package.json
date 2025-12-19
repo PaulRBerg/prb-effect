@@ -1,0 +1,74 @@
+{
+  "name": "@prb/effect-next",
+  "description": "Effect-TS integration for Next.js",
+  "version": "1.0.0-beta.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "author": {
+    "name": "Paul Razvan Berg",
+    "url": "https://github.com/PaulRBerg"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PaulRBerg/prb-effect.git",
+    "directory": "next"
+  },
+  "bugs": {
+    "url": "https://github.com/PaulRBerg/prb-effect/issues"
+  },
+  "homepage": "https://github.com/PaulRBerg/prb-effect/tree/main/next#readme",
+  "devDependencies": {
+    "@biomejs/biome": "catalog:dev",
+    "@effect/platform": "catalog:effect",
+    "@effect/vitest": "catalog:dev",
+    "@sablier/devkit": "catalog:dev",
+    "@types/node": "catalog:dev",
+    "@types/react": "catalog:dev",
+    "@types/react-dom": "catalog:dev",
+    "@typescript/native-preview": "catalog:dev",
+    "@vitest/ui": "catalog:dev",
+    "effect": "catalog:effect",
+    "next": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "server-only": "catalog:",
+    "tsc-alias": "catalog:dev",
+    "typescript": "catalog:dev",
+    "vitest": "catalog:dev"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./internal/*": null,
+    "./*": {
+      "types": "./dist/*/index.d.ts",
+      "import": "./dist/*/index.js"
+    }
+  },
+  "files": [
+    "dist/**",
+    "DOCS.md",
+    "CONTRIBUTING.md"
+  ],
+  "peerDependencies": {
+    "effect": "catalog:peers",
+    "next": "catalog:peers",
+    "react": "catalog:peers",
+    "react-dom": "catalog:peers"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

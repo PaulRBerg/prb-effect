@@ -1,0 +1,29 @@
+name: fmt > CI
+
+on:
+  push: &fmt_filters
+    branches: [main]
+    paths:
+      # == Workspace configs ==
+      - "**/*.just"
+      - "**/justfile"
+      - .prettierrc.js
+      - biome.jsonc
+      - bun.lock
+      - bunfig.toml
+      - package.json
+      - tsconfig.json
+      # == Package-specific ==
+      - "fmt/**"
+      - "**/fmt.*.yml"
+  pull_request: *fmt_filters
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    uses: ./.github/workflows/_base.ci.yml
+    with:
+      package-name: fmt

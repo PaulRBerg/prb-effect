@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "./node_modules/@sablier/devkit/tsconfig/base.json",
+  "exclude": ["./node_modules", "./fmt", "./next", "./web3", "./xstate"],
+  "include": ["*.ts"],
+  "compilerOptions": {
+    "lib": ["ESNext", "DOM"],
+    "jsx": "react-jsx",
+    "types": ["node", "vitest/globals"],
+    "paths": {
+      "@prb/effect-next": ["./next/src"],
+      "@prb/effect-next/*": ["./next/src/*"],
+      "@prb/effect-web3": ["./web3/src"],
+      "@prb/effect-web3/*": ["./web3/src/*"]
+    }
+  }
+}

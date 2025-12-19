@@ -1,0 +1,24 @@
+name: Base > CI
+
+on:
+  workflow_call:
+    inputs:
+      package-name:
+        description: Name of the package
+        required: true
+        type: string
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: sablier-labs/devkit/actions/setup@v1
+
+      - name: Run unit tests
+        run: just ${{ inputs.package-name }}::test --run
+
+      - name: Add summary
+        run: |
+          echo "## CI result for ${{ inputs.package-name }}" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Passed" >> $GITHUB_STEP_SUMMARY

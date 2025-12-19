@@ -1,0 +1,29 @@
+name: xstate > CI
+
+on:
+  push: &xstate_filters
+    branches: [main]
+    paths:
+      # == Workspace configs ==
+      - "**/*.just"
+      - "**/justfile"
+      - .prettierrc.js
+      - biome.jsonc
+      - bun.lock
+      - bunfig.toml
+      - package.json
+      - tsconfig.json
+      # == Package-specific ==
+      - "xstate/**"
+      - "**/xstate.*.yml"
+  pull_request: *xstate_filters
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    uses: ./.github/workflows/_base.ci.yml
+    with:
+      package-name: xstate

@@ -1,0 +1,51 @@
+import { describe, expect, it } from "@effect/vitest";
+
+const { extractErrorData, hasTaggedErrorShape } = await import("./extract.js");
+
+describe("errors/extract", () => {
+  it("hasTaggedErrorShape() accepts a minimal tagged error shape", () => {
+    expect(hasTaggedErrorShape({ _tag: "Foo", message: "bar" })).toBe(true);
+  });
+
+  it("hasTaggedErrorShape() rejects missing fields and non-objects", () => {
+    expect(hasTaggedErrorShape(null)).toBe(false);
+    expect(hasTaggedErrorShape("nope")).toBe(false);
+    expect(hasTaggedErrorShape({ _tag: "Foo" })).toBe(false);
+    expect(hasTaggedErrorShape({ message: "bar" })).toBe(false);
+    expect(hasTaggedErrorShape({ _tag: 123, message: "bar" })).toBe(false);
+    expect(hasTaggedErrorShape({ _tag: "Foo", message: 123 })).toBe(false);
+  });
+
+  it("extractErrorData() preserves tagged error details", () => {
+    const tagged = {
+      _tag: "Reverted",
+      address: "0xabc",
+      calldata: "0xdeadbeef",
+      cause: { nested: true },
+      functionName: "transfer",
+      message: "execution reverted",
+      sender: "0xdef",
+    };
+
+    expect(extractErrorData(tagged)).toEqual({
+      details: {
+        address: "0xabc",
+        calldata: "0xdeadbeef",
+        cause: { nested: true },
+        functionName: "transfer",
+        sender: "0xdef",
+        tag: "Reverted",
+      },
+      message: "execution reverted",
+    });
+  });
+
+  it("extractErrorData() returns Error.message for Error instances", () => {
+    expect(extractErrorData(new Error("boom"))).toBe("boom");
+  });
+
+  it("extractErrorData() falls back for unknown values", () => {
+    expect(extractErrorData(123, "fallback")).toBe("fallback");
+    expect(extractErrorData(undefined)).toBe("Operation failed");
+  });
+});

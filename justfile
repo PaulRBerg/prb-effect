@@ -1,0 +1,78 @@
+# See https://github.com/sablier-labs/devkit/blob/main/just/base.just
+import "./node_modules/@sablier/devkit/just/base.just"
+
+# Package modules
+mod fmt "fmt"
+mod next "next"
+mod web3 "web3"
+mod xstate "xstate"
+
+# ---------------------------------------------------------------------------- #
+#                                    RECIPES                                   #
+# ---------------------------------------------------------------------------- #
+
+# Default: show all recipes
+default:
+    just --list
+
+# Clean build artifacts
+clean:
+    nlx del-cli "**/dist" "**/*.tsbuildinfo" "**/*.tgz"
+
+# Build all packages (.tgz)
+[group("dev")]
+@build-tgz:
+    echo '{{ CYAN }}→ Building @prb/effect-fmt...{{ NORMAL }}'
+    cd fmt && npm pack --silent
+    echo ""
+
+    echo '{{ CYAN }}→ Building @prb/effect-next...{{ NORMAL }}'
+    cd next && npm pack --silent
+    echo ""
+
+    echo '{{ CYAN }}→ Building @prb/effect-web3...{{ NORMAL }}'
+    cd web3 && npm pack --silent
+    echo ""
+
+    echo '{{ CYAN }}→ Building @prb/effect-xstate...{{ NORMAL }}'
+    cd xstate && npm pack --silent
+    echo ""
+
+    echo '{{ GREEN }}✓ All packages built{{ NORMAL }}'
+alias bt := build-tgz
+
+# ---------------------------------------------------------------------------- #
+#                                     TESTS                                    #
+# ---------------------------------------------------------------------------- #
+
+# Run unit tests for all packages
+[group("tests")]
+@test-unit +args="":
+    na vitest {{ args }}
+alias tu := test-unit
+
+# Run unit tests with UI
+[group("tests")]
+@test-unit-ui:
+    na vitest --ui
+alias tuui := test-unit-ui
+
+# ---------------------------------------------------------------------------- #
+#                                    TYPE CHECK                                #
+# ---------------------------------------------------------------------------- #
+
+# Run TypeScript check for all packages
+@type-check:
+    echo "🔍 Type checking effect-fmt..."
+    cd fmt && na tsgo --noEmit
+
+    echo "🔍 Type checking effect-next..."
+    cd next && na tsgo --noEmit
+
+    echo "🔍 Type checking effect-web3..."
+    cd web3 && na tsgo --noEmit
+
+    echo "🔍 Type checking effect-xstate..."
+    cd xstate && na tsgo --noEmit
+
+    echo "✅ Type check passed"

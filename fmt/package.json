@@ -1,0 +1,46 @@
+{
+  "name": "@prb/effect-fmt",
+  "description": "Effect-TS formatting utilities for numbers, dates, and durations",
+  "version": "1.0.0-beta.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "author": {
+    "name": "Paul Razvan Berg",
+    "url": "https://github.com/PaulRBerg"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@biomejs/biome": "catalog:dev",
+    "@effect/vitest": "catalog:dev",
+    "@sablier/devkit": "catalog:dev",
+    "@types/node": "catalog:dev",
+    "@typescript/native-preview": "catalog:dev",
+    "@vitest/ui": "catalog:dev",
+    "effect": "catalog:effect",
+    "tsc-alias": "catalog:dev",
+    "typescript": "catalog:dev",
+    "vitest": "catalog:dev"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./internal/*": null,
+    "./*": {
+      "types": "./dist/*.d.ts",
+      "import": "./dist/*.js"
+    }
+  },
+  "files": [
+    "dist/**",
+    "README.md"
+  ],
+  "peerDependencies": {
+    "effect": "catalog:peers"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
