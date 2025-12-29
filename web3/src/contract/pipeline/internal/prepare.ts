@@ -60,7 +60,11 @@ export const deriveBaseOverrides = (
   });
 
 /**
- * Simulate transaction and estimate gas
+ * Estimate gas and simulate transaction.
+ *
+ * Gas estimation is done BEFORE simulation to provide a reasonable gas limit.
+ * Some RPC nodes default to max uint64 when no gas limit is provided, which
+ * causes "insufficient funds" errors during the balance check.
  */
 export const simulateAndEstimate = <
   TAbi extends Abi,
@@ -80,19 +84,21 @@ export const simulateAndEstimate = <
   | UserRejectedError
 > =>
   Effect.gen(function* () {
-    // Simulate
-    yield* writer.simulate({ ...params, overrides: baseOverrides });
-
-    // Estimate gas
+    // Estimate gas first to get a reasonable limit for simulation
     const estimatedGas = yield* writer.estimateGas({
       ...params,
       overrides: baseOverrides,
     });
+    // Apply multiplier to add safety margin; this buffered value is used for
+    // both simulation (balance check) and the final transaction.
     const derivedGas = applyGasLimitMultiplier(estimatedGas, policy.gasLimitMultiplier);
 
     // Use explicit gas if provided, otherwise use derived
     const explicitGas = params.overrides?.gas ?? params.gas;
     const finalGas = explicitGas ?? derivedGas;
+
+    // Simulate with the gas limit to ensure proper balance checks
+    yield* writer.simulate({ ...params, overrides: { ...baseOverrides, gas: finalGas } });
 
     return {
       finalGas,

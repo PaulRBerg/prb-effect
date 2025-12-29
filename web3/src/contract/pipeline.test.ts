@@ -379,6 +379,86 @@ describe("ContractPipeline", () => {
         )
       )
     );
+
+    it.effect("estimates gas before simulation and passes gas limit to simulation", () => {
+      const calls: string[] = [];
+      let simulationGasParam: bigint | undefined;
+
+      return Effect.gen(function* () {
+        const pipeline = yield* ContractPipeline;
+
+        yield* pipeline.writeAndWait({
+          abi: erc20Abi,
+          account: TEST_ADDRESS,
+          address: TEST_ADDRESS,
+          args: [TEST_ADDRESS_2, 100n],
+          chainId: TEST_CHAIN_ID,
+          functionName: "transfer",
+        });
+
+        // Verify gas estimation happens before simulation (order matters for RPC compatibility)
+        expect(calls).toEqual(["estimateContractGas", "simulateContract"]);
+
+        // Verify simulation receives the exact expected gas (50000 * 1.1 multiplier = 55000)
+        expect(simulationGasParam).toBe(55000n);
+      }).pipe(
+        Effect.provide(
+          makeContractPipelineTestLayer({
+            publicClient: {
+              estimateContractGas: () => {
+                calls.push("estimateContractGas");
+                return Promise.resolve(50000n);
+              },
+              simulateContract: (params: unknown) => {
+                calls.push("simulateContract");
+                simulationGasParam = (params as { gas?: bigint }).gas;
+                return Promise.resolve({ request: {}, result: true });
+              },
+            },
+            walletClient: {
+              writeContract: () => Promise.resolve(TEST_TX_HASH),
+            },
+          })
+        )
+      );
+    });
+
+    it.effect("explicit gas override takes precedence over estimated gas", () => {
+      let simulationGasParam: bigint | undefined;
+      const EXPLICIT_GAS = 100000n;
+
+      return Effect.gen(function* () {
+        const pipeline = yield* ContractPipeline;
+
+        yield* pipeline.writeAndWait({
+          abi: erc20Abi,
+          account: TEST_ADDRESS,
+          address: TEST_ADDRESS,
+          args: [TEST_ADDRESS_2, 100n],
+          chainId: TEST_CHAIN_ID,
+          functionName: "transfer",
+          gas: EXPLICIT_GAS,
+        });
+
+        // Explicit gas should be used instead of estimated (50000 * 1.1 = 55000)
+        expect(simulationGasParam).toBe(EXPLICIT_GAS);
+      }).pipe(
+        Effect.provide(
+          makeContractPipelineTestLayer({
+            publicClient: {
+              estimateContractGas: () => Promise.resolve(50000n),
+              simulateContract: (params: unknown) => {
+                simulationGasParam = (params as { gas?: bigint }).gas;
+                return Promise.resolve({ request: {}, result: true });
+              },
+            },
+            walletClient: {
+              writeContract: () => Promise.resolve(TEST_TX_HASH),
+            },
+          })
+        )
+      );
+    });
   });
 
   describe("writeAndTrack", () => {

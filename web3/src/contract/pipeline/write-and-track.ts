@@ -63,19 +63,23 @@ export const makeWriteAndTrack = (deps: WriteAndTrackDeps) =>
         userOverrides: params.overrides,
       });
 
-      // Step 2: Simulating
-      yield* tracker.set({ status: "simulating" });
-      yield* writer.simulate({ ...params, overrides: baseOverrides });
-
-      // Step 3: Estimate gas
+      // Step 2: Estimate gas first to provide a reasonable limit for simulation.
+      // Some RPC nodes default to max uint64 when no gas limit is provided,
+      // causing "insufficient funds" errors during the balance check.
       const estimatedGas = yield* writer.estimateGas({
         ...params,
         overrides: baseOverrides,
       });
+      // Apply multiplier to add safety margin; this buffered value is used for
+      // both simulation (balance check) and the final transaction.
       const derivedGas = applyGasLimitMultiplier(estimatedGas, policy.gasLimitMultiplier);
 
       const explicitGas = params.overrides?.gas ?? params.gas;
       const finalGas = explicitGas ?? derivedGas;
+
+      // Step 3: Simulate with the gas limit to ensure proper balance checks
+      yield* tracker.set({ status: "simulating" });
+      yield* writer.simulate({ ...params, overrides: { ...baseOverrides, gas: finalGas } });
       const explicitNonce = params.overrides?.nonce;
 
       // Step 4: Reserve nonce
