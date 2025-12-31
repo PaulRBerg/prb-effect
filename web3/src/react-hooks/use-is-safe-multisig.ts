@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useState } from "react";
 import { useAccount } from "wagmi";
+import { useSafeContext } from "./use-safe-context.js";
 
 /**
  * Known Safe wallet domains for iframe origin validation.
@@ -22,34 +23,38 @@ const SAFE_ORIGINS = [
 /**
  * Detect if the connected wallet is a Safe multisig.
  *
- * Detection strategy:
- * 1. Check wagmi connector ID (most reliable)
- * 2. Check for Safe-specific iframe properties (avoids false positives from other iframes)
- *
- * Safe Apps inject specific properties into the window object when running in their iframe:
- * - `window.parent !== window` (iframe check)
- * - Safe domain origins: app.safe.global, gnosis-safe.io
- *
- * We avoid relying solely on `window.parent !== window` because it triggers for ANY iframe,
- * including non-Safe contexts like embedded widgets, auth popups, or third-party integrations.
+ * Detection strategy (in order of reliability):
+ * 1. Safe Apps SDK detection via postMessage (most reliable, works cross-origin)
+ * 2. Wagmi connector ID check
+ * 3. Iframe origin validation (fallback, may fail cross-origin)
  *
  * @returns true if wallet is a Safe multisig
  */
 export function useIsSafeMultisig(): boolean {
   const { connector, isConnected } = useAccount();
+  const isSafeContext = useSafeContext();
 
-  // Method 1: Connected via Safe connector (most reliable)
-  const isSafeConnector = isConnected && connector?.id === "safe";
+  // Method 3: Iframe origin fallback (may fail cross-origin)
+  // Deferred to useEffect to avoid SSR hydration mismatch
+  const [isSafeIframe, setIsSafeIframe] = useState(false);
+  useEffect(() => {
+    if (window.parent !== window && isValidSafeOrigin()) {
+      setIsSafeIframe(true);
+    }
+  }, []);
 
-  // Method 2: Running in Safe App iframe
-  // Check for Safe-specific iframe context to avoid false positives
-  // Memoized because iframe status and parent origin never change during a session
-  const isSafeIframe = useMemo(
-    () => typeof window !== "undefined" && window.parent !== window && isValidSafeOrigin(),
-    []
-  );
+  // Method 1: Safe Apps SDK (most reliable - uses postMessage)
+  if (isSafeContext) {
+    return true;
+  }
 
-  return isSafeConnector || isSafeIframe;
+  // Method 2: Connected via Safe connector
+  if (isConnected && connector?.id === "safe") {
+    return true;
+  }
+
+  // Method 3: Fallback
+  return isSafeIframe;
 }
 
 /**

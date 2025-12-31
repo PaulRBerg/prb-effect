@@ -30,3 +30,4 @@ export {
 export type { WalletProviderRefActions } from "@/src/integrations/react-hooks/wallet-provider-ref.js";
 export { useWalletProviderRef } from "@/src/integrations/react-hooks/wallet-provider-ref.js";
 export { useIsSafeMultisig } from "./use-is-safe-multisig.js";
+export { useSafeContext } from "./use-safe-context.js";
