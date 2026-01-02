@@ -1,38 +1,43 @@
 import { describe, expect, it } from "@effect/vitest";
-import type { Rpc, SolanaRpcApi } from "@solana/kit";
 import { AccountState, getMintEncoder, getTokenEncoder } from "@solana-program/token";
 import { Effect } from "effect";
 import { TOKEN_2022_PROGRAM_ADDRESS, TOKEN_PROGRAM_ADDRESS } from "@/src/constants/index.js";
 import {
   expectTaggedFailure,
   makeEffectSolanaTestLayer,
+  makeMockRpc,
   TEST_ADDRESS,
   TEST_MINT,
   TEST_WALLET,
 } from "@/src/testing-kit/index.js";
 import { TokenService } from "@/src/token/index.js";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Solana RPC types use branded types that can't be constructed from literals
 const makeRpcWithAccounts = (accounts: Record<string, Uint8Array | null>) =>
-  ({
-    getAccountInfo: (address: string) => ({
+  makeMockRpc({
+    getAccountInfo: ((address: string) => ({
       send: () => {
         const data = accounts[address] ?? null;
         if (!data) {
-          return Promise.resolve({ value: null });
+          return Promise.resolve({ context: { slot: 0n }, value: null });
         }
 
+        const bytes = data;
+
         return Promise.resolve({
+          context: { slot: 0n },
           value: {
-            data: [Buffer.from(data).toString("base64"), "base64"],
+            data: [Buffer.from(bytes).toString("base64"), "base64"],
             executable: false,
             lamports: 1n,
             owner: TOKEN_PROGRAM_ADDRESS,
-            space: BigInt(data.length),
+            rentEpoch: 0n,
+            space: BigInt(bytes.length),
           },
         });
       },
-    }),
-  }) as Rpc<SolanaRpcApi>;
+    })) as any,
+  });
 
 describe("TokenService (Live)", () => {
   it.effect("getMint returns decoded mint account", () => {
@@ -44,7 +49,7 @@ describe("TokenService (Live)", () => {
       supply: 1_000_000n,
     });
 
-    const rpc = makeRpcWithAccounts({ [TEST_MINT]: mintData });
+    const rpc = makeRpcWithAccounts({ [TEST_MINT]: mintData as Uint8Array });
 
     return Effect.gen(function* () {
       const service = yield* TokenService;
@@ -74,7 +79,7 @@ describe("TokenService (Live)", () => {
       state: AccountState.Initialized,
     });
 
-    const rpc = makeRpcWithAccounts({ [TEST_ADDRESS]: tokenData });
+    const rpc = makeRpcWithAccounts({ [TEST_ADDRESS]: tokenData as Uint8Array });
 
     return Effect.gen(function* () {
       const service = yield* TokenService;

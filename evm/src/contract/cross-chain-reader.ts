@@ -7,8 +7,13 @@ import type {
   ContractFunctionReturnType,
   MulticallCall,
   MulticallResult,
+  ReadParams,
 } from "@/src/types/index.js";
 import { ContractReader } from "./reader.js";
+
+type ArgsField<TArgs> = {
+  readonly args?: TArgs | undefined;
+} & (readonly [] extends TArgs ? unknown : { readonly args: TArgs });
 
 export type CrossChainCall<
   TAbi extends Abi = Abi,
@@ -17,12 +22,21 @@ export type CrossChainCall<
     "pure" | "view"
   >,
 > = {
-  readonly chainId: number;
-  readonly address: Address;
   readonly abi: TAbi;
+  readonly address: Address;
+  readonly chainId: number;
   readonly functionName: TFunctionName;
-  readonly args?: ContractFunctionArgs<TAbi, "pure" | "view", TFunctionName>;
-};
+} & ArgsField<ContractFunctionArgs<TAbi, "pure" | "view", TFunctionName>>;
+
+export type ReadSameParams<
+  TAbi extends Abi,
+  TFunctionName extends ContractFunctionName<TAbi, "pure" | "view">,
+> = {
+  readonly abi: TAbi;
+  readonly address: Address;
+  readonly chainIds: readonly number[];
+  readonly functionName: TFunctionName;
+} & ArgsField<ContractFunctionArgs<TAbi, "pure" | "view", TFunctionName>>;
 
 export type ChainMulticallBatch = {
   readonly chainId: number;
@@ -44,13 +58,9 @@ export type CrossChainReaderShape = {
   readonly readSame: <
     TAbi extends Abi,
     TFunctionName extends ContractFunctionName<TAbi, "pure" | "view">,
-  >(params: {
-    chainIds: readonly number[];
-    address: Address;
-    abi: TAbi;
-    functionName: TFunctionName;
-    args?: ContractFunctionArgs<TAbi, "pure" | "view", TFunctionName>;
-  }) => Effect.Effect<
+  >(
+    params: ReadSameParams<TAbi, TFunctionName>
+  ) => Effect.Effect<
     Map<number, ContractFunctionReturnType<TAbi, "pure" | "view", TFunctionName>>,
     ContractReadError | ClientNotFoundError
   >;
@@ -137,16 +147,7 @@ export const CrossChainReaderLive = Layer.effect(
           const results = yield* Effect.all(
             Array.from(groupedCalls.entries()).map(([chainId, chainCalls]) =>
               Effect.all(
-                chainCalls.map((call) =>
-                  reader.read({
-                    abi: call.abi,
-                    address: call.address,
-                    chainId: call.chainId,
-                    functionName: call.functionName,
-                    ...(call.args !== undefined ? { args: call.args } : {}),
-                    // biome-ignore lint/suspicious/noExplicitAny: TypeScript can't infer optional args with conditional types
-                  } as any)
-                ),
+                chainCalls.map((call) => reader.read(call)),
                 { concurrency: "unbounded" }
               ).pipe(
                 Effect.map((chainResults) => ({
@@ -177,13 +178,9 @@ export const CrossChainReaderLive = Layer.effect(
       readSame: <
         TAbi extends Abi,
         TFunctionName extends ContractFunctionName<TAbi, "pure" | "view">,
-      >(params: {
-        chainIds: readonly number[];
-        address: Address;
-        abi: TAbi;
-        functionName: TFunctionName;
-        args?: ContractFunctionArgs<TAbi, "pure" | "view", TFunctionName>;
-      }) =>
+      >(
+        params: ReadSameParams<TAbi, TFunctionName>
+      ) =>
         Effect.gen(function* () {
           // Execute the same read on each chain in parallel
           const results = yield* Effect.all(
@@ -192,11 +189,10 @@ export const CrossChainReaderLive = Layer.effect(
                 .read({
                   abi: params.abi,
                   address: params.address,
+                  args: params.args,
                   chainId,
                   functionName: params.functionName,
-                  ...(params.args !== undefined ? { args: params.args } : {}),
-                  // biome-ignore lint/suspicious/noExplicitAny: TypeScript can't infer optional args with conditional types
-                } as any)
+                } as ReadParams<TAbi, TFunctionName>)
                 .pipe(
                   Effect.map((result) => ({
                     chainId,

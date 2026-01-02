@@ -9,7 +9,11 @@ import {
   setTransactionMessageLifetimeUsingBlockhash,
 } from "@solana/transaction-messages";
 import type { Transaction, TransactionWithLifetime } from "@solana/transactions";
-import { compileTransaction, getSignatureFromTransaction } from "@solana/transactions";
+import {
+  compileTransaction,
+  getBase64EncodedWireTransaction,
+  getSignatureFromTransaction,
+} from "@solana/transactions";
 import {
   getSetComputeUnitLimitInstruction,
   getSetComputeUnitPriceInstruction,
@@ -305,6 +309,8 @@ export const TransactionServiceLive = Layer.effect(
           const rpc = yield* rpcService.getRpc();
           const signature = getSignatureFromTransaction(tx);
 
+          const wireTransaction = getBase64EncodedWireTransaction(tx);
+
           yield* Effect.tryPromise({
             catch: (cause) =>
               new TransactionSendError({
@@ -312,8 +318,10 @@ export const TransactionServiceLive = Layer.effect(
                 message: "Failed to send transaction",
                 signature,
               }),
-            // biome-ignore lint/suspicious/noExplicitAny: RPC expects specific branded type
-            try: () => rpc.sendTransaction(tx as any, { skipPreflight: false }).send(),
+            try: () =>
+              rpc
+                .sendTransaction(wireTransaction, { encoding: "base64", skipPreflight: false })
+                .send(),
           });
 
           return signature;
@@ -420,14 +428,15 @@ export const TransactionServiceLive = Layer.effect(
               )
             );
 
+          const wireTransaction = getBase64EncodedWireTransaction(signed);
+
           const result = yield* Effect.tryPromise({
             catch: (cause) =>
               new SimulationFailedError({
                 cause,
                 message: "Simulation failed",
               }),
-            // biome-ignore lint/suspicious/noExplicitAny: RPC expects specific branded type
-            try: () => rpc.simulateTransaction(signed as any).send(),
+            try: () => rpc.simulateTransaction(wireTransaction, { encoding: "base64" }).send(),
           });
 
           if (result.value.err) {

@@ -1,4 +1,5 @@
 import type { Rpc, RpcSubscriptions, SolanaRpcApi, SolanaRpcSubscriptionsApi } from "@solana/kit";
+import { createSolanaRpc } from "@solana/kit";
 import type { Layer } from "effect";
 import { Effect } from "effect";
 import { ConnectionNotFoundError } from "@/src/core/errors/index.js";
@@ -24,67 +25,79 @@ export type MockRpcServiceConfig = {
 };
 
 /**
- * Create a minimal mock RPC client for testing.
- * This is a partial mock - only commonly used methods are stubbed.
+ * Wraps a value with the standard RPC response context structure
  */
-const createMockRpc = (): Rpc<SolanaRpcApi> =>
+const wrapResponse = <T>(value: T) => ({ context: { slot: 0n }, value });
+
+/**
+ * Create a mock RPC client for testing.
+ * Provides a full Rpc<SolanaRpcApi> via createSolanaRpc with safe overrides.
+ *
+ * Uses type assertion because Solana RPC types use many branded types (Lamports, Signature, etc.)
+ * that cannot be created from literals. The mock values are structurally correct at runtime.
+ */
+export const makeMockRpc = (overrides: Partial<Rpc<SolanaRpcApi>> = {}): Rpc<SolanaRpcApi> =>
   ({
+    ...createSolanaRpc("http://localhost"),
     getAccountInfo: () => ({
-      send: () => Promise.resolve({ value: null }),
+      send: () => Promise.resolve(wrapResponse(null)),
     }),
     getBalance: () => ({
-      send: () => Promise.resolve({ value: 1000000000n }),
+      send: () => Promise.resolve(wrapResponse(1000000000n)),
     }),
     getLatestBlockhash: () => ({
       send: () =>
-        Promise.resolve({
-          value: {
-            blockhash: "GH7ome3EiwEr7tu9JuTh2dpYWBJK3z69Xm1ZE3MEE6JC" as never,
+        Promise.resolve(
+          wrapResponse({
+            blockhash: "GH7ome3EiwEr7tu9JuTh2dpYWBJK3z69Xm1ZE3MEE6JC",
             lastValidBlockHeight: 1000n,
-          },
-        }),
+          })
+        ),
     }),
     getSignatureStatuses: () => ({
       send: () =>
-        Promise.resolve({
-          value: [
+        Promise.resolve(
+          wrapResponse([
             {
-              confirmationStatus: "confirmed" as never,
-              confirmations: 10,
+              confirmationStatus: "confirmed",
+              confirmations: 10n,
               err: null,
               slot: 1000n,
+              status: { Ok: null },
             },
-          ],
-        }),
+          ])
+        ),
     }),
     getTokenAccountBalance: () => ({
       send: () =>
-        Promise.resolve({
-          value: {
+        Promise.resolve(
+          wrapResponse({
             amount: "1000000000",
             decimals: 9,
             uiAmount: 1.0,
             uiAmountString: "1.0",
-          },
-        }),
+          })
+        ),
     }),
     sendTransaction: () => ({
       send: () => Promise.resolve("mock-signature"),
     }),
     simulateTransaction: () => ({
       send: () =>
-        Promise.resolve({
-          value: {
+        Promise.resolve(
+          wrapResponse({
             err: null,
-            logs: [],
-          },
-        }),
+            logs: [] as string[],
+            returnData: null,
+          })
+        ),
     }),
-  }) as never;
+    ...overrides,
+  }) as Rpc<SolanaRpcApi>;
 
 const defaultConfig: Required<MockRpcServiceConfig> = {
   getCluster: () => Effect.succeed(TEST_CLUSTER),
-  getRpc: () => Effect.succeed(createMockRpc()),
+  getRpc: () => Effect.succeed(makeMockRpc()),
   getRpcSubscriptions: () =>
     Effect.fail(
       new ConnectionNotFoundError({

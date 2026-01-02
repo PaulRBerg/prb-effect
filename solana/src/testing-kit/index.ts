@@ -34,7 +34,7 @@ export type { MockPdaServiceConfig } from "./mock-pda-service.js";
 export { makeMockPdaServiceLayer } from "./mock-pda-service.js";
 // Mock layer builders
 export type { MockRpcServiceConfig } from "./mock-rpc-service.js";
-export { makeMockRpcServiceLayer } from "./mock-rpc-service.js";
+export { makeMockRpc, makeMockRpcServiceLayer } from "./mock-rpc-service.js";
 export type { MockSignerServiceConfig } from "./mock-signer-service.js";
 export { makeMockSignerServiceLayer } from "./mock-signer-service.js";
 export type { MockTokenServiceConfig } from "./mock-token-service.js";

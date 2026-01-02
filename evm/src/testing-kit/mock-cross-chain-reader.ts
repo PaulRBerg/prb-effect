@@ -1,17 +1,16 @@
 import { Effect, Layer } from "effect";
-import type { Address } from "viem";
 import type {
   ChainMulticallBatch,
   CrossChainCall,
   CrossChainReader,
   CrossChainReaderShape,
+  ReadSameParams,
 } from "@/src/contract/index.js";
 import { CrossChainReader as CrossChainReaderTag } from "@/src/contract/index.js";
 import type { ClientNotFoundError, ContractReadError, MulticallError } from "@/src/core/index.js";
 import { ClientNotFoundError as ClientNotFoundErrorClass } from "@/src/core/index.js";
 import type {
   Abi,
-  ContractFunctionArgs,
   ContractFunctionName,
   ContractFunctionReturnType,
   MulticallResult,
@@ -28,16 +27,9 @@ export type MockCrossChainReaderConfig = {
     calls: TCalls
   ) => Effect.Effect<Map<number, unknown[]>, ContractReadError | ClientNotFoundError>;
 
-  readSame?: <
-    TAbi extends Abi,
-    TFunctionName extends ContractFunctionName<TAbi, "pure" | "view">,
-  >(params: {
-    chainIds: readonly number[];
-    address: Address;
-    abi: TAbi;
-    functionName: TFunctionName;
-    args?: ContractFunctionArgs<TAbi, "pure" | "view", TFunctionName>;
-  }) => Effect.Effect<
+  readSame?: <TAbi extends Abi, TFunctionName extends ContractFunctionName<TAbi, "pure" | "view">>(
+    params: ReadSameParams<TAbi, TFunctionName>
+  ) => Effect.Effect<
     Map<number, ContractFunctionReturnType<TAbi, "pure" | "view", TFunctionName>>,
     ContractReadError | ClientNotFoundError
   >;
@@ -121,13 +113,9 @@ export const makeMockCrossChainReaderLayer = (
 
   const readSame =
     config.readSame ??
-    (<TAbi extends Abi, TFunctionName extends ContractFunctionName<TAbi, "pure" | "view">>(params: {
-      chainIds: readonly number[];
-      address: Address;
-      abi: TAbi;
-      functionName: TFunctionName;
-      args?: ContractFunctionArgs<TAbi, "pure" | "view", TFunctionName>;
-    }) => {
+    (<TAbi extends Abi, TFunctionName extends ContractFunctionName<TAbi, "pure" | "view">>(
+      params: ReadSameParams<TAbi, TFunctionName>
+    ) => {
       const resultMap = new Map<
         number,
         ContractFunctionReturnType<TAbi, "pure" | "view", TFunctionName>

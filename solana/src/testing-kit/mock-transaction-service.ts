@@ -11,7 +11,12 @@ import type {
   TransactionTimeoutError,
   WalletNotConnectedError,
 } from "@/src/core/errors/index.js";
-import type { ConfirmOpts, TransactionReceipt } from "@/src/tx/index.js";
+import type {
+  ConfirmOpts,
+  TransactionBatchItem,
+  TransactionBatchOpts,
+  TransactionReceipt,
+} from "@/src/tx/index.js";
 import { TransactionService } from "@/src/tx/index.js";
 import { TEST_SIGNATURE } from "./_fixtures/addresses.js";
 import { makeMockServiceLayer } from "./helpers.js";
@@ -26,12 +31,22 @@ export type MockTransactionServiceConfig = {
   build?: (
     instructions: readonly Instruction[]
   ) => Effect.Effect<CompilableTransactionMessage, TransactionSendError | WalletNotConnectedError>;
+  signAll?: (
+    txs: readonly CompilableTransactionMessage[]
+  ) => Effect.Effect<
+    readonly (Transaction & TransactionWithLifetime)[],
+    TransactionSendError | WalletNotConnectedError
+  >;
   sign?: <T extends CompilableTransactionMessage>(
     tx: T
   ) => Effect.Effect<
     Transaction & TransactionWithLifetime,
     TransactionSendError | WalletNotConnectedError
   >;
+  sendAll?: (
+    txs: readonly (Transaction & TransactionWithLifetime)[],
+    opts?: TransactionBatchOpts
+  ) => Effect.Effect<readonly Signature[], TransactionSendError>;
   send?: (
     tx: Transaction & TransactionWithLifetime
   ) => Effect.Effect<Signature, TransactionSendError>;
@@ -44,6 +59,16 @@ export type MockTransactionServiceConfig = {
     opts?: ConfirmOpts
   ) => Effect.Effect<
     TransactionReceipt,
+    | TransactionSendError
+    | WalletNotConnectedError
+    | TransactionTimeoutError
+    | TransactionFailedError
+  >;
+  sendAndConfirmBatch?: (
+    items: readonly TransactionBatchItem[],
+    opts?: TransactionBatchOpts
+  ) => Effect.Effect<
+    readonly TransactionReceipt[],
     | TransactionSendError
     | WalletNotConnectedError
     | TransactionTimeoutError
@@ -63,13 +88,23 @@ const defaultConfig: Required<MockTransactionServiceConfig> = {
       slot: 1000n,
     }),
   send: () => Effect.succeed(TEST_SIGNATURE as Signature),
+  sendAll: (txs) => Effect.succeed(txs.map(() => TEST_SIGNATURE as Signature)),
   sendAndConfirm: () =>
     Effect.succeed({
       confirmations: 10n,
       signature: TEST_SIGNATURE as Signature,
       slot: 1000n,
     }),
+  sendAndConfirmBatch: (items) =>
+    Effect.succeed(
+      items.map(() => ({
+        confirmations: 10n,
+        signature: TEST_SIGNATURE as Signature,
+        slot: 1000n,
+      }))
+    ),
   sign: () => Effect.succeed({} as Transaction & TransactionWithLifetime),
+  signAll: (txs) => Effect.succeed(txs.map(() => ({}) as Transaction & TransactionWithLifetime)),
   simulate: () => Effect.void,
 };
 

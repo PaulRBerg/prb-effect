@@ -59,11 +59,14 @@ alias tuui := test-unit-ui
 
 # Run TypeScript check for all packages
 @type-check:
+    echo "🔍 Type checking effect-evm..."
+    cd evm && na tsgo --noEmit
+
     echo "🔍 Type checking effect-next..."
     cd next && na tsgo --noEmit
 
-    echo "🔍 Type checking effect-evm..."
-    cd evm && na tsgo --noEmit
+    echo "🔍 Type checking effect-solana..."
+    cd solana && na tsgo --noEmit
 
     echo "🔍 Type checking effect-xstate..."
     cd xstate && na tsgo --noEmit
