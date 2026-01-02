@@ -24,7 +24,6 @@ If any command fails, fix errors before continuing. Run `just biome-write` at th
 
 ```
 prb-effect/
-├── fmt/                 # @prb/effect-fmt - formatting utilities
 ├── next/                # @prb/effect-next - Next.js integration
 ├── web3/                # @prb/effect-web3 - Web3/viem integration
 ├── xstate/              # @prb/effect-xstate - xState v5 workflows
@@ -37,7 +36,6 @@ prb-effect/
 ```bash
 just full-check          # Run all code checks
 just tu                  # Run unit tests
-just fmt::build          # Build @prb/effect-fmt
 just next::build         # Build @prb/effect-next
 just web3::build         # Build @prb/effect-web3
 just xstate::build       # Build @prb/effect-xstate

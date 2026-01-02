@@ -8,12 +8,11 @@ A Bun-powered monorepo for Effect-TS libraries.
 
 ## Packages
 
-| Package                          | Description                                        |
-| -------------------------------- | -------------------------------------------------- |
-| [`@prb/effect-fmt`](./fmt)       | Formatting utilities for numbers, dates, durations |
-| [`@prb/effect-next`](./next)     | Effect integration for Next.js                     |
-| [`@prb/effect-web3`](./web3)     | Effect integration for Web3/viem                   |
-| [`@prb/effect-xstate`](./xstate) | xState v5 workflow utilities                       |
+| Package                          | Description                    |
+| -------------------------------- | ------------------------------ |
+| [`@prb/effect-next`](./next)     | Effect integration for Next.js |
+| [`@prb/effect-web3`](./web3)     | Effect integration for Web3    |
+| [`@prb/effect-xstate`](./xstate) | xState v5 workflow utilities   |
 
 ## Tech Stack
 
@@ -42,7 +41,6 @@ just tu              # run unit tests
 **Build packages:**
 
 ```bash
-just fmt::build
 just next::build
 just web3::build
 just xstate::build
@@ -52,7 +50,6 @@ just xstate::build
 
 ```
 prb-effect/
-├── fmt/                 # @prb/effect-fmt - formatting utilities
 ├── next/                # @prb/effect-next - Next.js integration
 ├── web3/                # @prb/effect-web3 - Web3/viem integration
 ├── xstate/              # @prb/effect-xstate - xState v5 workflows

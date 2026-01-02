@@ -18,25 +18,6 @@
         "vitest": "^4.0.15",
       },
     },
-    "fmt": {
-      "name": "@prb/effect-fmt",
-      "version": "1.0.0-beta.0",
-      "devDependencies": {
-        "@biomejs/biome": "catalog:dev",
-        "@effect/vitest": "catalog:dev",
-        "@sablier/devkit": "catalog:dev",
-        "@types/node": "catalog:dev",
-        "@typescript/native-preview": "catalog:dev",
-        "@vitest/ui": "catalog:dev",
-        "effect": "catalog:effect",
-        "tsc-alias": "catalog:dev",
-        "typescript": "catalog:dev",
-        "vitest": "catalog:dev",
-      },
-      "peerDependencies": {
-        "effect": "catalog:peers",
-      },
-    },
     "next": {
       "name": "@prb/effect-next",
       "version": "1.0.0-beta.0",
@@ -442,8 +423,6 @@
     "@paulmillr/qr": ["@paulmillr/qr@0.2.1", "", {}, "sha512-IHnV6A+zxU7XwmKFinmYjUcwlyK9+xkG3/s9KcQhI9BjQKycrJ1JRO+FbNYPwZiPKW3je/DR0k7w8/gLa5eaxQ=="],
 
     "@polka/url": ["@polka/url@1.0.0-next.29", "", {}, "sha512-wwQAWhWSuHaag8c4q/KN/vCoeOJYshAIvMQwD4GpSb3OiZklFfvAgmj0VCBBImRpuF/aFgIRzllXlVX93Jevww=="],
-
-    "@prb/effect-fmt": ["@prb/effect-fmt@workspace:fmt"],
 
     "@prb/effect-next": ["@prb/effect-next@workspace:next"],
 

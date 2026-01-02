@@ -31,8 +31,8 @@
   },
   "workspaces": {
     "packages": [
+      "evm",
       "next",
-      "web3",
       "fmt",
       "xstate"
     ],

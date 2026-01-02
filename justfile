@@ -2,7 +2,6 @@
 import "./node_modules/@sablier/devkit/just/base.just"
 
 # Package modules
-mod fmt "fmt"
 mod next "next"
 mod web3 "web3"
 mod xstate "xstate"
@@ -22,10 +21,6 @@ clean:
 # Build all packages (.tgz)
 [group("dev")]
 @build-tgz:
-    echo '{{ CYAN }}→ Building @prb/effect-fmt...{{ NORMAL }}'
-    cd fmt && npm pack --silent
-    echo ""
-
     echo '{{ CYAN }}→ Building @prb/effect-next...{{ NORMAL }}'
     cd next && npm pack --silent
     echo ""
@@ -63,9 +58,6 @@ alias tuui := test-unit-ui
 
 # Run TypeScript check for all packages
 @type-check:
-    echo "🔍 Type checking effect-fmt..."
-    cd fmt && na tsgo --noEmit
-
     echo "🔍 Type checking effect-next..."
     cd next && na tsgo --noEmit
 
