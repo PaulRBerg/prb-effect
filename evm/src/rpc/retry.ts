@@ -19,7 +19,7 @@ export type RetryConfig = BackoffConfig & {
  * @example
  * ```typescript
  * import { Effect } from "effect";
- * import { RetryConfigFromEnv } from "effect-web3/rpc";
+ * import { RetryConfigFromEnv } from "effect-evm/rpc";
  *
  * const program = Effect.gen(function* () {
  *   const config = yield* RetryConfigFromEnv;

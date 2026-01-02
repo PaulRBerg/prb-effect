@@ -1,7 +1,7 @@
-name: web3 > CI
+name: evm > CI
 
 on:
-  push: &web3_filters
+  push: &evm_filters
     branches: [main]
     paths:
       # == Workspace configs ==
@@ -14,9 +14,9 @@ on:
       - package.json
       - tsconfig.json
       # == Package-specific ==
-      - "web3/**"
-      - "**/web3.*.yml"
-  pull_request: *web3_filters
+      - "evm/**"
+      - "**/evm.*.yml"
+  pull_request: *evm_filters
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -26,4 +26,4 @@ jobs:
   ci:
     uses: ./.github/workflows/_base.ci.yml
     with:
-      package-name: web3
+      package-name: evm

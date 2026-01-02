@@ -12,8 +12,8 @@ import { EventStream } from "@/src/events/index.js";
 import { GasService } from "@/src/gas/index.js";
 import { NonceService } from "@/src/nonce/index.js";
 import {
-  effectWeb3Services,
-  makeEffectWeb3Layer,
+  effectEvmServices,
+  makeEffectEvmLayer,
   makePublicClientLayer,
   makeWalletClientLayer,
 } from "@/src/presets/index.js";
@@ -240,7 +240,7 @@ describe("Preset Layers", () => {
     );
   });
 
-  describe("effectWeb3Services", () => {
+  describe("effectEvmServices", () => {
     it.effect("successfully merges all service layers when provided client layers", () =>
       Effect.gen(function* () {
         // Verify all services are accessible
@@ -274,7 +274,7 @@ describe("Preset Layers", () => {
       }).pipe(
         Effect.provide(
           Layer.provide(
-            effectWeb3Services,
+            effectEvmServices,
             Layer.merge(
               makePublicClientLayer([
                 {
@@ -291,7 +291,7 @@ describe("Preset Layers", () => {
     );
   });
 
-  describe("makeEffectWeb3Layer", () => {
+  describe("makeEffectEvmLayer", () => {
     it.effect("creates complete layer with all services accessible", () =>
       Effect.gen(function* () {
         // Verify all client services are accessible
@@ -337,7 +337,7 @@ describe("Preset Layers", () => {
         expect(sepoliaClient).toBeDefined();
       }).pipe(
         Effect.provide(
-          makeEffectWeb3Layer(
+          makeEffectEvmLayer(
             [
               {
                 chain: mainnet,

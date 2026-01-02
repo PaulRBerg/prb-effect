@@ -1,14 +1,14 @@
 /**
- * Testing Kit for effect-web3
+ * Testing Kit for effect-evm
  *
  * This module exports mock builders and test utilities for downstream
- * consumers to easily test code that depends on effect-web3 services.
+ * consumers to easily test code that depends on effect-evm services.
  *
  * @example
  * ```typescript
- * import { makeEffectWeb3TestLayer } from "effect-web3/testing-kit";
+ * import { makeEffectEvmTestLayer } from "effect-evm/testing-kit";
  *
- * const testLayer = makeEffectWeb3TestLayer({
+ * const testLayer = makeEffectEvmTestLayer({
  *   publicClient: {
  *     readContract: async () => 1000n,
  *   },
@@ -68,4 +68,4 @@ export type { MockWalletProviderConfig } from "./mock-wallet-provider.js";
 export { makeMockWalletProvider } from "./mock-wallet-provider.js";
 // Test layer composer
 export type { TestLayerConfig } from "./test-layer.js";
-export { makeEffectWeb3TestLayer } from "./test-layer.js";
+export { makeEffectEvmTestLayer } from "./test-layer.js";

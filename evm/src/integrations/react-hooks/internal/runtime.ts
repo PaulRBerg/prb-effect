@@ -9,7 +9,7 @@ import * as Runtime_ from "effect/Runtime";
 import type * as Scope from "effect/Scope";
 import * as Scope_ from "effect/Scope";
 
-export type EffectWeb3Runtime = {
+export type EffectEvmRuntime = {
   readonly runFork: <A, E, R>(
     effect: Effect.Effect<A, E, R>,
     options?: Runtime.RunForkOptions | undefined
@@ -28,7 +28,7 @@ export type EffectWeb3Runtime = {
 
 export const buildRuntime = async (
   layer: Layer.Layer<never, unknown, never>
-): Promise<EffectWeb3Runtime> => {
+): Promise<EffectEvmRuntime> => {
   const scope = await Effect_.runPromise(Scope_.make());
   const runtime = await Effect_.runPromise(
     Scope_.extend(scope)(Layer_.toRuntime(layer as Layer.Layer<unknown, unknown, never>))
@@ -58,7 +58,7 @@ export const buildRuntime = async (
   };
 };
 
-export const buildRuntimeSync = (layer: Layer.Layer<never, unknown, never>): EffectWeb3Runtime => {
+export const buildRuntimeSync = (layer: Layer.Layer<never, unknown, never>): EffectEvmRuntime => {
   const scope = Effect_.runSync(Scope_.make());
   const runtime = Effect_.runSync(
     Scope_.extend(scope)(Layer_.toRuntime(layer as Layer.Layer<unknown, unknown, never>))

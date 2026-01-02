@@ -4,12 +4,12 @@ import type { Config } from "@wagmi/core";
 import { getAccount, watchAccount } from "@wagmi/core";
 import * as Layer from "effect/Layer";
 import * as React from "react";
-import { makeEffectWeb3LayerFromWagmiWithWalletProviderRef } from "@/src/wagmi/index.js";
+import { makeEffectEvmLayerFromWagmiWithWalletProviderRef } from "@/src/wagmi/index.js";
 import type { WalletProvider } from "@/src/wallet/index.js";
-import { EffectWeb3Provider, EffectWeb3ProviderSync } from "../provider.js";
+import { EffectEvmProvider, EffectEvmProviderSync } from "../provider.js";
 import { useWalletProviderRef } from "../wallet-provider-ref.js";
 
-export type WagmiEffectWeb3ProviderProps = {
+export type WagmiEffectEvmProviderProps = {
   readonly children: React.ReactNode;
   readonly config: Config;
   readonly fallback?: React.ReactNode;
@@ -81,13 +81,11 @@ const WagmiWalletProviderRefSync = (props: { readonly config: Config }): null =>
   return null;
 };
 
-export const WagmiEffectWeb3Provider = (
-  props: WagmiEffectWeb3ProviderProps
-): React.ReactElement => {
+export const WagmiEffectEvmProvider = (props: WagmiEffectEvmProviderProps): React.ReactElement => {
   const { children, config, fallback, layer: extraLayer, onUnhandledError } = props;
 
   const baseLayer = React.useMemo(
-    () => makeEffectWeb3LayerFromWagmiWithWalletProviderRef(config),
+    () => makeEffectEvmLayerFromWagmiWithWalletProviderRef(config),
     [config]
   );
   const fullLayer = React.useMemo(
@@ -96,7 +94,7 @@ export const WagmiEffectWeb3Provider = (
   );
 
   return React.createElement(
-    EffectWeb3Provider,
+    EffectEvmProvider,
     {
       fallback,
       layer: fullLayer,
@@ -111,13 +109,13 @@ export const WagmiEffectWeb3Provider = (
   );
 };
 
-export const WagmiEffectWeb3ProviderSync = (
-  props: WagmiEffectWeb3ProviderProps
+export const WagmiEffectEvmProviderSync = (
+  props: WagmiEffectEvmProviderProps
 ): React.ReactElement => {
   const { children, config, layer: extraLayer, onUnhandledError } = props;
 
   const baseLayer = React.useMemo(
-    () => makeEffectWeb3LayerFromWagmiWithWalletProviderRef(config),
+    () => makeEffectEvmLayerFromWagmiWithWalletProviderRef(config),
     [config]
   );
   const fullLayer = React.useMemo(
@@ -126,7 +124,7 @@ export const WagmiEffectWeb3ProviderSync = (
   );
 
   return React.createElement(
-    EffectWeb3ProviderSync,
+    EffectEvmProviderSync,
     {
       layer: fullLayer,
       onUnhandledError,

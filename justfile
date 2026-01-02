@@ -2,8 +2,9 @@
 import "./node_modules/@sablier/devkit/just/base.just"
 
 # Package modules
+mod evm "evm"
 mod next "next"
-mod web3 "web3"
+mod solana "solana"
 mod xstate "xstate"
 
 # ---------------------------------------------------------------------------- #
@@ -25,8 +26,8 @@ clean:
     cd next && npm pack --silent
     echo ""
 
-    echo '{{ CYAN }}→ Building @prb/effect-web3...{{ NORMAL }}'
-    cd web3 && npm pack --silent
+    echo '{{ CYAN }}→ Building @prb/effect-evm...{{ NORMAL }}'
+    cd evm && npm pack --silent
     echo ""
 
     echo '{{ CYAN }}→ Building @prb/effect-xstate...{{ NORMAL }}'
@@ -61,8 +62,8 @@ alias tuui := test-unit-ui
     echo "🔍 Type checking effect-next..."
     cd next && na tsgo --noEmit
 
-    echo "🔍 Type checking effect-web3..."
-    cd web3 && na tsgo --noEmit
+    echo "🔍 Type checking effect-evm..."
+    cd evm && na tsgo --noEmit
 
     echo "🔍 Type checking effect-xstate..."
     cd xstate && na tsgo --noEmit

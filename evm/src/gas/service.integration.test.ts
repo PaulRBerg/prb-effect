@@ -5,7 +5,7 @@ import { mainnet } from "viem/chains";
 import { MIN_TX_GAS } from "@/src/constants/index.js";
 import { ClientNotFoundError } from "@/src/core/index.js";
 import { GasPriceUnavailableError, GasService } from "@/src/gas/index.js";
-import { makeEffectWeb3TestLayer } from "@/src/testing-kit/index.js";
+import { makeEffectEvmTestLayer } from "@/src/testing-kit/index.js";
 
 const DEFAULT_BLOCK: Block = {
   baseFeePerGas: 30000000000n,
@@ -35,7 +35,7 @@ const DEFAULT_BLOCK: Block = {
 };
 
 describe("GasService (Live)", () => {
-  const eip1559Layer = makeEffectWeb3TestLayer({
+  const eip1559Layer = makeEffectEvmTestLayer({
     publicClient: {
       estimateGas: async () => MIN_TX_GAS,
       estimateMaxPriorityFeePerGas: async () => 1500000000n, // 1.5 gwei baseline
@@ -81,7 +81,7 @@ describe("GasService (Live)", () => {
   });
 
   describe("Legacy estimation", () => {
-    const legacyLayer = makeEffectWeb3TestLayer({
+    const legacyLayer = makeEffectEvmTestLayer({
       publicClient: {
         getBlock: async () => ({ ...DEFAULT_BLOCK, baseFeePerGas: null }),
         getGasPrice: async () => 1000n,

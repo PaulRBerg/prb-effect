@@ -3,7 +3,7 @@ import { Cause, Effect, Exit } from "effect";
 import type { Address } from "viem";
 import { mainnet } from "viem/chains";
 import { Erc721Service, Erc721TransferError } from "@/src/erc721/index.js";
-import { makeEffectWeb3TestLayer } from "@/src/testing-kit/index.js";
+import { makeEffectEvmTestLayer } from "@/src/testing-kit/index.js";
 
 describe("Erc721Service (Live)", () => {
   const contract = "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd" as Address;
@@ -11,7 +11,7 @@ describe("Erc721Service (Live)", () => {
   const to = "0x9999999999999999999999999999999999999999" as Address;
 
   it.effect("maps transferFrom failures to Erc721TransferError", () => {
-    const layer = makeEffectWeb3TestLayer({
+    const layer = makeEffectEvmTestLayer({
       walletClient: {
         writeContract: () => Promise.reject(new Error("boom")),
       },
@@ -47,7 +47,7 @@ describe("Erc721Service (Live)", () => {
   });
 
   it.effect("maps safeTransferFrom failures to Erc721TransferError", () => {
-    const layer = makeEffectWeb3TestLayer({
+    const layer = makeEffectEvmTestLayer({
       walletClient: {
         writeContract: () => Promise.reject(new Error("boom")),
       },

@@ -25,7 +25,7 @@ If any command fails, fix errors before continuing. Run `just biome-write` at th
 ```
 prb-effect/
 ├── next/                # @prb/effect-next - Next.js integration
-├── web3/                # @prb/effect-web3 - Web3/viem integration
+├── evm/                 # @prb/effect-evm - EVM/viem integration
 ├── xstate/              # @prb/effect-xstate - xState v5 workflows
 ├── package.json         # Root workspace with catalogs
 └── justfile             # Task automation
@@ -37,7 +37,7 @@ prb-effect/
 just full-check          # Run all code checks
 just tu                  # Run unit tests
 just next::build         # Build @prb/effect-next
-just web3::build         # Build @prb/effect-web3
+just evm::build          # Build @prb/effect-evm
 just xstate::build       # Build @prb/effect-xstate
 ```
 

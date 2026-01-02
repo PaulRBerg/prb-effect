@@ -7,7 +7,7 @@ import type { EffectError } from "../internal/error.js";
 import { fromCause, fromUnknown } from "../internal/error.js";
 import { isDev } from "../internal/is-dev.js";
 import { makeScopedRun } from "../internal/scoped-run.js";
-import { useEffectWeb3Runtime } from "../provider.js";
+import { useEffectEvmRuntime } from "../provider.js";
 
 export type UseEffectResult<A, E> =
   | {
@@ -26,7 +26,7 @@ export const useEffectOnce = <A, E, R>(
   makeEffect: () => Effect.Effect<A, E, R>,
   options: { readonly initial?: A | undefined } = {}
 ): UseEffectResult<A, E> => {
-  const runtime = useEffectWeb3Runtime();
+  const runtime = useEffectEvmRuntime();
   const devRef = React.useRef<{
     makeEffect: () => Effect.Effect<A, E, R>;
     initial: A | undefined;
@@ -42,7 +42,7 @@ export const useEffectOnce = <A, E, R>(
       devRef.current.warned = true;
       console.warn(
         [
-          "[effect-web3] useEffectOnce ignores changes after the first render.",
+          "[effect-evm] useEffectOnce ignores changes after the first render.",
           "Memoize inputs or switch to useEffectMemo for reactive effects.",
         ].join(" ")
       );
@@ -98,7 +98,7 @@ export const useEffectMemo = <A, E, R>(
   deps: React.DependencyList,
   options: { readonly initial?: A | undefined } = {}
 ): UseEffectResult<A, E> => {
-  const runtime = useEffectWeb3Runtime();
+  const runtime = useEffectEvmRuntime();
   const [state, setState] = React.useState<UseEffectResult<A, E>>(() => ({
     data: options.initial,
     status: "idle",

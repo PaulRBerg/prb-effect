@@ -11,7 +11,7 @@
 
 ```bash
 git clone <your-fork-url> prb-effect
-cd prb-effect/web3
+cd prb-effect/evm
 bun install
 ```
 

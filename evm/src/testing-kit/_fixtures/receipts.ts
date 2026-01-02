@@ -1,5 +1,5 @@
 /**
- * Transaction receipt fixtures for effect-web3 test suite
+ * Transaction receipt fixtures for effect-evm test suite
  */
 
 import type { TransactionReceipt } from "viem";

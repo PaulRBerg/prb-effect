@@ -5,7 +5,7 @@ import { constVoid as noop } from "effect/Function";
 import * as React from "react";
 import type { WalletProvider } from "@/src/wallet/index.js";
 import { WalletProviderRef } from "@/src/wallet/index.js";
-import { useEffectWeb3Runtime } from "./provider.js";
+import { useEffectEvmRuntime } from "./provider.js";
 
 export type WalletProviderRefActions = {
   readonly clearProvider: () => void;
@@ -13,7 +13,7 @@ export type WalletProviderRefActions = {
 };
 
 export const useWalletProviderRef = (): WalletProviderRefActions => {
-  const runtime = useEffectWeb3Runtime();
+  const runtime = useEffectEvmRuntime();
 
   const setProvider = React.useCallback(
     (provider: WalletProvider) => {

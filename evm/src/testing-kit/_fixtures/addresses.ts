@@ -1,5 +1,5 @@
 /**
- * Test addresses and constants for effect-web3 test suite
+ * Test addresses and constants for effect-evm test suite
  */
 
 import { mainnet } from "viem/chains";

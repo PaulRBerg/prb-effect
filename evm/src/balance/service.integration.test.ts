@@ -4,13 +4,13 @@ import type { Address, Hex } from "viem";
 import { mainnet } from "viem/chains";
 import { BalanceService, decodeBytes32String } from "@/src/balance/index.js";
 import { ClientNotFoundError, TransportError } from "@/src/core/index.js";
-import { makeEffectWeb3TestLayer } from "@/src/testing-kit/index.js";
+import { makeEffectEvmTestLayer } from "@/src/testing-kit/index.js";
 
 describe("BalanceService (Live)", () => {
   const testAddress = "0x1234567890123456789012345678901234567890" as Address;
   const tokenAddress = "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd" as Address;
 
-  const testLayer = makeEffectWeb3TestLayer({
+  const testLayer = makeEffectEvmTestLayer({
     publicClient: {
       getBalance: () => Promise.resolve(1000000000000000000n),
       multicall: (params: unknown) => {
@@ -70,7 +70,7 @@ describe("BalanceService (Live)", () => {
     );
 
     it.effect("fails with TransportError (not defect) when RPC rejects", () => {
-      const failingLayer = makeEffectWeb3TestLayer({
+      const failingLayer = makeEffectEvmTestLayer({
         publicClient: {
           getBalance: () => Promise.reject(new Error("boom")),
         },
@@ -161,7 +161,7 @@ describe("BalanceService (Live)", () => {
       type MulticallParams = { contracts?: ContractCall[] };
 
       // Simulate token that uses bytes32 for symbol/name
-      const bytes32Layer = makeEffectWeb3TestLayer({
+      const bytes32Layer = makeEffectEvmTestLayer({
         publicClient: {
           multicall: (params: unknown) => {
             const contracts = (params as MulticallParams).contracts ?? [];
@@ -236,7 +236,7 @@ describe("BalanceService (Live)", () => {
       type MulticallParams = { contracts?: ContractCall[] };
 
       // Simulate token that supports both string and bytes32
-      const hybridLayer = makeEffectWeb3TestLayer({
+      const hybridLayer = makeEffectEvmTestLayer({
         publicClient: {
           multicall: (params: unknown) => {
             const contracts = (params as MulticallParams).contracts ?? [];

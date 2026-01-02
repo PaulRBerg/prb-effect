@@ -33,7 +33,7 @@
     "packages": [
       "evm",
       "next",
-      "fmt",
+      "solana",
       "xstate"
     ],
     "catalog": {
@@ -68,12 +68,6 @@
         "@effect/platform": "^0.93.8",
         "@effect/vitest": "^0.27.0",
         "effect": "^3.19.12"
-      },
-      "web3": {
-        "@safe-global/safe-apps-sdk": "9.1.0",
-        "@wagmi/core": "^2.22.1",
-        "viem": "^2.43.1",
-        "wagmi": "^2.19.5"
       },
       "peers": {
         "@effect/platform": "^0.93.0",

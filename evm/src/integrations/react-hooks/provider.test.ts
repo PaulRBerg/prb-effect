@@ -5,13 +5,13 @@ import * as React from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { describe, expect, it } from "vitest";
-import type { EffectWeb3Runtime } from "./internal/runtime.js";
+import type { EffectEvmRuntime } from "./internal/runtime.js";
 import { useEffectMemoFactory } from "./primitives.js";
 import {
-  EffectWeb3LayerProvider,
-  EffectWeb3ProviderSync,
-  useEffectWeb3Layer,
-  useEffectWeb3Runtime,
+  EffectEvmLayerProvider,
+  EffectEvmProviderSync,
+  useEffectEvmLayer,
+  useEffectEvmRuntime,
 } from "./provider.js";
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
@@ -39,11 +39,11 @@ const render = (node: React.ReactElement) => {
 };
 
 describe("react-hooks provider", () => {
-  it("EffectWeb3ProviderSync exposes runtime with runPromiseExit", async () => {
-    const runtimeRef: { current: EffectWeb3Runtime | null } = { current: null };
+  it("EffectEvmProviderSync exposes runtime with runPromiseExit", async () => {
+    const runtimeRef: { current: EffectEvmRuntime | null } = { current: null };
 
     const Probe = (): null => {
-      const runtime = useEffectWeb3Runtime();
+      const runtime = useEffectEvmRuntime();
       React.useEffect(() => {
         runtimeRef.current = runtime;
       }, [runtime]);
@@ -51,7 +51,7 @@ describe("react-hooks provider", () => {
     };
 
     const { cleanup } = render(
-      React.createElement(EffectWeb3ProviderSync, {
+      React.createElement(EffectEvmProviderSync, {
         children: React.createElement(Probe),
         layer: Layer.empty,
       })
@@ -65,12 +65,12 @@ describe("react-hooks provider", () => {
     cleanup();
   });
 
-  it("EffectWeb3LayerProvider supplies the layer", async () => {
+  it("EffectEvmLayerProvider supplies the layer", async () => {
     const layer: Layer.Layer<never, unknown, never> = Layer.empty;
     const seen: { current: Layer.Layer<never, unknown, never> | null } = { current: null };
 
     const Probe = (): null => {
-      const provided = useEffectWeb3Layer();
+      const provided = useEffectEvmLayer();
       React.useEffect(() => {
         seen.current = provided;
       }, [provided]);
@@ -78,7 +78,7 @@ describe("react-hooks provider", () => {
     };
 
     const { cleanup } = render(
-      React.createElement(EffectWeb3LayerProvider, {
+      React.createElement(EffectEvmLayerProvider, {
         children: React.createElement(Probe),
         layer,
       })
@@ -108,7 +108,7 @@ describe("useEffectMemoFactory", () => {
     };
 
     const { cleanup } = render(
-      React.createElement(EffectWeb3ProviderSync, {
+      React.createElement(EffectEvmProviderSync, {
         children: React.createElement(Probe),
         layer: Layer.empty,
       })

@@ -4,13 +4,13 @@ import type * as Effect from "effect/Effect";
 import { constVoid as noop } from "effect/Function";
 import * as React from "react";
 import { makeScopedRun } from "../internal/scoped-run.js";
-import { useEffectWeb3Runtime } from "../provider.js";
+import { useEffectEvmRuntime } from "../provider.js";
 
 export const useForkEffect = <R>(
   makeEffect: () => Effect.Effect<void, never, R>,
   deps: React.DependencyList
 ): void => {
-  const runtime = useEffectWeb3Runtime();
+  const runtime = useEffectEvmRuntime();
 
   React.useEffect(() => {
     let scopedClose: (() => void) | null = null;

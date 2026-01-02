@@ -8,7 +8,7 @@ import * as React from "react";
 import { fromCause, fromUnknown } from "../internal/error.js";
 import { isDev } from "../internal/is-dev.js";
 import { makeScopedRun } from "../internal/scoped-run.js";
-import { useEffectWeb3Runtime } from "../provider.js";
+import { useEffectEvmRuntime } from "../provider.js";
 
 export type StreamState<A> =
   | { readonly status: "starting"; readonly value?: A | undefined }
@@ -50,7 +50,7 @@ export const useStream = <A, E, R>(
   stream: Stream.Stream<A, E, R>,
   options: { readonly initial?: A | undefined } = {}
 ): StreamState<A> => {
-  const runtime = useEffectWeb3Runtime();
+  const runtime = useEffectEvmRuntime();
   const devRef = React.useRef<{ initial: A | undefined; warned: boolean } | null>(null);
   if (isDev) {
     if (devRef.current === null) {
@@ -59,7 +59,7 @@ export const useStream = <A, E, R>(
       devRef.current.warned = true;
       console.warn(
         [
-          "[effect-web3] useStream does not react to initial changes after mount.",
+          "[effect-evm] useStream does not react to initial changes after mount.",
           "If you need to update the initial value, recreate the stream or use stable inputs.",
         ].join(" ")
       );
@@ -132,7 +132,7 @@ export const useStreamEffect = <A, E, R>(
   deps: React.DependencyList,
   options: { readonly initial?: A | undefined } = {}
 ): StreamState<A> => {
-  const runtime = useEffectWeb3Runtime();
+  const runtime = useEffectEvmRuntime();
   const storeRef = React.useRef<ExternalStore<StreamState<A>> | null>(null);
   if (storeRef.current === null) {
     storeRef.current = makeExternalStore<StreamState<A>>({

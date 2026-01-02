@@ -1,24 +1,24 @@
-# effect-web3 usage
+# effect-evm usage
 
-Type-safe, composable Web3 services for [Effect](https://effect.website), built on [viem](https://viem.sh).
+Type-safe, composable EVM services for [Effect](https://effect.website), built on [viem](https://viem.sh).
 
 ## High-level flow
 
 1. Configure chain RPCs (`ChainConfig[]`)
-2. Provide a Layer (`makeEffectWeb3Layer` for dapps, or `makePublicClientLayer` for read-only) + any optional service
+2. Provide a Layer (`makeEffectEvmLayer` for dapps, or `makePublicClientLayer` for read-only) + any optional service
    layers
 3. Read via `ContractReader` (or `typedContract`) and higher-level helpers like `BalanceService`
 4. Write via `ContractPipeline` (simulate -> estimate -> send -> wait -> decode), or dedicated services like
    `DeployService`
 5. Stream/decode events via `EventStream` (or `ReliableEventStream` for confirmations), or raw watchers via
    `SubscriptionService`
-6. In tests, use `effect-web3/testing-kit`
+6. In tests, use `effect-evm/testing-kit`
 
 ```mermaid
 flowchart LR
   Config["ChainConfig[]"] --> Layers["Layer factories"]
   Layers --> Public["makePublicClientLayer (read-only)"]
-  Layers --> Dapp["makeEffectWeb3Layer (dapp + wallet)"]
+  Layers --> Dapp["makeEffectEvmLayer (dapp + wallet)"]
 
   Public --> PC["PublicClientService"]
   Dapp --> PC
@@ -46,7 +46,7 @@ flowchart LR
 
 ## Optional service layers
 
-`makeEffectWeb3Layer` wires the core contract / tx / event services. Add the newer service modules by merging their
+`makeEffectEvmLayer` wires the core contract / tx / event services. Add the newer service modules by merging their
 `*Live` layers.
 
 ```typescript
@@ -61,15 +61,15 @@ import {
   SignatureServiceLive,
   SimulationServiceLive,
   SubscriptionServiceLive,
-  makeEffectWeb3Layer,
-} from "effect-web3";
+  makeEffectEvmLayer,
+} from "effect-evm";
 
 // configs: ChainConfig[] (see Quick Start)
 // provider: EIP-1193 (e.g. window.ethereum)
 const provider = window.ethereum;
-const BaseLayer = makeEffectWeb3Layer(configs, provider);
+const BaseLayer = makeEffectEvmLayer(configs, provider);
 
-export const Web3Layer = Layer.provideMerge(
+export const EvmLayer = Layer.provideMerge(
   Layer.mergeAll(
     BalanceServiceLive,
     BlockServiceLive,
@@ -95,7 +95,7 @@ Notes:
 ## Installation
 
 ```bash
-bun add effect-web3
+bun add effect-evm
 ```
 
 **Peer dependencies**
@@ -103,21 +103,21 @@ bun add effect-web3
 - `effect@^3.19.11`
 - `@effect/platform@^0.93.7`
 - `viem@^2.0.0`
-- Optional: `@wagmi/core@^2.0.0` (for `effect-web3/wagmi`)
-- Optional: `react@>=18.2.0`, `react-dom@>=18.2.0` (for `effect-web3/react-hooks`)
+- Optional: `@wagmi/core@^2.0.0` (for `effect-evm/wagmi`)
+- Optional: `react@>=18.2.0`, `react-dom@>=18.2.0` (for `effect-evm/react-hooks`)
 
 ## Quick Start
 
 ```typescript
 import { Effect } from "effect";
 import { mainnet } from "viem/chains";
-import { ContractReader, erc20Abi, makeEffectWeb3Layer, type ChainConfig } from "effect-web3";
+import { ContractReader, erc20Abi, makeEffectEvmLayer, type ChainConfig } from "effect-evm";
 
 // 1. Configure chains
 const configs: ChainConfig[] = [{ chainId: 1, chain: mainnet, rpcUrls: ["https://rpc.example"] }];
 
 // 2. Create the layer (provider is your EIP-1193 wallet)
-const Web3Layer = makeEffectWeb3Layer(configs, window.ethereum);
+const EvmLayer = makeEffectEvmLayer(configs, window.ethereum);
 
 // 3. Use services
 const program = Effect.gen(function* () {
@@ -135,12 +135,12 @@ const program = Effect.gen(function* () {
 });
 
 // 4. Run
-Effect.runPromise(program.pipe(Effect.provide(Web3Layer)));
+Effect.runPromise(program.pipe(Effect.provide(EvmLayer)));
 ```
 
 ## ChainConfig
 
-`makePublicClientLayer` / `makeEffectWeb3Layer` take `ChainConfig[]`.
+`makePublicClientLayer` / `makeEffectEvmLayer` take `ChainConfig[]`.
 
 ```ts
 export type ChainConfig = {
@@ -181,15 +181,15 @@ const configs: ChainConfig[] = [
 
 ## Using wagmi v2
 
-If your app already uses wagmi v2 for wallet connections and chain config, you can build effect-web3 layers directly
-from your wagmi `config`.
+If your app already uses wagmi v2 for wallet connections and chain config, you can build effect-evm layers directly from
+your wagmi `config`.
 
 ```typescript
 import { Effect } from "effect";
 import { createConfig, http } from "wagmi";
 import { mainnet, sepolia } from "wagmi/chains";
 import { injected } from "wagmi/connectors";
-import { makeEffectWeb3LayerFromWagmi } from "effect-web3/wagmi";
+import { makeEffectEvmLayerFromWagmi } from "effect-evm/wagmi";
 
 export const wagmiConfig = createConfig({
   chains: [mainnet, sepolia],
@@ -200,31 +200,31 @@ export const wagmiConfig = createConfig({
   },
 });
 
-const Web3Layer = makeEffectWeb3LayerFromWagmi(wagmiConfig);
+const EvmLayer = makeEffectEvmLayerFromWagmi(wagmiConfig);
 
 // Use services as usual
-Effect.runPromise(program.pipe(Effect.provide(Web3Layer)));
+Effect.runPromise(program.pipe(Effect.provide(EvmLayer)));
 ```
 
 ## React Hooks
 
-The `effect-web3/react-hooks` module provides React integration for Effect-Web3 services.
+The `effect-evm/react-hooks` module provides React integration for Effect-EVM services.
 
 ### Provider setup
 
-Wrap your app with `EffectWeb3Provider` to provide the Effect runtime:
+Wrap your app with `EffectEvmProvider` to provide the Effect runtime:
 
 ```typescript
-import { EffectWeb3Provider } from "effect-web3/react-hooks";
-import { makeEffectWeb3Layer } from "effect-web3";
+import { EffectEvmProvider } from "effect-evm/react-hooks";
+import { makeEffectEvmLayer } from "effect-evm";
 
-const Web3Layer = makeEffectWeb3Layer(configs, window.ethereum);
+const EvmLayer = makeEffectEvmLayer(configs, window.ethereum);
 
 function App() {
   return (
-    <EffectWeb3Provider layer={Web3Layer}>
+    <EffectEvmProvider layer={EvmLayer}>
       <YourApp />
-    </EffectWeb3Provider>
+    </EffectEvmProvider>
   );
 }
 ```
@@ -234,7 +234,7 @@ function App() {
 Low-level hooks for running Effects and Streams in React:
 
 ```typescript
-import { useEffectOnce, useEffectMemo, useStream, useSubscriptionRef } from "effect-web3/react-hooks";
+import { useEffectOnce, useEffectMemo, useStream, useSubscriptionRef } from "effect-evm/react-hooks";
 
 // Run an Effect once on mount
 const { data, error, status } = useEffectOnce(() => someEffect);
@@ -254,7 +254,7 @@ const value = useSubscriptionRef(subscriptionRef);
 Higher-level hooks for common contract operations:
 
 ```typescript
-import { useContractRead, useWatchContractRead, useWriteAndTrack } from "effect-web3/react-hooks/convenience";
+import { useContractRead, useWatchContractRead, useWriteAndTrack } from "effect-evm/react-hooks/convenience";
 
 // Read a contract value (cached via ContractQuery)
 const { data, error, status } = useContractRead({
@@ -289,17 +289,17 @@ const { send, state, result, actions } = useWriteAndTrack({
 
 ### Wagmi + React integration
 
-For apps using wagmi, use `WagmiEffectWeb3Provider` which syncs wallet state automatically:
+For apps using wagmi, use `WagmiEffectEvmProvider` which syncs wallet state automatically:
 
 ```typescript
-import { WagmiEffectWeb3Provider } from "effect-web3/react-hooks/wagmi";
+import { WagmiEffectEvmProvider } from "effect-evm/react-hooks/wagmi";
 import { wagmiConfig } from "./wagmi";
 
 function App() {
   return (
-    <WagmiEffectWeb3Provider wagmiConfig={wagmiConfig}>
+    <WagmiEffectEvmProvider wagmiConfig={wagmiConfig}>
       <YourApp />
-    </WagmiEffectWeb3Provider>
+    </WagmiEffectEvmProvider>
   );
 }
 ```
@@ -311,7 +311,7 @@ provider.
 
 ```typescript
 import { Effect, Layer } from "effect";
-import { ContractReader, ContractReaderLive, erc20Abi, makePublicClientLayer, type ChainConfig } from "effect-web3";
+import { ContractReader, ContractReaderLive, erc20Abi, makePublicClientLayer, type ChainConfig } from "effect-evm";
 import { mainnet } from "viem/chains";
 
 const configs: ChainConfig[] = [{ chainId: 1, chain: mainnet, rpcUrls: ["https://rpc.example"] }];
@@ -336,7 +336,7 @@ Use `ContractReader.read` for single calls and `ContractReader.multicall` to bat
 
 ```typescript
 import { Effect } from "effect";
-import { ContractReader, erc20Abi, typedContract } from "effect-web3";
+import { ContractReader, erc20Abi, typedContract } from "effect-evm";
 
 const usdc = typedContract(erc20Abi, "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48");
 
@@ -360,7 +360,7 @@ Use `BalanceService` for native and ERC-20 balances (single + batch/multicall) a
 
 ```typescript
 import { Effect } from "effect";
-import { BalanceService } from "effect-web3";
+import { BalanceService } from "effect-evm";
 
 const program = Effect.gen(function* () {
   const balances = yield* BalanceService;
@@ -382,7 +382,7 @@ Use `BlockService` for block lookups, range fetches, and block streams.
 
 ```typescript
 import { Effect } from "effect";
-import { BlockService } from "effect-web3";
+import { BlockService } from "effect-evm";
 
 const program = Effect.gen(function* () {
   const blocks = yield* BlockService;
@@ -400,7 +400,7 @@ Use `GasService` for EIP-1559 fee estimation and gas limits.
 
 ```typescript
 import { Effect } from "effect";
-import { GasService } from "effect-web3";
+import { GasService } from "effect-evm";
 
 const program = Effect.gen(function* () {
   const gas = yield* GasService;
@@ -414,7 +414,7 @@ Use `NonceService` for local nonce reservation / gap detection when sending mult
 
 ```typescript
 import { Effect } from "effect";
-import { NonceService } from "effect-web3";
+import { NonceService } from "effect-evm";
 
 const program = Effect.gen(function* () {
   const nonces = yield* NonceService;
@@ -434,7 +434,7 @@ Prefer `ContractPipeline` unless you need low-level control.
 
 ```typescript
 import { Effect } from "effect";
-import { ContractPipeline, erc20Abi } from "effect-web3";
+import { ContractPipeline, erc20Abi } from "effect-evm";
 
 const program = Effect.gen(function* () {
   const pipeline = yield* ContractPipeline;
@@ -461,7 +461,7 @@ by including an `authorizationList`. In practice, this enables:
 - Atomic batching for EOAs (e.g. `approve` + `swap` in one tx)
 - Delegating EOA execution to an implementation contract (smart-account-like UX without deploying a new account)
 
-effect-web3 exposes `Eip7702Service` for the common dapp flow "delegate my EOA to a delegator contract and execute an
+effect-evm exposes `Eip7702Service` for the common dapp flow "delegate my EOA to a delegator contract and execute an
 ERC-7579 batch".
 
 Requirements / caveats:
@@ -481,7 +481,7 @@ entry point for batched calls.
 ```typescript
 import { Effect } from "effect";
 import { encodeFunctionData, parseAbi } from "viem";
-import { Eip7702Service, ERC7579_MODE_SIMPLE_BATCH } from "effect-web3";
+import { Eip7702Service, ERC7579_MODE_SIMPLE_BATCH } from "effect-evm";
 
 const program = Effect.gen(function* () {
   const eip7702 = yield* Eip7702Service;
@@ -511,7 +511,7 @@ const program = Effect.gen(function* () {
 ```typescript
 import { Effect } from "effect";
 import { encodeFunctionData, parseAbi } from "viem";
-import { Eip7702Service } from "effect-web3";
+import { Eip7702Service } from "effect-evm";
 
 const program = Effect.gen(function* () {
   const eip7702 = yield* Eip7702Service;
@@ -539,7 +539,7 @@ Use `DeployService` to deploy contracts and wait for receipts (or `deployAndTrac
 
 ```typescript
 import { Effect } from "effect";
-import { DeployService } from "effect-web3";
+import { DeployService } from "effect-evm";
 
 const program = Effect.gen(function* () {
   const deploy = yield* DeployService;
@@ -561,7 +561,7 @@ Use `Erc721Service` for standard ERC-721 reads/writes plus metadata fetching (`t
 
 ```typescript
 import { Effect } from "effect";
-import { Erc721Service } from "effect-web3";
+import { Erc721Service } from "effect-evm";
 
 const program = Effect.gen(function* () {
   const erc721 = yield* Erc721Service;
@@ -575,7 +575,7 @@ const program = Effect.gen(function* () {
 
 ```typescript
 import { Effect, Stream } from "effect";
-import { EventStream, erc20Abi } from "effect-web3";
+import { EventStream, erc20Abi } from "effect-evm";
 
 const program = Effect.gen(function* () {
   const events = yield* EventStream;
@@ -607,7 +607,7 @@ underlying watcher errors. For UI usage (React), prefer the `*Retrying` variants
 
 ```typescript
 import { Effect, Stream } from "effect";
-import { SubscriptionService } from "effect-web3";
+import { SubscriptionService } from "effect-evm";
 
 const program = Effect.gen(function* () {
   const subs = yield* SubscriptionService;
@@ -620,7 +620,7 @@ Retrying variant (recommended for React):
 
 ```typescript
 import { Effect, Stream, SubscriptionRef } from "effect";
-import { SubscriptionService } from "effect-web3";
+import { SubscriptionService } from "effect-evm";
 
 const program = Effect.gen(function* () {
   const subs = yield* SubscriptionService;
@@ -640,7 +640,7 @@ The `browser` namespace provides localStorage-backed persistence for dapp state.
 
 ```typescript
 import { Effect, Layer } from "effect";
-import { browser } from "effect-web3";
+import { browser } from "effect-evm";
 
 // Create layers for browser persistence
 const BrowserLayers = browser.makeBrowserPersistenceLayer({
@@ -648,8 +648,8 @@ const BrowserLayers = browser.makeBrowserPersistenceLayer({
   txStoreKey: "my-app-txs",
 });
 
-// Use with your Web3 layer
-const AppLayer = Layer.provideMerge(BrowserLayers, Web3Layer);
+// Use with your EVM layer
+const AppLayer = Layer.provideMerge(BrowserLayers, EvmLayer);
 ```
 
 ### Cursor Store
@@ -657,7 +657,7 @@ const AppLayer = Layer.provideMerge(BrowserLayers, Web3Layer);
 Persist event stream cursors to resume from the last processed block:
 
 ```typescript
-import { browser } from "effect-web3";
+import { browser } from "effect-evm";
 
 const CursorLayer = browser.makeLocalStorageCursorStoreLayer({ key: "my-cursors" });
 ```
@@ -667,7 +667,7 @@ const CursorLayer = browser.makeLocalStorageCursorStoreLayer({ key: "my-cursors"
 Persist pending transactions across page reloads:
 
 ```typescript
-import { browser } from "effect-web3";
+import { browser } from "effect-evm";
 
 const TxLayer = browser.makeLocalStorageTxStoreLayer({ key: "my-txs" });
 ```
@@ -678,7 +678,7 @@ Use `SignatureService` for hashing/verifying/recovering message and EIP-712 type
 
 ```typescript
 import { Effect } from "effect";
-import { SignatureService } from "effect-web3";
+import { SignatureService } from "effect-evm";
 
 const program = Effect.gen(function* () {
   const sig = yield* SignatureService;
@@ -702,7 +702,7 @@ Required env vars:
 
 ```typescript
 import { Effect } from "effect";
-import { SimulationService } from "effect-web3";
+import { SimulationService } from "effect-evm";
 
 const program = Effect.gen(function* () {
   const sim = yield* SimulationService;
@@ -721,11 +721,11 @@ const program = Effect.gen(function* () {
 
 ```typescript
 import { Effect, Layer } from "effect";
-import { makeMockBalanceServiceLayer } from "effect-web3/testing-kit";
-import { ContractReader, erc20Abi } from "effect-web3";
-import { makeEffectWeb3TestLayer } from "effect-web3/testing-kit";
+import { makeMockBalanceServiceLayer } from "effect-evm/testing-kit";
+import { ContractReader, erc20Abi } from "effect-evm";
+import { makeEffectEvmTestLayer } from "effect-evm/testing-kit";
 
-const testLayer = makeEffectWeb3TestLayer({
+const testLayer = makeEffectEvmTestLayer({
   publicClient: { readContract: async () => 1_000n },
 });
 
@@ -746,7 +746,7 @@ const program = Effect.gen(function* () {
 
 ### Available mock layers
 
-`effect-web3/testing-kit` exports per-service mock layers:
+`effect-evm/testing-kit` exports per-service mock layers:
 
 - `makeMockBalanceServiceLayer`
 - `makeMockBlockServiceLayer`
@@ -764,7 +764,7 @@ const program = Effect.gen(function* () {
 ### Test fixtures
 
 ```typescript
-import { TEST_ADDRESS, TEST_ADDRESS_2, TEST_CHAIN_ID, TEST_TX_HASH, UNKNOWN_CHAIN_ID } from "effect-web3/testing-kit";
+import { TEST_ADDRESS, TEST_ADDRESS_2, TEST_CHAIN_ID, TEST_TX_HASH, UNKNOWN_CHAIN_ID } from "effect-evm/testing-kit";
 ```
 
 ## Errors
@@ -773,7 +773,7 @@ Errors are `Schema.TaggedError`s; prefer `Effect.catchTag`.
 
 ```typescript
 import { Effect } from "effect";
-import { ContractReader } from "effect-web3";
+import { ContractReader } from "effect-evm";
 
 const program = Effect.gen(function* () {
   const reader = yield* ContractReader;
@@ -793,6 +793,6 @@ const program = Effect.gen(function* () {
 - Contract deploy + NFTs: `DeployService`, `Erc721Service`
 - Signatures + simulations: `SignatureService`, `SimulationService`
 - Raw watchers: `SubscriptionService`
-- React hooks: `effect-web3/react-hooks`
+- React hooks: `effect-evm/react-hooks`
 - Browser persistence: `browser` namespace
 - Full surface area: `src/index.ts`

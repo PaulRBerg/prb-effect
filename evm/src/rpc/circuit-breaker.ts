@@ -23,7 +23,7 @@ export type CircuitBreakerConfig = {
  * @example
  * ```typescript
  * import { Effect } from "effect";
- * import { CircuitBreakerConfigFromEnv } from "effect-web3/rpc";
+ * import { CircuitBreakerConfigFromEnv } from "effect-evm/rpc";
  *
  * const program = Effect.gen(function* () {
  *   const config = yield* CircuitBreakerConfigFromEnv;

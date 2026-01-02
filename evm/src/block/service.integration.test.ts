@@ -4,7 +4,7 @@ import type { Block, Hash } from "viem";
 import { mainnet } from "viem/chains";
 import { BlockNotFoundError, BlockService, BlockTimeoutError } from "@/src/block/index.js";
 import { ClientNotFoundError, TransportError } from "@/src/core/index.js";
-import { makeEffectWeb3TestLayer } from "@/src/testing-kit/index.js";
+import { makeEffectEvmTestLayer } from "@/src/testing-kit/index.js";
 
 const DEFAULT_HASH = "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef" as Hash;
 
@@ -36,7 +36,7 @@ const DEFAULT_BLOCK: Block = {
 };
 
 describe("BlockService (Live)", () => {
-  const testLayer = makeEffectWeb3TestLayer({
+  const testLayer = makeEffectEvmTestLayer({
     publicClient: {
       getBlock: (params: unknown) => {
         const p = params as { blockNumber?: bigint; blockHash?: Hash };
@@ -76,7 +76,7 @@ describe("BlockService (Live)", () => {
     );
 
     it.effect("fails with TransportError (not timeout) on RPC error", () => {
-      const failingLayer = makeEffectWeb3TestLayer({
+      const failingLayer = makeEffectEvmTestLayer({
         publicClient: {
           getBlockNumber: () => Promise.reject(new Error("boom")),
         },
@@ -152,7 +152,7 @@ describe("BlockService (Live)", () => {
   describe("waitForBlock", () => {
     it.effect("times out with BlockTimeoutError (not misclassified)", () => {
       const current = 0n;
-      const layer = makeEffectWeb3TestLayer({
+      const layer = makeEffectEvmTestLayer({
         publicClient: {
           getBlockNumber: () => Promise.resolve(current),
         },
@@ -184,7 +184,7 @@ describe("BlockService (Live)", () => {
 
     it.effect("is interruptible", () => {
       const current = 0n;
-      const layer = makeEffectWeb3TestLayer({
+      const layer = makeEffectEvmTestLayer({
         publicClient: {
           getBlockNumber: () => Promise.resolve(current),
         },
@@ -207,7 +207,7 @@ describe("BlockService (Live)", () => {
     });
 
     it.effect("returns BlockNotFoundError when block fetch fails", () => {
-      const layer = makeEffectWeb3TestLayer({
+      const layer = makeEffectEvmTestLayer({
         publicClient: {
           getBlock: () => Promise.reject(new Error("missing")),
           getBlockNumber: () => Promise.resolve(10n),

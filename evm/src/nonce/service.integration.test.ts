@@ -4,12 +4,12 @@ import type { Address } from "viem";
 import { mainnet } from "viem/chains";
 import { ClientNotFoundError } from "@/src/core/index.js";
 import { NonceService } from "@/src/nonce/index.js";
-import { makeEffectWeb3TestLayer } from "@/src/testing-kit/index.js";
+import { makeEffectEvmTestLayer } from "@/src/testing-kit/index.js";
 
 describe("NonceService (Live)", () => {
   const testAddress = "0x1234567890123456789012345678901234567890" as Address;
 
-  const testLayer = makeEffectWeb3TestLayer({
+  const testLayer = makeEffectEvmTestLayer({
     publicClient: {
       getTransactionCount: async () => 0,
     },
@@ -76,7 +76,7 @@ describe("NonceService (Live)", () => {
         });
 
         const concurrency = 100;
-        const layer = makeEffectWeb3TestLayer({
+        const layer = makeEffectEvmTestLayer({
           publicClient: {
             getTransactionCount: async () => {
               started += 1;
@@ -154,7 +154,7 @@ describe("NonceService (Live)", () => {
   describe("sync", () => {
     it.effect("syncs confirmed count and influences getNext", () => {
       let count = 0;
-      const layer = makeEffectWeb3TestLayer({
+      const layer = makeEffectEvmTestLayer({
         publicClient: {
           getTransactionCount: async (params) => (params.blockTag === "latest" ? 5 : count),
         },

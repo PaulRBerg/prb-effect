@@ -6,7 +6,7 @@ import type * as Exit from "effect/Exit";
 import * as Fiber from "effect/Fiber";
 import * as React from "react";
 import { makeScopedRun } from "../internal/scoped-run.js";
-import { useEffectWeb3Runtime } from "../provider.js";
+import { useEffectEvmRuntime } from "../provider.js";
 
 export type EffectMemoOptions<A> = {
   readonly key?: string | undefined;
@@ -21,7 +21,7 @@ export const useEffectMemoFactory = <A, E, R>(
   deps: React.DependencyList,
   options: EffectMemoOptions<A> = {}
 ): A | undefined => {
-  const runtime = useEffectWeb3Runtime();
+  const runtime = useEffectEvmRuntime();
   const [value, setValue] = React.useState<A | undefined>(options.initial);
   const inFlightRef = React.useRef<{
     key: string | null;

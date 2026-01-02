@@ -9,7 +9,7 @@ import {
   WalletNotConnectedError,
   WrongNetworkError,
 } from "@/src/core/index.js";
-import { effectWeb3Services } from "@/src/presets/index.js";
+import { effectEvmServices } from "@/src/presets/index.js";
 import {
   makeWalletProviderRefLive,
   WalletLifecycleFromProviderRefLive,
@@ -108,7 +108,7 @@ export function makeWalletClientLayerFromWagmi(
   });
 }
 
-export function makeEffectWeb3LayerFromWagmi(
+export function makeEffectEvmLayerFromWagmi(
   config: Config,
   options: WagmiWalletClientOptions = {}
 ) {
@@ -117,11 +117,11 @@ export function makeEffectWeb3LayerFromWagmi(
     makeWalletClientLayerFromWagmi(config, options)
   );
 
-  return Layer.provideMerge(effectWeb3Services, clientLayers);
+  return Layer.provideMerge(effectEvmServices, clientLayers);
 }
 
 /**
- * Like `makeEffectWeb3LayerFromWagmi`, but also provides a dynamic `WalletProviderRef`
+ * Like `makeEffectEvmLayerFromWagmi`, but also provides a dynamic `WalletProviderRef`
  * and wallet services derived from it.
  *
  * This is the recommended layer for frontends that want a stable Effect runtime
@@ -130,7 +130,7 @@ export function makeEffectWeb3LayerFromWagmi(
  * Pair this with a React-side subscriber (e.g. via `watchAccount`) that updates
  * `WalletProviderRef`.
  */
-export function makeEffectWeb3LayerFromWagmiWithWalletProviderRef(
+export function makeEffectEvmLayerFromWagmiWithWalletProviderRef(
   config: Config,
   options: WagmiWalletClientOptions = {}
 ) {
@@ -147,7 +147,7 @@ export function makeEffectWeb3LayerFromWagmiWithWalletProviderRef(
   );
 
   return Layer.provideMerge(
-    Layer.mergeAll(effectWeb3Services, walletLayers, providerRefLayer),
+    Layer.mergeAll(effectEvmServices, walletLayers, providerRefLayer),
     clientLayers
   );
 }

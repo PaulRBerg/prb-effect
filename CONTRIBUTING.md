@@ -30,10 +30,10 @@ just tu                       # Run unit tests
 just tuui                     # Run tests in interactive UI mode
 
 # Package-specific
-just effect-next::build       # Build effect-next
-just effect-next::test        # Test effect-next
-just effect-web3::build       # Build effect-web3
-just effect-web3::test        # Test effect-web3
+just next::build              # Build @prb/effect-next
+just next::test               # Test @prb/effect-next
+just evm::build               # Build @prb/effect-evm
+just evm::test                # Test @prb/effect-evm
 
 # Utilities
 just --list                   # Show all available commands

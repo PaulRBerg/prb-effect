@@ -60,7 +60,7 @@ import { TxManagerLive, TxReplacementLive } from "@/src/tx/index.js";
  *
  * @example
  * ```typescript
- * const layer = makeEffectWeb3TestLayer({
+ * const layer = makeEffectEvmTestLayer({
  *   publicClient: {
  *     readContract: async () => 1000n,
  *     getEnsAddress: async () => "0x...",
@@ -175,9 +175,9 @@ const applicationServices = Layer.provideMerge(
 ).pipe(Layer.provide(FetchHttpClient.layer));
 
 /**
- * Creates a complete effect-web3 test layer with mocked boundaries
+ * Creates a complete effect-evm test layer with mocked boundaries
  *
- * This layer provides all effect-web3 services with mocked PublicClientService
+ * This layer provides all effect-evm services with mocked PublicClientService
  * and WalletClientService boundaries. The mock boundaries use sensible defaults
  * that can be overridden via configuration.
  *
@@ -185,17 +185,17 @@ const applicationServices = Layer.provideMerge(
  * with controlled network boundaries.
  *
  * @param config - Optional configuration to customize mock behaviors
- * @returns A Layer providing all effect-web3 services
+ * @returns A Layer providing all effect-evm services
  *
  * @example
  * ```typescript
  * import { describe, expect, it } from "@effect/vitest";
  * import { Effect, Layer } from "effect";
- * import { ContractReader } from "effect-web3";
- * import { makeEffectWeb3TestLayer } from "effect-web3/testing-kit";
+ * import { ContractReader } from "effect-evm";
+ * import { makeEffectEvmTestLayer } from "effect-evm/testing-kit";
  *
  * describe("MyFeature", () => {
- *   const testLayer = makeEffectWeb3TestLayer({
+ *   const testLayer = makeEffectEvmTestLayer({
  *     publicClient: {
  *       readContract: async () => 1000n,
  *     },
@@ -211,7 +211,7 @@ const applicationServices = Layer.provideMerge(
  * });
  * ```
  */
-export function makeEffectWeb3TestLayer(
+export function makeEffectEvmTestLayer(
   config: TestLayerConfig = {}
 ): Layer.Layer<
   | PublicClientService

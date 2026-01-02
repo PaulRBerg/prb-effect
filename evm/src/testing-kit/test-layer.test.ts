@@ -10,7 +10,7 @@ import { GasService } from "@/src/gas/index.js";
 import { NonceService } from "@/src/nonce/index.js";
 import { SignatureService } from "@/src/signature/index.js";
 import {
-  makeEffectWeb3TestLayer,
+  makeEffectEvmTestLayer,
   makeMockPublicClientLayer,
   makeMockWalletClientLayer,
   TEST_ADDRESS,
@@ -39,7 +39,7 @@ describe("Testing Kit", () => {
         expect(result).toBe(42n);
       }).pipe(
         Effect.provide(
-          makeEffectWeb3TestLayer({
+          makeEffectEvmTestLayer({
             publicClient: {
               readContract: async () => 42n,
             },
@@ -57,7 +57,7 @@ describe("Testing Kit", () => {
         expect(Exit.isFailure(exit)).toBe(true);
       }).pipe(
         Effect.provide(
-          makeEffectWeb3TestLayer({
+          makeEffectEvmTestLayer({
             chainId: UNKNOWN_CHAIN_ID,
           })
         )
@@ -80,7 +80,7 @@ describe("Testing Kit", () => {
     });
   });
 
-  describe("makeEffectWeb3TestLayer", () => {
+  describe("makeEffectEvmTestLayer", () => {
     it.effect("provides all services with mocked boundaries", () =>
       Effect.gen(function* () {
         const balance = yield* BalanceService;
@@ -99,7 +99,7 @@ describe("Testing Kit", () => {
         expect(gas).toBeDefined();
         expect(nonce).toBeDefined();
         expect(signature).toBeDefined();
-      }).pipe(Effect.provide(makeEffectWeb3TestLayer()))
+      }).pipe(Effect.provide(makeEffectEvmTestLayer()))
     );
 
     it.effect("allows reading contracts with custom mock", () =>
@@ -116,7 +116,7 @@ describe("Testing Kit", () => {
         expect(result).toBe(1000n);
       }).pipe(
         Effect.provide(
-          makeEffectWeb3TestLayer({
+          makeEffectEvmTestLayer({
             publicClient: {
               readContract: async () => 1000n,
             },
@@ -133,7 +133,7 @@ describe("Testing Kit", () => {
         expect(result).toBe("0xcustom");
       }).pipe(
         Effect.provide(
-          makeEffectWeb3TestLayer({
+          makeEffectEvmTestLayer({
             publicClient: {
               getEnsAddress: async () => "0xcustom" as Address,
             },
@@ -150,7 +150,7 @@ describe("Testing Kit", () => {
         expect(Exit.isFailure(exit)).toBe(true);
       }).pipe(
         Effect.provide(
-          makeEffectWeb3TestLayer({
+          makeEffectEvmTestLayer({
             publicClient: {
               getEnsAddress: async () => null,
             },
@@ -173,7 +173,7 @@ describe("Testing Kit", () => {
         expect(result).toBe(9999n);
       }).pipe(
         Effect.provide(
-          makeEffectWeb3TestLayer({
+          makeEffectEvmTestLayer({
             publicClient: {
               readContract: async () => 9999n,
             },
@@ -196,7 +196,7 @@ describe("Testing Kit", () => {
         expect(reserved).toBe(123n);
       }).pipe(
         Effect.provide(
-          makeEffectWeb3TestLayer({
+          makeEffectEvmTestLayer({
             nonceService: {
               reserve: () => Effect.succeed(123n),
             },
@@ -216,7 +216,7 @@ describe("Testing Kit", () => {
         expect(balance).toBe(5n);
       }).pipe(
         Effect.provide(
-          makeEffectWeb3TestLayer({
+          makeEffectEvmTestLayer({
             publicClient: {
               getBalance: async () => 5n,
             },

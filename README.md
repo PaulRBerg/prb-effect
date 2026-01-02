@@ -11,7 +11,7 @@ A Bun-powered monorepo for Effect-TS libraries.
 | Package                          | Description                    |
 | -------------------------------- | ------------------------------ |
 | [`@prb/effect-next`](./next)     | Effect integration for Next.js |
-| [`@prb/effect-web3`](./web3)     | Effect integration for Web3    |
+| [`@prb/effect-evm`](./evm)       | Effect integration for EVM     |
 | [`@prb/effect-xstate`](./xstate) | xState v5 workflow utilities   |
 
 ## Tech Stack
@@ -42,7 +42,7 @@ just tu              # run unit tests
 
 ```bash
 just next::build
-just web3::build
+just evm::build
 just xstate::build
 ```
 
@@ -51,7 +51,7 @@ just xstate::build
 ```
 prb-effect/
 ├── next/                # @prb/effect-next - Next.js integration
-├── web3/                # @prb/effect-web3 - Web3/viem integration
+├── evm/                 # @prb/effect-evm - EVM/viem integration
 ├── xstate/              # @prb/effect-xstate - xState v5 workflows
 ├── package.json         # Root workspace with catalogs
 └── justfile             # Task automation

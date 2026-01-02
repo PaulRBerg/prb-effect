@@ -17,7 +17,7 @@ import { SignatureService } from "@/src/signature/index.js";
 import { SimulationService } from "@/src/simulation/index.js";
 import { SubscriptionService } from "@/src/subscriptions/index.js";
 import {
-  makeEffectWeb3LayerFromWagmi,
+  makeEffectEvmLayerFromWagmi,
   makePublicClientLayerFromWagmi,
   makeWalletClientLayerFromWagmi,
 } from "@/src/wagmi/index.js";
@@ -93,13 +93,13 @@ describe("Wagmi preset layers", () => {
     }).pipe(Effect.provide(makeWalletClientLayerFromWagmi(config)));
   });
 
-  it.effect("makeEffectWeb3LayerFromWagmi composes service layer", () =>
+  it.effect("makeEffectEvmLayerFromWagmi composes service layer", () =>
     Effect.gen(function* () {
       const publicClientService = yield* PublicClientService;
       const client = yield* publicClientService.get(1);
       expect(client).toBeDefined();
 
-      // Services from effectWeb3Services should be available
+      // Services from effectEvmServices should be available
       expect(yield* BalanceService).toBeDefined();
       expect(yield* BlockService).toBeDefined();
       expect(yield* DeployService).toBeDefined();
@@ -111,7 +111,7 @@ describe("Wagmi preset layers", () => {
       expect(yield* SubscriptionService).toBeDefined();
     }).pipe(
       Effect.provide(
-        makeEffectWeb3LayerFromWagmi(
+        makeEffectEvmLayerFromWagmi(
           createCoreConfig({
             chains: [mainnet],
             transports: {

@@ -1,4 +1,4 @@
-# @prb/effect-web3
+# @prb/effect-evm
 
 ## Tech Stack
 
@@ -6,7 +6,7 @@
 
 ## Architecture
 
-Type-safe, composable Web3 abstractions built on Effect-TS and viem. Exports:
+Type-safe, composable EVM abstractions built on Effect-TS and viem. Exports:
 
 - `ContractReader` — read-only smart contract operations with multicall support
 - `ContractWriter` — low-level write operations requiring a connected wallet
@@ -21,11 +21,11 @@ Type-safe, composable Web3 abstractions built on Effect-TS and viem. Exports:
 **High-level flow:**
 
 1. Configure chain RPCs (`ChainConfig[]`)
-2. Provide a Layer (`makeEffectWeb3Layer` for dapps, `makePublicClientLayer` for read-only)
+2. Provide a Layer (`makeEffectEvmLayer` for dapps, `makePublicClientLayer` for read-only)
 3. Read via `ContractReader` (or `typedContract`)
 4. Write via `ContractPipeline` (preferred) or `ContractWriter` (low-level)
 5. Stream events via `EventStream` (or `ReliableEventStream` for confirmations)
-6. In tests, use `effect-web3/testing-kit`
+6. In tests, use `effect-evm/testing-kit`
 
 ## Commands
 
@@ -68,7 +68,7 @@ src/
 ├── simulation/     # Tenderly simulation
 ├── subscriptions/  # Block, log, pending tx subscriptions
 ├── telemetry/      # Tracing and logging
-├── testing-kit/    # Test utilities (exported as effect-web3/testing-kit)
+├── testing-kit/    # Test utilities (exported as effect-evm/testing-kit)
 ├── transfer/       # Native token transfers
 ├── tx/             # TxManager, transaction lifecycle
 ├── types/          # Shared type definitions

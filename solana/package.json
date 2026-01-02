@@ -1,7 +1,7 @@
 {
-  "name": "@prb/effect-evm",
-  "description": "Effect-TS integration for EVM and viem",
-  "version": "1.0.0-beta.0",
+  "name": "@prb/effect-solana",
+  "description": "Effect-TS integration for Solana",
+  "version": "1.0.0-beta.1",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -13,33 +13,32 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/PaulRBerg/prb-effect.git",
-    "directory": "evm"
+    "directory": "solana"
   },
   "bugs": {
     "url": "https://github.com/PaulRBerg/prb-effect/issues"
   },
-  "homepage": "https://github.com/PaulRBerg/prb-effect/tree/main/evm#readme",
+  "homepage": "https://github.com/PaulRBerg/prb-effect/tree/main/solana#readme",
   "devDependencies": {
-    "@effect/platform": "catalog:effect",
-    "effect": "catalog:effect",
-    "viem": "^2.43.1",
     "@biomejs/biome": "catalog:dev",
+    "@effect/platform": "catalog:effect",
     "@effect/vitest": "catalog:dev",
     "@sablier/devkit": "catalog:dev",
-    "@safe-global/safe-apps-sdk": "9.1.0",
-    "@types/node": "catalog:dev",
+    "@solana-program/compute-budget": "^0.8.0",
+    "@solana-program/system": "^0.8.0",
+    "@solana-program/token": "^0.8.0",
+    "@solana/kit": "^2.2.7",
+    "@types/node": "^25.0.3",
     "@types/react": "catalog:dev",
     "@types/react-dom": "catalog:dev",
     "@typescript/native-preview": "catalog:dev",
     "@vitest/ui": "catalog:dev",
-    "@wagmi/core": "^2.22.1",
-    "jsdom": "catalog:dev",
+    "effect": "catalog:effect",
     "react": "catalog:",
     "react-dom": "catalog:",
     "tsc-alias": "catalog:dev",
     "typescript": "catalog:dev",
-    "vitest": "catalog:dev",
-    "wagmi": "^2.19.5"
+    "vitest": "catalog:dev"
   },
   "exports": {
     ".": {
@@ -60,20 +59,15 @@
   ],
   "peerDependencies": {
     "@effect/platform": "catalog:peers",
-    "@safe-global/safe-apps-sdk": "catalog:peers",
-    "@wagmi/core": "catalog:peers",
     "effect": "catalog:peers",
+    "@solana/kit": "^2.2.0",
+    "@solana-program/system": "^0.8.0",
+    "@solana-program/token": "^0.8.0",
+    "@solana-program/compute-budget": "^0.8.0",
     "react": "catalog:peers",
-    "react-dom": "catalog:peers",
-    "viem": "catalog:peers"
+    "react-dom": "catalog:peers"
   },
   "peerDependenciesMeta": {
-    "@safe-global/safe-apps-sdk": {
-      "optional": true
-    },
-    "@wagmi/core": {
-      "optional": true
-    },
     "react": {
       "optional": true
     },

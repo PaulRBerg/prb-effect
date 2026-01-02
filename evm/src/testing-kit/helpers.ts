@@ -1,5 +1,5 @@
 /**
- * Test assertion helpers for effect-web3
+ * Test assertion helpers for effect-evm
  *
  * Provides type-safe utilities for asserting on Effect types in tests.
  */

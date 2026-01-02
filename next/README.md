@@ -362,7 +362,7 @@ MIT
 
 - [Effect](https://github.com/Effect-TS/effect) - The Effect runtime
 - [Next.js](https://nextjs.org) - The React framework
-- [effect-web3](https://github.com/sablier-labs/effect-web3) - Effect integration for web3
+- [effect-evm](https://github.com/PaulRBerg/prb-effect/tree/main/evm) - Effect integration for EVM
 
 ## Credits
 

@@ -17,15 +17,15 @@ export {
   useSubscriptionRefValue,
 } from "@/src/integrations/react-hooks/primitives.js";
 export type {
-  EffectWeb3LayerProviderProps,
-  EffectWeb3ProviderProps,
+  EffectEvmLayerProviderProps,
+  EffectEvmProviderProps,
 } from "@/src/integrations/react-hooks/provider.js";
 export {
-  EffectWeb3LayerProvider,
-  EffectWeb3Provider,
-  EffectWeb3ProviderSync,
-  useEffectWeb3Layer,
-  useEffectWeb3Runtime,
+  EffectEvmLayerProvider,
+  EffectEvmProvider,
+  EffectEvmProviderSync,
+  useEffectEvmLayer,
+  useEffectEvmRuntime,
 } from "@/src/integrations/react-hooks/provider.js";
 export type { WalletProviderRefActions } from "@/src/integrations/react-hooks/wallet-provider-ref.js";
 export { useWalletProviderRef } from "@/src/integrations/react-hooks/wallet-provider-ref.js";

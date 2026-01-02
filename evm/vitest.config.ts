@@ -14,7 +14,7 @@ export default mergeConfig(
     },
     test: {
       include: ["src/**/*.test.ts"],
-      name: "web3",
+      name: "evm",
       retry: CI ? 3 : 0,
     },
   })

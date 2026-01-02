@@ -23,7 +23,7 @@ import { makeScopedRun } from "../internal/scoped-run.js";
 import { stableStringify } from "../internal/stable.js";
 import type { StreamState, UseEffectResult } from "../primitives.js";
 import { useEffectMemo, useStream, useStreamEffect } from "../primitives.js";
-import { useEffectWeb3Runtime } from "../provider.js";
+import { useEffectEvmRuntime } from "../provider.js";
 
 export const useContractRead = <
   TAbi extends Abi_.Abi,
@@ -121,7 +121,7 @@ export const useWriteAndTrack = <
 >(
   params: WriteAndTrackParams<TAbi, TFn>
 ): UseWriteAndTrackResult<TAbi> => {
-  const runtime = useEffectWeb3Runtime();
+  const runtime = useEffectEvmRuntime();
 
   const closeRef = React.useRef<(() => void) | null>(null);
   const runIdRef = React.useRef(0);

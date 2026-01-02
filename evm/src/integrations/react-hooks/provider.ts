@@ -3,32 +3,32 @@
 import { constVoid as noop } from "effect/Function";
 import type * as Layer from "effect/Layer";
 import * as React from "react";
-import type { EffectWeb3Runtime } from "./internal/runtime.js";
+import type { EffectEvmRuntime } from "./internal/runtime.js";
 import { buildRuntime, buildRuntimeSync, closeRuntime } from "./internal/runtime.js";
 
-export type EffectWeb3ProviderProps = {
+export type EffectEvmProviderProps = {
   readonly children?: React.ReactNode;
   readonly fallback?: React.ReactNode;
   readonly layer: Layer.Layer<never, unknown, never>;
   readonly onUnhandledError?: (cause: unknown) => void;
 };
 
-export type EffectWeb3LayerProviderProps = {
+export type EffectEvmLayerProviderProps = {
   readonly children?: React.ReactNode;
   readonly layer: Layer.Layer<never, unknown, never>;
 };
 
-const EffectWeb3RuntimeContext = React.createContext<EffectWeb3Runtime | null>(null);
-const EffectWeb3LayerContext = React.createContext<Layer.Layer<never, unknown, never> | null>(null);
+const EffectEvmRuntimeContext = React.createContext<EffectEvmRuntime | null>(null);
+const EffectEvmLayerContext = React.createContext<Layer.Layer<never, unknown, never> | null>(null);
 
-export const EffectWeb3Provider = (props: EffectWeb3ProviderProps): React.ReactElement => {
+export const EffectEvmProvider = (props: EffectEvmProviderProps): React.ReactElement => {
   const { children, fallback = null, layer, onUnhandledError } = props;
 
-  const [runtime, setRuntime] = React.useState<EffectWeb3Runtime | null>(null);
+  const [runtime, setRuntime] = React.useState<EffectEvmRuntime | null>(null);
 
   React.useEffect(() => {
     let cancelled = false;
-    let current: EffectWeb3Runtime | null = null;
+    let current: EffectEvmRuntime | null = null;
 
     setRuntime(null);
 
@@ -58,10 +58,10 @@ export const EffectWeb3Provider = (props: EffectWeb3ProviderProps): React.ReactE
     return React.createElement(React.Fragment, null, fallback);
   }
 
-  return React.createElement(EffectWeb3RuntimeContext.Provider, { value: runtime }, children);
+  return React.createElement(EffectEvmRuntimeContext.Provider, { value: runtime }, children);
 };
 
-export const EffectWeb3ProviderSync = (props: EffectWeb3ProviderProps): React.ReactElement => {
+export const EffectEvmProviderSync = (props: EffectEvmProviderProps): React.ReactElement => {
   const { children, layer, onUnhandledError } = props;
 
   const runtime = React.useMemo(() => {
@@ -80,28 +80,26 @@ export const EffectWeb3ProviderSync = (props: EffectWeb3ProviderProps): React.Re
     [runtime]
   );
 
-  return React.createElement(EffectWeb3RuntimeContext.Provider, { value: runtime }, children);
+  return React.createElement(EffectEvmRuntimeContext.Provider, { value: runtime }, children);
 };
 
-export const EffectWeb3LayerProvider = (
-  props: EffectWeb3LayerProviderProps
-): React.ReactElement => {
+export const EffectEvmLayerProvider = (props: EffectEvmLayerProviderProps): React.ReactElement => {
   const { children, layer } = props;
-  return React.createElement(EffectWeb3LayerContext.Provider, { value: layer }, children);
+  return React.createElement(EffectEvmLayerContext.Provider, { value: layer }, children);
 };
 
-export const useEffectWeb3Runtime = (): EffectWeb3Runtime => {
-  const runtime = React.useContext(EffectWeb3RuntimeContext);
+export const useEffectEvmRuntime = (): EffectEvmRuntime => {
+  const runtime = React.useContext(EffectEvmRuntimeContext);
   if (runtime === null) {
-    throw new Error("EffectWeb3Provider is missing (useEffectWeb3Runtime)");
+    throw new Error("EffectEvmProvider is missing (useEffectEvmRuntime)");
   }
   return runtime;
 };
 
-export const useEffectWeb3Layer = (): Layer.Layer<never, unknown, never> => {
-  const layer = React.useContext(EffectWeb3LayerContext);
+export const useEffectEvmLayer = (): Layer.Layer<never, unknown, never> => {
+  const layer = React.useContext(EffectEvmLayerContext);
   if (layer === null) {
-    throw new Error("EffectWeb3LayerProvider is missing (useEffectWeb3Layer)");
+    throw new Error("EffectEvmLayerProvider is missing (useEffectEvmLayer)");
   }
   return layer;
 };

@@ -4,7 +4,7 @@ import * as Exit from "effect/Exit";
 import type * as Fiber from "effect/Fiber";
 import { constVoid as noop } from "effect/Function";
 import * as Scope_ from "effect/Scope";
-import type { EffectWeb3Runtime } from "./runtime.js";
+import type { EffectEvmRuntime } from "./runtime.js";
 
 export type ScopedRun = {
   readonly close: () => void;
@@ -12,7 +12,7 @@ export type ScopedRun = {
   readonly scope: Scope_.Scope.Closeable;
 };
 
-export const makeScopedRun = async (runtime: EffectWeb3Runtime): Promise<ScopedRun> => {
+export const makeScopedRun = async (runtime: EffectEvmRuntime): Promise<ScopedRun> => {
   const scope = await runtime.runPromise(Scope_.fork(runtime.scope, ExecutionStrategy.sequential));
   let closed = false;
 

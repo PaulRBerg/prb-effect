@@ -526,9 +526,9 @@ export function makeWalletClientLayerFromProviderRef(
 }
 
 /**
- * Compose all effect-web3 services into a single layer
+ * Compose all effect-evm services into a single layer
  * Requires PublicClientService and WalletClientService to be provided
- * Note: WalletService and WalletLifecycle require a provider and should be added via makeEffectWeb3Layer
+ * Note: WalletService and WalletLifecycle require a provider and should be added via makeEffectEvmLayer
  */
 const cursorServices = Layer.mergeAll(EventStreamLive, EventBackfillLive, InMemoryCursorStoreLive);
 
@@ -563,7 +563,7 @@ const queryServices = Layer.provideMerge(
   )
 );
 
-export const effectWeb3Services = Layer.provideMerge(
+export const effectEvmServices = Layer.provideMerge(
   Layer.mergeAll(
     BalanceServiceLive,
     ContractPipelineLive,
@@ -576,9 +576,9 @@ export const effectWeb3Services = Layer.provideMerge(
 ).pipe(Layer.provide(FetchHttpClient.layer));
 
 /**
- * Create a complete effect-web3 layer from chain configurations and provider
+ * Create a complete effect-evm layer from chain configurations and provider
  */
-export function makeEffectWeb3Layer(
+export function makeEffectEvmLayer(
   configs: ChainConfig[],
   provider: { request: (...args: unknown[]) => Promise<unknown> }
 ): Layer.Layer<
@@ -626,18 +626,18 @@ export function makeEffectWeb3Layer(
     makeWalletLifecycleLive(provider)
   );
 
-  return Layer.provideMerge(Layer.mergeAll(effectWeb3Services, walletLayers), clientLayers);
+  return Layer.provideMerge(Layer.mergeAll(effectEvmServices, walletLayers), clientLayers);
 }
 
 /**
- * Create a complete effect-web3 layer with a dynamic wallet provider reference.
+ * Create a complete effect-evm layer with a dynamic wallet provider reference.
  *
  * This is intended for frontends (e.g. Next.js) that want a stable Effect runtime
  * while the wallet provider changes over time.
  *
  * Set/clear the provider by using `WalletProviderRef` (e.g. from React via `useForkEffect`).
  */
-export function makeEffectWeb3LayerWithWalletProviderRef(
+export function makeEffectEvmLayerWithWalletProviderRef(
   configs: ChainConfig[],
   initialProvider?: WalletProvider | undefined
 ): Layer.Layer<
@@ -690,7 +690,7 @@ export function makeEffectWeb3LayerWithWalletProviderRef(
   );
 
   return Layer.provideMerge(
-    Layer.mergeAll(effectWeb3Services, walletLayers, providerRefLayer),
+    Layer.mergeAll(effectEvmServices, walletLayers, providerRefLayer),
     clientLayers
   );
 }

@@ -81,7 +81,7 @@ export const routemeshRpc =
  * @example
  * ```ts
  * import { mainnet, arbitrum } from "viem/chains";
- * import { makePublicClientLayer, routemeshToChainConfigs } from "effect-web3";
+ * import { makePublicClientLayer, routemeshToChainConfigs } from "effect-evm";
  *
  * const configs = routemeshToChainConfigs({
  *   apiKey: "my-api-key",
@@ -130,7 +130,7 @@ export const routemeshWithFallback = (
  * @example
  * ```ts
  * import { mainnet, arbitrum } from "viem/chains";
- * import { makeRouteMeshTransports } from "effect-web3";
+ * import { makeRouteMeshTransports } from "effect-evm";
  *
  * const transports = makeRouteMeshTransports("my-api-key", [
  *   { chainId: mainnet.id, chain: mainnet, fallbackUrls: ["https://eth.llamarpc.com"] },

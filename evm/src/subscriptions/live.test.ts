@@ -4,11 +4,11 @@ import { constVoid as noop } from "effect/Function";
 import type { Block } from "viem";
 import { mainnet } from "viem/chains";
 import { SubscriptionDroppedError, SubscriptionService } from "@/src/subscriptions/index.js";
-import { makeEffectWeb3TestLayer } from "@/src/testing-kit/index.js";
+import { makeEffectEvmTestLayer } from "@/src/testing-kit/index.js";
 
 describe("SubscriptionService (Live)", () => {
   it.effect("fails Stream with SubscriptionDroppedError on watcher error", () => {
-    const layer = makeEffectWeb3TestLayer({
+    const layer = makeEffectEvmTestLayer({
       publicClient: {
         watchBlocks: (params: unknown) => {
           const { onError } = params as {
@@ -41,7 +41,7 @@ describe("SubscriptionService (Live)", () => {
 
   it.effect("retries and updates stateRef (watchBlocksRetrying)", () => {
     let calls = 0;
-    const layer = makeEffectWeb3TestLayer({
+    const layer = makeEffectEvmTestLayer({
       publicClient: {
         watchBlocks: (params: unknown) => {
           calls += 1;
