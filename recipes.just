@@ -40,25 +40,25 @@ alias b := build
 
 # Run all tests
 [group("tests")]
-test *args:
+@test *args:
     bun vitest run {{ args }}
 alias t := test
 
 # Run tests with UI
 [group("tests")]
-test-ui *args:
+@test-ui *args:
     bun vitest --ui {{ args }}
 alias tui := test-ui
 
 # Run unit tests (excludes integration tests)
 [group("tests")]
-test-unit *args:
+@test-unit *args:
     bun vitest run --exclude '**/*.integration.test.ts' {{ args }}
 alias tu := test-unit
 
 # Run integration tests only
 [group("tests")]
-test-integration *args:
+@test-integration *args:
     bun vitest run '.integration.' {{ args }}
 alias ti := test-integration
 

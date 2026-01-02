@@ -1,0 +1,31 @@
+{
+  "root": false,
+  "$schema": "../node_modules/@biomejs/biome/configuration_schema.json",
+  "extends": "//",
+  "overrides": [
+    {
+      // These files are "boundaries" (barrels / composition roots / internal wiring).
+      // They legitimately need deep imports into implementation modules; enforcing
+      // "import from index.js barrels only" here commonly creates circular imports.
+      "includes": ["**/index.ts"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": "off"
+          }
+        }
+      }
+    },
+    {
+      // Testing helpers intentionally contain assertions (Biome may flag as "misplaced").
+      "includes": ["**/testing-kit/helpers.ts"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noMisplacedAssertion": "off"
+          }
+        }
+      }
+    }
+  ]
+}
