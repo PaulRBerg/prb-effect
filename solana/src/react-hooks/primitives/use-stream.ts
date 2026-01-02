@@ -87,7 +87,7 @@ export const useStream = <A, E, R>(
       const scoped = await makeScopedRun(runtime);
       scopedClose = scoped.close;
 
-      const runner = Stream.runForEach(stream, (value) =>
+      const runner = Stream.runForEach(stream, (value: A) =>
         Effect.sync(() => {
           lastValue = value;
           store.setSnapshot({ status: "running", value });
@@ -161,7 +161,7 @@ export const useStreamEffect = <A, E, R>(
         )
       );
 
-      const runner = Stream.runForEach(stream, (value) =>
+      const runner = Stream.runForEach(stream, (value: A) =>
         Effect.sync(() => {
           lastValue = value;
           store.setSnapshot({ status: "running", value });

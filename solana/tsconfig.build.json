@@ -2,7 +2,8 @@
   "$schema": "https://json.schemastore.org/tsconfig",
   "extends": "../node_modules/@sablier/devkit/tsconfig/build.json",
   "compilerOptions": {
-    "lib": ["ESNext"],
+    "lib": ["ESNext", "DOM"],
+    "jsx": "react-jsx",
     "outDir": "./dist",
     "rootDir": "./src",
     "paths": {
@@ -11,5 +12,5 @@
     }
   },
   "exclude": ["./node_modules", "./src/**/*.test.ts"],
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*.ts", "src/**/*.tsx"]
 }

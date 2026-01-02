@@ -1,7 +1,7 @@
-name: fmt > CI
+name: solana > CI
 
 on:
-  push: &fmt_filters
+  push: &solana_filters
     branches: [main]
     paths:
       # == Workspace configs ==
@@ -14,9 +14,9 @@ on:
       - package.json
       - tsconfig.json
       # == Package-specific ==
-      - "fmt/**"
-      - "**/fmt.*.yml"
-  pull_request: *fmt_filters
+      - "solana/**"
+      - "**/solana.*.yml"
+  pull_request: *solana_filters
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -26,4 +26,4 @@ jobs:
   ci:
     uses: ./.github/workflows/_base.ci.yml
     with:
-      package-name: fmt
+      package-name: solana
