@@ -8,6 +8,7 @@
         "@biomejs/biome": "^2.3.10",
         "@effect/vitest": "^0.27.0",
         "@sablier/devkit": "^1.9.1",
+        "@types/bs58": "^5.0.0",
         "@typescript/native-preview": "^7.0.0-dev.20260102.1",
         "@vitest/ui": "^4.0.15",
         "husky": "^9.1.7",
@@ -104,6 +105,7 @@
         "@solana-program/system": "^0.8.0",
         "@solana-program/token": "^0.8.0",
         "@solana/kit": "^2.2.7",
+        "@solana/web3.js": "^1.95.0",
         "@types/node": "^25.0.3",
         "@types/react": "catalog:dev",
         "@types/react-dom": "catalog:dev",
@@ -122,11 +124,13 @@
         "@solana-program/system": "^0.8.0",
         "@solana-program/token": "^0.8.0",
         "@solana/kit": "^2.2.0",
+        "@solana/web3.js": "^1.95.0",
         "effect": "catalog:peers",
         "react": "catalog:peers",
         "react-dom": "catalog:peers",
       },
       "optionalPeers": [
+        "@solana/web3.js",
         "react",
         "react-dom",
       ],
@@ -636,6 +640,8 @@
     "@tanstack/react-query": ["@tanstack/react-query@5.90.12", "", { "dependencies": { "@tanstack/query-core": "5.90.12" }, "peerDependencies": { "react": "^18 || ^19" } }, "sha512-graRZspg7EoEaw0a8faiUASCyJrqjKPdqJ9EwuDRUF9mEYJ1YPczI9H+/agJ0mOJkPCJDk0lsz5QTrLZ/jQ2rg=="],
 
     "@trpc/server": ["@trpc/server@11.8.0", "", { "peerDependencies": { "typescript": ">=5.7.2" } }, "sha512-DphyQnLuyX2nwJCQGWQ9zYz4hZGvRhSBqDhQ0SH3tDhQ3PU4u68xofA0pJ741Ir4InEAFD+TtJVLAQy+wVOkiQ=="],
+
+    "@types/bs58": ["@types/bs58@5.0.0", "", { "dependencies": { "bs58": "*" } }, "sha512-cAw/jKBzo98m6Xz1X5ETqymWfIMbXbu6nK15W4LQYjeHJkVqSmM5PO8Bd9KVHQJ/F4rHcSso9LcjtgCW6TGu2w=="],
 
     "@types/chai": ["@types/chai@5.2.3", "", { "dependencies": { "@types/deep-eql": "*", "assertion-error": "^2.0.1" } }, "sha512-Mw558oeA9fFbv65/y4mHtXDs9bPnFMZAL/jxdPFUpOHHIXX91mcgEHbS5Lahr+pwZFR8A7GQleRWeI6cGFC2UA=="],
 
