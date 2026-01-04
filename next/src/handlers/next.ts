@@ -8,7 +8,6 @@
  * - Integrate with Next.js AsyncLocalStorage for request-scoped services
  *
  * @module
- * @since 1.0.0
  */
 import { Effect, Option } from "effect";
 import * as Context_ from "effect/Context";
@@ -23,19 +22,16 @@ import type * as NextMiddleware from "../middleware/index.js";
 import type { NotFoundError, RedirectError } from "../navigation/index.js";
 
 /**
- * @since 1.0.0
  * @category constants
  */
 const NextSymbolKey = "effect-next/Next";
 
 /**
- * @since 1.0.0
  * @category type ids
  */
 export const TypeId: unique symbol = Symbol.for(NextSymbolKey);
 
 /**
- * @since 1.0.0
  * @category type ids
  */
 export type TypeId = typeof TypeId;
@@ -69,7 +65,6 @@ type LayerSuccess<L> = L extends Layer.Layer.Any
 type RuntimeLayer<R> = { readonly _tag: "RuntimeLayer"; readonly _R: R };
 
 /**
- * @since 1.0.0
  * @category models
  */
 export interface Next<
@@ -210,7 +205,6 @@ const makeProto = <
  * not real errors - they're how Next.js implements control flow. All other errors will
  * still be logged through your application's error handling.
  *
- * @since 1.0.0
  * @category constructors
  */
 export function make<const Tag extends string, const R, const E>(
@@ -233,7 +227,6 @@ export function make<const Tag extends string, const R, const E>(
  *
  * Use this when you want manual control over the runtime lifecycle.
  *
- * @since 1.0.0
  * @category constructors
  */
 export function makeWithRuntime<const Tag extends string, R, E>(

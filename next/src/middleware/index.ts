@@ -1,5 +1,4 @@
 /**
- * @since 1.0.0
  */
 import * as Context from "effect/Context";
 import type * as Effect from "effect/Effect";
@@ -7,19 +6,16 @@ import * as Schema from "effect/Schema";
 import type { Mutable } from "effect/Types";
 
 /**
- * @since 1.0.0
  * @category type ids
  */
 export const TypeId: unique symbol = Symbol.for("effect-next/Middleware");
 
 /**
- * @since 1.0.0
  * @category type ids
  */
 export type TypeId = typeof TypeId;
 
 /**
- * @since 1.0.0
  * @category models
  */
 type MiddlewareOptions = {
@@ -29,7 +25,6 @@ type MiddlewareOptions = {
 /**
  * Standard middleware that returns a service and can fail.
  *
- * @since 1.0.0
  * @category models
  */
 export type NextMiddleware<Provides, E, R = never> = (
@@ -39,7 +34,6 @@ export type NextMiddleware<Provides, E, R = never> = (
 /**
  * Wrapping middleware that intercepts the next effect in the chain.
  *
- * @since 1.0.0
  * @category models
  */
 export type NextMiddlewareWrap<Provides, Catches, R> = <A>(
@@ -49,7 +43,6 @@ export type NextMiddlewareWrap<Provides, Catches, R> = <A>(
 ) => Effect.Effect<A, never, R>;
 
 /**
- * @since 1.0.0
  * @category models
  */
 export type TagClass<Self, Name extends string, Options, R> = TagClass.Base<
@@ -93,12 +86,10 @@ export type TagClass<Self, Name extends string, Options, R> = TagClass.Base<
     : object);
 
 /**
- * @since 1.0.0
  * @category models
  */
 export declare namespace TagClass {
   /**
-   * @since 1.0.0
    * @category models
    */
   export type Provides<Options> = Options extends {
@@ -110,7 +101,6 @@ export declare namespace TagClass {
     : never;
 
   /**
-   * @since 1.0.0
    * @category models
    */
   export type Service<Options> = Options extends {
@@ -122,7 +112,6 @@ export declare namespace TagClass {
     : undefined;
 
   /**
-   * @since 1.0.0
    * @category models
    */
   export type FailureSchema<Options> = Options extends {
@@ -132,7 +121,6 @@ export declare namespace TagClass {
     : typeof Schema.Never;
 
   /**
-   * @since 1.0.0
    * @category models
    */
   export type Failure<Options> = Options extends {
@@ -142,25 +130,21 @@ export declare namespace TagClass {
     : never;
 
   /**
-   * @since 1.0.0
    * @category models
    */
   export type FailureContext<Options> = Schema.Schema.Context<FailureSchema<Options>>;
 
   /**
-   * @since 1.0.0
    * @category models
    */
   export type FailureService<Options> = Failure<Options>;
 
   /**
-   * @since 1.0.0
    * @category models
    */
   export type Wrap<Options> = Options extends { readonly wrap: true } ? true : false;
 
   /**
-   * @since 1.0.0
    * @category models
    */
   export type CatchesSchema<Options> =
@@ -171,14 +155,12 @@ export declare namespace TagClass {
       : typeof Schema.Never;
 
   /**
-   * @since 1.0.0
    * @category models
    */
   export type CatchesValue<Options> =
     CatchesSchema<Options> extends Schema.Schema<infer A, infer _I, infer _R> ? A : never;
 
   /**
-   * @since 1.0.0
    * @category models
    */
   export type ReturnsSchema<Options> =
@@ -189,7 +171,6 @@ export declare namespace TagClass {
       : typeof Schema.Never;
 
   /**
-   * @since 1.0.0
    * @category models
    */
   export interface Base<Self, Name extends string, Options, S> extends Context.Tag<Self, S> {
@@ -208,7 +189,6 @@ export declare namespace TagClass {
 }
 
 /**
- * @since 1.0.0
  * @category models
  */
 export interface TagClassAny
@@ -228,7 +208,6 @@ export interface TagClassAny
 }
 
 /**
- * @since 1.0.0
  * @category models
  */
 export interface TagClassAnyWithProps
@@ -248,7 +227,6 @@ export interface TagClassAnyWithProps
 /**
  * Creates a middleware tag that can be used with Next handlers.
  *
- * @since 1.0.0
  * @category tags
  */
 export const Tag =

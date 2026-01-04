@@ -1,7 +1,6 @@
 import "server-only";
 
 /**
- * @since 1.0.0
  */
 import { Effect, Schema } from "effect";
 
@@ -10,7 +9,6 @@ type NextBaseParams = Promise<Record<string, string | string[] | undefined>>;
 /**
  * Decodes route params using a Schema with unknown input.
  *
- * @since 1.0.0
  * @category params
  */
 export const decodeParamsUnknown =
@@ -21,7 +19,6 @@ export const decodeParamsUnknown =
 /**
  * Decodes search params using a Schema with unknown input.
  *
- * @since 1.0.0
  * @category params
  */
 export const decodeSearchParamsUnknown =
@@ -32,7 +29,6 @@ export const decodeSearchParamsUnknown =
 /**
  * Decodes params using a Schema with typed input.
  *
- * @since 1.0.0
  * @category params
  */
 export const decodeParams =

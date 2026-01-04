@@ -1,12 +1,10 @@
 /**
- * @since 1.0.0
  */
 
 import type { AsyncLocalStorage as AsyncLocalStorageType } from "node:async_hooks";
 import * as Context_ from "effect/Context";
 
 /**
- * @since 1.0.0
  * @category models
  */
 export type CapturedContext = {
@@ -15,7 +13,6 @@ export type CapturedContext = {
 };
 
 /**
- * @since 1.0.0
  * @category models
  */
 export type AsyncStorageDeps = {
@@ -26,7 +23,6 @@ export type AsyncStorageDeps = {
 /**
  * Captures the current AsyncLocalStorage context for both work and workUnit stores.
  *
- * @since 1.0.0
  * @category utils
  */
 export const captureContext = (deps: AsyncStorageDeps): CapturedContext => ({
@@ -37,7 +33,6 @@ export const captureContext = (deps: AsyncStorageDeps): CapturedContext => ({
 /**
  * Wraps a function to restore AsyncLocalStorage context when executed.
  *
- * @since 1.0.0
  * @category utils
  */
 export const withRestoredContext =
@@ -70,7 +65,6 @@ export const withRestoredContext =
 /**
  * Creates a context wrapper function that can restore AsyncLocalStorage context.
  *
- * @since 1.0.0
  * @category utils
  */
 export const createContextWrapper =
@@ -79,7 +73,6 @@ export const createContextWrapper =
     withRestoredContext(context, deps, fn);
 
 /**
- * @since 1.0.0
  * @category models
  */
 export type ContextWrapper = ReturnType<typeof createContextWrapper>;
@@ -87,7 +80,6 @@ export type ContextWrapper = ReturnType<typeof createContextWrapper>;
 /**
  * Service tag for accessing the context wrapper in Effect programs.
  *
- * @since 1.0.0
  * @category tags
  */
 export class ContextWrapperService extends Context_.Tag("ContextWrapperService")<

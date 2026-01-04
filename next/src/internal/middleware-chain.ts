@@ -1,5 +1,4 @@
 /**
- * @since 1.0.0
  */
 import type * as Context from "effect/Context";
 import type { Effect } from "effect/Effect";
@@ -14,7 +13,6 @@ import type * as NextMiddleware from "../middleware/index.js";
  * - Provide a service to the next effect (if tag.provides is defined)
  * - Run before the next effect (default behavior)
  *
- * @since 1.0.0
  * @category utils
  */
 export const createMiddlewareChain = <

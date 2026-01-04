@@ -1,73 +1,28 @@
-/**
- * @since 1.0.0
- */
 import "server-only";
-import { Effect } from "effect";
-import * as Context_ from "effect/Context";
-import { revalidatePath, revalidateTag } from "next/cache.js";
-import { ContextWrapperService } from "../internal/async-context.js";
 
 /**
- * Revalidates cached data for a given path.
+ * Request-Scoped Effect Cache
  *
- * **IMPORTANT:** This effect must be used within a Next.js handler context
- * (route handlers, server actions, or server components built with effect-next).
- * Using it outside this context will result in a runtime error.
+ * Re-exports `reactCache` from @mcrovero/effect-react-cache for use in
+ * Server Components and server actions. This utility wraps Effect-returning
+ * functions with React's `cache` primitive to:
  *
- * @param path - The path to revalidate
- * @param type - Optional type: "page" or "layout"
- * @since 1.0.0
- * @category cache
+ * 1. **Deduplicate concurrent calls** within a request
+ * 2. **Memoize by argument tuple** (same args → same result)
+ * 3. **Preserve Effect ergonomics** (typed errors and environments)
+ *
  * @example
  * ```ts
- * const handler = ServerAction.build(
- *   Effect.gen(function* () {
- *     yield* RevalidatePath("/blog", "page")
- *     // ...
- *   })
- * )
- * ```
- */
-export const RevalidatePath = (
-  ...args: Parameters<typeof revalidatePath>
-): Effect.Effect<void, never, never> =>
-  Effect.withSpan(
-    Effect.flatMap(Effect.context<never>(), (context) => {
-      const wrapWithContext = Context_.unsafeGet(context, ContextWrapperService);
-      const wrappedFn = wrapWithContext(revalidatePath);
-      return Effect.sync(() => wrappedFn(...args));
-    }),
-    "RevalidatePath"
-  );
-
-/**
- * Revalidates cached data associated with a specific tag.
+ * import { reactCache } from "effect-next/react-cache";
  *
- * **IMPORTANT:** This effect must be used within a Next.js handler context
- * (route handlers, server actions, or server components built with effect-next).
- * Using it outside this context will result in a runtime error.
- *
- * @param tag - The cache tag to revalidate
- * @since 1.0.0
- * @category cache
- * @example
- * ```ts
- * const handler = ServerAction.build(
+ * const getUser = reactCache((id: string) =>
  *   Effect.gen(function* () {
- *     yield* RevalidateTag("posts")
- *     // ...
- *   })
- * )
+ *     const service = yield* UserService;
+ *     return yield* service.getUser(id);
+ *   }).pipe(Effect.provide(UserLive))
+ * );
  * ```
+ *
+ * @see https://react.dev/reference/react/cache
  */
-export const RevalidateTag = (
-  ...args: Parameters<typeof revalidateTag>
-): Effect.Effect<void, never, never> =>
-  Effect.withSpan(
-    Effect.flatMap(Effect.context<never>(), (context) => {
-      const wrapWithContext = Context_.unsafeGet(context, ContextWrapperService);
-      const wrappedFn = wrapWithContext(revalidateTag);
-      return Effect.sync(() => wrappedFn(...args));
-    }),
-    "RevalidateTag"
-  );
+export * from "@mcrovero/effect-react-cache/ReactCache";

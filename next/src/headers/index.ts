@@ -1,7 +1,6 @@
 import "server-only";
 
 /**
- * @since 1.0.0
  */
 import { Effect } from "effect";
 import * as Context_ from "effect/Context";
@@ -15,7 +14,6 @@ import { ContextWrapperService } from "../internal/async-context.js";
  * (route handlers, server actions, or server components built with effect-next).
  * Using it outside this context will result in a runtime error.
  *
- * @since 1.0.0
  * @category request
  * @example
  * ```ts
@@ -42,7 +40,6 @@ export const Cookies = Effect.fn("Cookies")(function* () {
  * (route handlers, server actions, or server components built with effect-next).
  * Using it outside this context will result in a runtime error.
  *
- * @since 1.0.0
  * @category request
  * @example
  * ```ts
@@ -69,7 +66,6 @@ export const Headers = Effect.fn("Headers")(function* () {
  * (route handlers, server actions, or server components built with effect-next).
  * Using it outside this context will result in a runtime error.
  *
- * @since 1.0.0
  * @category request
  * @example
  * ```ts

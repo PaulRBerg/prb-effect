@@ -10,7 +10,6 @@
  * }
  * ```
  * @module
- * @since 1.0.0
  */
 export * from "./run-server-action.js";
 export * from "./types.js";

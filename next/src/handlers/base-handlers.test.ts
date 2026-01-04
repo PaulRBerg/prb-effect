@@ -1,6 +1,7 @@
 import { describe, expect, it } from "@effect/vitest";
 import { Effect, Layer, ManagedRuntime } from "effect";
 import { vi } from "vitest";
+import type * as MiddlewareTypes from "../middleware/index.js";
 
 /**
  * Note: These tests verify the base handlers factory function that creates
@@ -12,6 +13,7 @@ vi.mock("server-only", () => ({}));
 
 // Import after mocks
 const { createBaseHandlers } = await import("./base-handlers.js");
+const Middleware = await import("../middleware/index.js");
 
 describe("createBaseHandlers", () => {
   it("throws if neither layer nor runtime provided", () => {
@@ -97,6 +99,40 @@ describe("createBaseHandlers", () => {
     expect(handlers.Layout.key).toBe("effect-next/Next/MyCustomTag");
 
     // Clean up
+    if (handlers.Layout.runtime) {
+      await handlers.Layout.runtime.dispose();
+    }
+  });
+
+  it("supports distinct tags per handler", async () => {
+    const layer = Layer.empty;
+
+    const handlers = createBaseHandlers(
+      { Layout: "LayoutTag", Page: "PageTag", Route: "RouteTag" },
+      { layer }
+    );
+
+    expect(handlers.Layout._tag).toBe("LayoutTag");
+    expect(handlers.Page._tag).toBe("PageTag");
+    expect(handlers.Route._tag).toBe("RouteTag");
+
+    if (handlers.Layout.runtime) {
+      await handlers.Layout.runtime.dispose();
+    }
+  });
+
+  it("applies middlewares when provided", async () => {
+    class TestMiddleware extends Middleware.Tag<TestMiddleware>()("TestMiddleware") {}
+
+    const layer = Layer.empty;
+    const handlers = createBaseHandlers("TestBase", {
+      layer,
+      middlewares: [TestMiddleware as unknown as MiddlewareTypes.TagClassAny],
+    });
+
+    expect(handlers.Layout.middlewares).toHaveLength(1);
+    expect(handlers.Layout.middlewares[0]).toBe(TestMiddleware);
+
     if (handlers.Layout.runtime) {
       await handlers.Layout.runtime.dispose();
     }

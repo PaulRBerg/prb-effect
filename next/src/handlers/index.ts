@@ -10,7 +10,6 @@
  * );
  * ```
  * @module
- * @since 1.0.0
  */
 export * from "./base-handlers.js";
 export type { Next as NextHandler } from "./next.js";

@@ -1,5 +1,4 @@
 /**
- * @since 1.0.0
  */
 import { Cause, Chunk, Effect, Exit } from "effect";
 import type * as ManagedRuntime from "effect/ManagedRuntime";
@@ -19,7 +18,6 @@ import * as AsyncContext from "./async-context.js";
  * 3. Runs the Effect using the provided runtime (or default runtime)
  * 4. Returns the Exit for manual error handling
  *
- * @since 1.0.0
  * @category utils
  * @internal
  */
@@ -60,7 +58,6 @@ export async function executeWithRuntimeExit<A, E, R, ER>(
  * 3. Runs the Effect using the provided runtime (or default runtime)
  * 4. Handles errors and defects appropriately for Next.js
  *
- * @since 1.0.0
  * @category utils
  */
 export function executeWithRuntime<A, E>(

@@ -1,12 +1,10 @@
 /**
- * @since 1.0.0
  */
 import "server-only";
 import { Data, Effect } from "effect";
 
 /**
  * Error representing a redirect navigation.
- * @since 1.0.0
  */
 export class RedirectError extends Data.TaggedError("RedirectError")<{
   readonly url: string;
@@ -15,7 +13,6 @@ export class RedirectError extends Data.TaggedError("RedirectError")<{
 
 /**
  * Error representing a not found navigation.
- * @since 1.0.0
  */
 export class NotFoundError extends Data.TaggedError("NotFoundError")<Record<string, never>> {}
 
@@ -28,7 +25,6 @@ export class NotFoundError extends Data.TaggedError("NotFoundError")<Record<stri
  * with `Effect.catchTag("RedirectError", ...)`.
  *
  * @param url - The URL to redirect to
- * @since 1.0.0
  * @category navigation
  * @example
  * ```typescript
@@ -51,7 +47,6 @@ export const Redirect = (url: string): Effect.Effect<never, RedirectError, never
  * `Effect.catchTag("RedirectError", ...)`.
  *
  * @param url - The URL to redirect to
- * @since 1.0.0
  * @category navigation
  * @example
  * ```typescript
@@ -73,7 +68,6 @@ export const PermanentRedirect = (url: string): Effect.Effect<never, RedirectErr
  * and converted to a typed `NotFoundError` that can be handled with
  * `Effect.catchTag("NotFoundError", ...)`.
  *
- * @since 1.0.0
  * @category navigation
  * @example
  * ```typescript

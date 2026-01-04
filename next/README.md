@@ -9,6 +9,9 @@ Effect integration for Next.js - build type-safe, composable Next.js application
 - **Middleware** - Composable middleware using Effect layers
 - **React Hooks** - Client-side hooks for running Effects in React components
 - **Request-Scoped Cache** - Leverage React cache() with Effect for deduplication
+- **Request Timing Middleware** - Measure request duration with opt-in hooks
+- **Environment Helpers** - Minimal NODE_ENV helpers with injectable resolver
+- **Telemetry Adapters** - Optional Sentry + OTLP helpers (no defaults)
 - **Headers & Cookies** - Access Next.js headers and cookies as Effect services
 - **Params** - Type-safe route and search params
 - **Navigation** - Effect-based navigation utilities
@@ -20,6 +23,11 @@ Effect integration for Next.js - build type-safe, composable Next.js application
 bun add effect-next effect @effect/platform
 ```
 
+### Optional Dependencies
+
+- `@mcrovero/effect-react-cache` for `effect-next/react-cache`
+- `@effect/opentelemetry` for `effect-next/telemetry/otel`
+
 ## Quick Start
 
 ### 1. Route Handlers
@@ -28,11 +36,13 @@ Convert Next.js route handlers into Effect workflows:
 
 ```typescript
 // app/api/users/[id]/route.ts
-import { GET } from "effect-next/handlers";
+import { Next } from "effect-next/handlers";
 import { Effect } from "effect";
 import { RouteParams } from "effect-next/params";
 
-export const GET = effectHandler(
+const Route = Next.make("UsersRoute", AppLayer);
+
+export const GET = Route.build(() =>
   Effect.gen(function* () {
     const params = yield* RouteParams;
     const userId = params.id;
@@ -40,7 +50,6 @@ export const GET = effectHandler(
     const user = yield* fetchUser(userId);
     return Response.json(user);
   }),
-  AppLayer,
 );
 ```
 
@@ -52,17 +61,18 @@ Create type-safe server actions with automatic error handling:
 // app/actions.ts
 "use server";
 
-import { effectAction } from "effect-next/action";
+import { runServerAction } from "effect-next/action";
 import { Effect } from "effect";
 
-export const createUser = effectAction(
-  Effect.gen(function* () {
-    const db = yield* Database;
-    const user = yield* db.insert(users).values({ name: "Alice" });
-    return user;
-  }),
-  AppLayer
-);
+export async function createUser() {
+  return runServerAction(
+    Effect.gen(function* () {
+      const db = yield* Database;
+      const user = yield* db.insert(users).values({ name: "Alice" });
+      return user;
+    }).pipe(Effect.provide(AppLayer))
+  );
+}
 
 // app/page.tsx
 import { createUser } from "./actions";
@@ -70,11 +80,11 @@ import { createUser } from "./actions";
 export default function Page() {
   const handleSubmit = async () => {
     const result = await createUser();
-    if (result._tag === "Success") {
-      console.log("User created:", result.value);
-    } else {
-      console.error("Error:", result.error);
+    if (result.success) {
+      console.log("User created:", result.data);
+      return;
     }
+    console.error("Error:", result.error);
   };
 
   return <button onClick={handleSubmit}>Create User</button>;
@@ -113,31 +123,17 @@ function UserProfile({ userId }: { userId: string }) {
 Compose middleware using Effect layers:
 
 ```typescript
-// middleware.ts
-import { effectMiddleware } from "effect-next/middleware";
+import { Next } from "effect-next/handlers";
+import { RequestTimingMiddleware, makeRequestTimingMiddleware } from "effect-next/middleware/request-timing";
 import { Effect, Layer } from "effect";
 
-const AuthMiddleware = Layer.effect(
-  AuthService,
+const AppLayerWithTiming = Layer.mergeAll(AppLayer, makeRequestTimingMiddleware());
+const Route = Next.make("RouteWithTiming", AppLayerWithTiming).middleware(RequestTimingMiddleware);
+
+export const GET = Route.build(() =>
   Effect.gen(function* () {
-    const headers = yield* Headers;
-    const token = headers.get("authorization");
-
-    if (!token) {
-      yield* Effect.fail({ _tag: "Unauthorized" });
-    }
-
-    return { validateToken: (token: string) => Effect.succeed(true) };
+    return Response.json({ ok: true });
   }),
-);
-
-export const middleware = effectMiddleware(
-  Effect.gen(function* () {
-    const auth = yield* AuthService;
-    yield* auth.validateToken(token);
-    return NextResponse.next();
-  }),
-  AuthMiddleware,
 );
 ```
 
@@ -147,17 +143,14 @@ Use React's cache() with Effect for request deduplication:
 
 ```typescript
 // lib/data.ts
-import { reactCache } from "effect-next/cache";
+import { reactCache } from "effect-next/react-cache";
 import { Effect } from "effect";
 
-const runtime = ManagedRuntime.make(AppLayer);
-
-export const getUser = reactCache(
+export const getUser = reactCache((id: string) =>
   Effect.gen(function* () {
     const db = yield* Database;
-    return yield* db.query("SELECT * FROM users");
-  }),
-  runtime,
+    return yield* db.query("SELECT * FROM users WHERE id = ?", [id]);
+  }).pipe(Effect.provide(AppLayer)),
 );
 
 // Multiple components can call getUser() in the same request
@@ -169,21 +162,21 @@ export const getUser = reactCache(
 ### Route Handlers
 
 ```typescript
-import { GET, POST, PUT, DELETE, PATCH } from "effect-next/handlers";
+import { Next } from "effect-next/handlers";
 
-// Create a GET handler
-export const GET = effectHandler(effect, layer);
+const Route = Next.make("Route", layer);
 
-// Create a POST handler
-export const POST = effectHandler(effect, layer);
+export const GET = Route.build(() => effect);
+export const POST = Route.build(() => effect);
 ```
 
 ### Server Actions
 
 ```typescript
-import { effectAction } from "effect-next/action";
+import { runServerAction, runServerActionOrThrow } from "effect-next/action";
 
-export const myAction = effectAction(effect, layer);
+export const myAction = () => runServerAction(effect.pipe(Effect.provide(layer)));
+export const myActionOrThrow = () => runServerActionOrThrow(effect.pipe(Effect.provide(layer)));
 ```
 
 ### React Hooks
@@ -225,23 +218,14 @@ const latest = useStreamLatest(stream, runtime, initialValue);
 const value = useSubscriptionRef(ref, runtime);
 ```
 
-### Cache
+### React Cache
 
 ```typescript
-import { reactCache, reactCacheFn, reactCacheWithKey } from "effect-next/cache";
+import { Effect } from "effect";
+import { reactCache } from "effect-next/react-cache";
 
-// Cache an Effect
-const getData = reactCache(effect, runtime);
-
-// Cache a function
-const getUserById = reactCacheFn((id: string) => effect, runtime);
-
-// Cache with custom key
-const getUser = reactCacheWithKey(
-  (options) => effect,
-  (options) => `user:${options.id}`,
-  runtime,
-);
+const getUser = reactCache((id: string) => effect);
+const user = await Effect.runPromise(getUser("user-1"));
 ```
 
 ### Headers & Cookies
@@ -284,6 +268,34 @@ Effect.gen(function* () {
 });
 ```
 
+### Environment
+
+```typescript
+import { isProduction, resolveEnvironment } from "effect-next/env";
+
+const env = resolveEnvironment();
+if (isProduction()) {
+  console.log("Production:", env);
+}
+```
+
+### Telemetry
+
+```typescript
+import { Effect } from "effect";
+import { createTelemetryLayer, TelemetryService } from "effect-next/telemetry";
+
+const layer = createTelemetryLayer({
+  captureException: (error) => console.error(error),
+  captureMessage: (message) => console.log(message),
+});
+
+const program = Effect.gen(function* () {
+  const telemetry = yield* TelemetryService;
+  yield* telemetry.captureMessage("Telemetry ready");
+}).pipe(Effect.provide(layer));
+```
+
 ### Testing Kit
 
 ```typescript
@@ -324,6 +336,7 @@ effect-next/
 ├── src/
 │   ├── action/          # Server actions
 │   ├── cache/           # Request-scoped cache
+│   ├── env/             # Environment helpers
 │   ├── handlers/        # Route handlers
 │   ├── headers/         # Headers & cookies
 │   ├── middleware/      # Middleware
@@ -332,8 +345,9 @@ effect-next/
 │   ├── react-cache/     # React cache integration
 │   ├── react-hooks/     # Client-side hooks
 │   ├── runtime/         # Runtime utilities
+│   ├── server-actions/  # Server action helpers
+│   ├── telemetry/       # Telemetry adapters
 │   ├── testing-kit/     # Testing utilities
-│   └── types/           # Shared types
 ├── tests/               # Test suite
 ├── package.json
 ├── tsconfig.json
