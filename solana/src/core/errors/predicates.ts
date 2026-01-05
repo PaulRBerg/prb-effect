@@ -30,7 +30,13 @@ export const isTaggedError =
  * Type guard for UserRejectedError.
  * Works with both instanceof and _tag (for serialized errors).
  */
-export const isUserRejectedError = isTaggedError<UserRejectedError>("UserRejectedError");
+export const isTaggedUserRejectedError = isTaggedError<UserRejectedError>("UserRejectedError");
+
+/**
+ * Type guard for UserRejectedError.
+ * Works with both instanceof and _tag (for serialized errors).
+ */
+export const isUserRejectedError = isTaggedUserRejectedError;
 
 /**
  * Catch UserRejectedError and return a fallback value.

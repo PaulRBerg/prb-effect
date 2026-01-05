@@ -14,7 +14,11 @@ import {
   GasEstimationError,
   SimulationFailedError,
 } from "@/src/core/errors/contract.js";
-import { InsufficientFundsError, UserRejectedError } from "@/src/core/errors/transaction.js";
+import {
+  InsufficientFundsError,
+  isUserRejectedError,
+  UserRejectedError,
+} from "@/src/core/errors/transaction.js";
 import {
   AddChainError,
   ChainSwitchError,
@@ -34,23 +38,7 @@ const TX_HASH_RE = /0x[a-fA-F0-9]{64}/;
  * Check if an error represents a user rejection (wallet user denied the request)
  */
 export function isUserRejection(error: unknown): boolean {
-  if (error instanceof UserRejectedRequestError) {
-    return true;
-  }
-
-  // Fallback: check error message for common rejection patterns
-  if (error instanceof Error) {
-    const message = error.message.toLowerCase();
-    return (
-      message.includes("user rejected") ||
-      message.includes("user denied") ||
-      message.includes("user cancelled") ||
-      message.includes("rejected by user") ||
-      message.includes("denied by user")
-    );
-  }
-
-  return false;
+  return isUserRejectedError(error) || error instanceof UserRejectedRequestError;
 }
 
 /**

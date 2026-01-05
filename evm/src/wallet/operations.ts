@@ -1,5 +1,6 @@
 import { Effect } from "effect";
 import type { Address, Hex, TypedData } from "viem";
+import { isLikelyUserRejectedError, isUserRejectedError } from "@/src/core/errors/index.js";
 import { SpanNames } from "@/src/telemetry/index.js";
 import type {
   SignMessageParams,
@@ -17,18 +18,8 @@ import {
 /**
  * Detect if an error is a user rejection
  */
-const isUserRejection = (error: unknown): boolean => {
-  if (error instanceof Error) {
-    const msg = error.message.toLowerCase();
-    return (
-      msg.includes("user rejected") ||
-      msg.includes("user denied") ||
-      msg.includes("rejected by user") ||
-      msg.includes("user rejected request")
-    );
-  }
-  return false;
-};
+const isUserRejection = (error: unknown): boolean => isUserRejectedError(error);
+const isLikelyUserRejection = (error: unknown): boolean => isLikelyUserRejectedError(error);
 
 const errorCode = (error: unknown): number | undefined => {
   if (!error || typeof error !== "object") {
@@ -148,7 +139,7 @@ export function signMessage(
     return yield* Effect.tryPromise({
       catch: (cause) => {
         const errorMessage = messageOf(cause) || "Failed to sign message";
-        const isRejection = isUserRejection(cause);
+        const isRejection = isLikelyUserRejection(cause);
         return new SignMessageError({
           cause,
           message: isRejection ? "User rejected the request" : errorMessage,
@@ -230,7 +221,7 @@ export function signTypedData<
     return yield* Effect.tryPromise({
       catch: (cause) => {
         const errorMessage = messageOf(cause) || "Failed to sign typed data";
-        const isRejection = isUserRejection(cause);
+        const isRejection = isLikelyUserRejection(cause);
         return new SignTypedDataError({
           cause,
           message: isRejection ? "User rejected the request" : errorMessage,
@@ -279,7 +270,7 @@ export function signTransaction(
     return yield* Effect.tryPromise({
       catch: (cause) => {
         const errorMessage = cause instanceof Error ? cause.message : "Failed to sign transaction";
-        const isRejection = isUserRejection(cause);
+        const isRejection = isLikelyUserRejection(cause);
         return new SignTransactionError({
           cause,
           message: isRejection ? "User rejected the request" : errorMessage,

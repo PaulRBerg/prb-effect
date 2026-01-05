@@ -1,4 +1,4 @@
-import { Effect, Schema } from "effect";
+import { Cause, Effect, Schema } from "effect";
 import { dual } from "effect/Function";
 
 import { isTaggedError } from "./predicates.js";
@@ -50,10 +50,180 @@ export class InsufficientFundsError extends Schema.TaggedError<InsufficientFunds
 ) {}
 
 /**
- * Type guard for UserRejectedError.
- * Works with both instanceof and _tag (for serialized errors).
+ * Strict _tag guard for UserRejectedError.
  */
-export const isUserRejectedError = isTaggedError<UserRejectedError>("UserRejectedError");
+export const isTaggedUserRejectedError = isTaggedError<UserRejectedError>("UserRejectedError");
+
+const USER_REJECTION_CODE = 4001;
+const USER_REJECTION_MESSAGE_FRAGMENTS = [
+  "user rejected",
+  "user denied",
+  "user cancelled",
+  "rejected by user",
+  "denied by user",
+  "rejected the request",
+];
+
+type UserRejectionRecord = {
+  readonly _tag?: unknown;
+  readonly cause?: unknown;
+  readonly code?: unknown;
+  readonly error?: unknown;
+  readonly errors?: unknown;
+  readonly name?: unknown;
+};
+
+type UserRejectionLooseRecord = UserRejectionRecord & {
+  readonly message?: unknown;
+};
+
+function matchesUserRejectionMessage(message: string): boolean {
+  const normalized = message.trim().toLowerCase();
+  return USER_REJECTION_MESSAGE_FRAGMENTS.some((fragment) => normalized.includes(fragment));
+}
+
+function matchesUserRejectionTag(tag: string): boolean {
+  return tag.trim().toLowerCase().includes("userrejected");
+}
+
+function matchesUserRejectionName(name: string): boolean {
+  return name.trim().toLowerCase().includes("userrejected");
+}
+
+function isUserRejectionCode(value: unknown): boolean {
+  return value === USER_REJECTION_CODE || value === `${USER_REJECTION_CODE}`;
+}
+
+function checkUserRejectionRecord(record: UserRejectionRecord, depth: number): boolean {
+  if (typeof record._tag === "string" && matchesUserRejectionTag(record._tag)) {
+    return true;
+  }
+
+  if (typeof record.name === "string" && matchesUserRejectionName(record.name)) {
+    return true;
+  }
+
+  if (isUserRejectionCode(record.code)) {
+    return true;
+  }
+
+  if (Cause.isCause(record.cause)) {
+    return checkUserRejection(Cause.squash(record.cause), depth + 1);
+  }
+
+  if (record.cause && checkUserRejection(record.cause, depth + 1)) {
+    return true;
+  }
+
+  if (record.error && checkUserRejection(record.error, depth + 1)) {
+    return true;
+  }
+
+  if (Array.isArray(record.errors)) {
+    return record.errors.some((error) => checkUserRejection(error, depth + 1));
+  }
+
+  return false;
+}
+
+function checkUserRejection(error: unknown, depth: number): boolean {
+  if (!error || depth > 4) {
+    return false;
+  }
+
+  if (isTaggedUserRejectedError(error)) {
+    return true;
+  }
+
+  if (Cause.isCause(error)) {
+    return checkUserRejection(Cause.squash(error), depth + 1);
+  }
+
+  if (error instanceof Error) {
+    if (matchesUserRejectionName(error.name)) {
+      return true;
+    }
+    if (isUserRejectionCode((error as { code?: unknown }).code)) {
+      return true;
+    }
+    const tag = (error as { _tag?: unknown })._tag;
+    if (typeof tag === "string" && matchesUserRejectionTag(tag)) {
+      return true;
+    }
+    return checkUserRejectionRecord(error as UserRejectionRecord, depth);
+  }
+
+  if (typeof error === "object") {
+    return checkUserRejectionRecord(error as UserRejectionRecord, depth);
+  }
+
+  return false;
+}
+
+/**
+ * Strict user rejection detection based on tags, names, codes, and nested causes.
+ */
+export function isUserRejectedError(error: unknown): boolean {
+  return checkUserRejection(error, 0);
+}
+
+/**
+ * Lenient user rejection check based on error messages and nested causes.
+ * Useful for UI hints, not for control flow.
+ */
+export function isLikelyUserRejectedError(error: unknown): boolean {
+  return checkLikelyUserRejection(error, 0);
+}
+
+function checkLikelyUserRejectionRecord(record: UserRejectionLooseRecord, depth: number): boolean {
+  if (typeof record.message === "string" && matchesUserRejectionMessage(record.message)) {
+    return true;
+  }
+  if (Cause.isCause(record.cause)) {
+    return checkLikelyUserRejection(Cause.squash(record.cause), depth + 1);
+  }
+  if (record.cause && checkLikelyUserRejection(record.cause, depth + 1)) {
+    return true;
+  }
+  if (record.error && checkLikelyUserRejection(record.error, depth + 1)) {
+    return true;
+  }
+  if (Array.isArray(record.errors)) {
+    return record.errors.some((err) => checkLikelyUserRejection(err, depth + 1));
+  }
+  return false;
+}
+
+function checkLikelyUserRejection(error: unknown, depth: number): boolean {
+  if (!error || depth > 4) {
+    return false;
+  }
+
+  if (isUserRejectedError(error)) {
+    return true;
+  }
+
+  if (typeof error === "string") {
+    return matchesUserRejectionMessage(error);
+  }
+
+  if (Cause.isCause(error)) {
+    return checkLikelyUserRejection(Cause.squash(error), depth + 1);
+  }
+
+  if (error instanceof Error) {
+    if (matchesUserRejectionMessage(error.message)) {
+      return true;
+    }
+    return checkLikelyUserRejectionRecord(error as UserRejectionLooseRecord, depth);
+  }
+
+  if (typeof error === "object") {
+    return checkLikelyUserRejectionRecord(error as UserRejectionLooseRecord, depth);
+  }
+
+  return false;
+}
 
 /**
  * Catch UserRejectedError and return a fallback value.

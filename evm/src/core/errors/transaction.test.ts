@@ -1,9 +1,11 @@
-import { Effect, Exit } from "effect";
+import { Cause, Effect, Exit } from "effect";
 import { describe, expect, it } from "vitest";
 import {
   catchUserRejection,
   catchUserRejectionWith,
   InsufficientFundsError,
+  isLikelyUserRejectedError,
+  isTaggedUserRejectedError,
   isUserRejectedError,
   UserRejectedError,
 } from "./transaction.js";
@@ -28,7 +30,38 @@ describe("isUserRejectedError", () => {
     expect(isUserRejectedError(error)).toBe(false);
   });
 
-  it("returns false for plain Error", () => {
+  it("returns true for Error with rejection code", () => {
+    const error = Object.assign(new Error("User rejected the request"), { code: 4001 });
+    expect(isUserRejectedError(error)).toBe(true);
+  });
+
+  it("returns true for Error with rejection name", () => {
+    const error = new Error("User rejected the request");
+    error.name = "UserRejectedRequestError";
+    expect(isUserRejectedError(error)).toBe(true);
+  });
+
+  it("returns true for EIP-1193 rejection code", () => {
+    expect(isUserRejectedError({ code: 4001, message: "Request rejected" })).toBe(true);
+  });
+
+  it("returns true for nested rejection cause", () => {
+    const cause = Object.assign(new Error("User denied transaction"), { code: 4001 });
+    const error = new Error("Outer error", { cause });
+    expect(isUserRejectedError(error)).toBe(true);
+  });
+
+  it("returns true for Effect cause", () => {
+    const error = Object.assign(new Error("User rejected the request"), { code: 4001 });
+    const cause = Cause.fail(error);
+    expect(isUserRejectedError(cause)).toBe(true);
+  });
+
+  it("returns false for message-only rejection", () => {
+    expect(isUserRejectedError(new Error("User rejected the request"))).toBe(false);
+  });
+
+  it("returns false for plain Error without rejection", () => {
     expect(isUserRejectedError(new Error("other"))).toBe(false);
   });
 
@@ -42,6 +75,63 @@ describe("isUserRejectedError", () => {
 
   it("returns false for object with different _tag", () => {
     expect(isUserRejectedError({ _tag: "OtherError" })).toBe(false);
+  });
+});
+
+describe("isLikelyUserRejectedError", () => {
+  it("returns true for rejection message", () => {
+    expect(isLikelyUserRejectedError(new Error("User rejected the request"))).toBe(true);
+  });
+
+  it("returns true for string rejection message", () => {
+    expect(isLikelyUserRejectedError("user denied transaction")).toBe(true);
+  });
+
+  it("returns true for message-only object", () => {
+    expect(isLikelyUserRejectedError({ message: "Transaction was rejected by user" })).toBe(true);
+  });
+
+  it("returns true for nested rejection cause", () => {
+    const error = new Error("Outer error", { cause: new Error("User denied transaction") });
+    expect(isLikelyUserRejectedError(error)).toBe(true);
+  });
+
+  it("returns true for strict rejections", () => {
+    const error = Object.assign(new Error("User rejected the request"), { code: 4001 });
+    expect(isLikelyUserRejectedError(error)).toBe(true);
+  });
+
+  it("returns false for unrelated errors", () => {
+    expect(isLikelyUserRejectedError(new Error("network timeout"))).toBe(false);
+  });
+});
+
+describe("isTaggedUserRejectedError", () => {
+  it("returns true for UserRejectedError instance", () => {
+    const error = new UserRejectedError({ message: "User rejected" });
+    expect(isTaggedUserRejectedError(error)).toBe(true);
+  });
+
+  it("returns true for object with matching _tag", () => {
+    const error = { _tag: "UserRejectedError", message: "User rejected" };
+    expect(isTaggedUserRejectedError(error)).toBe(true);
+  });
+
+  it("returns false for other TaggedError", () => {
+    const error = new InsufficientFundsError({
+      available: "0",
+      message: "Not enough funds",
+      required: "100",
+    });
+    expect(isTaggedUserRejectedError(error)).toBe(false);
+  });
+
+  it("returns false for user rejection message", () => {
+    expect(isTaggedUserRejectedError(new Error("User rejected the request"))).toBe(false);
+  });
+
+  it("returns false for EIP-1193 rejection code", () => {
+    expect(isTaggedUserRejectedError({ code: 4001, message: "Request rejected" })).toBe(false);
   });
 });
 
@@ -77,6 +167,12 @@ describe("catchUserRejection", () => {
     if (Exit.isFailure(exit)) {
       expect(exit.cause._tag).toBe("Fail");
     }
+  });
+
+  it("treats user rejection code as fallback", async () => {
+    const effect = Effect.fail({ code: 4001, message: "User rejected the request" });
+    const result = await Effect.runPromise(catchUserRejection(effect, null));
+    expect(result).toBe(null);
   });
 
   it("works with pipeable API", async () => {

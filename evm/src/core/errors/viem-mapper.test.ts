@@ -1,41 +1,26 @@
 import { describe, expect, it } from "vitest";
-
-const REVERT_REASON_STRING_RE = /reverted with reason string ['"](.+)['"]/;
-const REVERT_CUSTOM_ERROR_RE = /reverted with custom error ['"](.+)['"]/;
-const EXECUTION_REVERTED_RE = /execution reverted(?::?\s*)(.+?)(?:\n|$)/i;
+import { extractRevertReason, isInsufficientFunds, isUserRejection } from "./viem-mapper.js";
 
 describe("viem error classification", () => {
   describe("isUserRejection", () => {
-    const isUserRejection = (error: unknown): boolean => {
-      if (error instanceof Error) {
-        const msg = error.message.toLowerCase();
-        return (
-          msg.includes("user rejected") ||
-          msg.includes("user denied") ||
-          msg.includes("rejected by user") ||
-          msg.includes("user rejected request")
-        );
-      }
-      return false;
-    };
-
-    it("detects user rejected request", () => {
-      const error = new Error("User rejected the request");
+    it("detects user rejected request by code", () => {
+      const error = Object.assign(new Error("User rejected the request"), { code: 4001 });
       expect(isUserRejection(error)).toBe(true);
     });
 
-    it("detects user denied transaction", () => {
+    it("detects user rejected request by name", () => {
       const error = new Error("User denied transaction signature");
+      error.name = "UserRejectedRequestError";
       expect(isUserRejection(error)).toBe(true);
     });
 
-    it("detects rejected by user message", () => {
-      const error = new Error("Transaction was rejected by user");
-      expect(isUserRejection(error)).toBe(true);
+    it("detects EIP-1193 rejection code", () => {
+      expect(isUserRejection({ code: 4001, message: "User rejected the request" })).toBe(true);
     });
 
-    it("detects user rejected request with different case", () => {
-      const error = new Error("USER REJECTED REQUEST");
+    it("detects rejection in nested cause", () => {
+      const cause = Object.assign(new Error("User denied transaction signature"), { code: 4001 });
+      const error = new Error("outer", { cause });
       expect(isUserRejection(error)).toBe(true);
     });
 
@@ -53,18 +38,6 @@ describe("viem error classification", () => {
   });
 
   describe("isInsufficientFunds", () => {
-    const isInsufficientFunds = (error: unknown): boolean => {
-      if (error instanceof Error) {
-        const msg = error.message.toLowerCase();
-        return (
-          msg.includes("insufficient funds") ||
-          msg.includes("insufficient balance") ||
-          msg.includes("exceeds balance")
-        );
-      }
-      return false;
-    };
-
     it("detects insufficient funds from error message", () => {
       const error = new Error("insufficient funds for gas");
       expect(isInsufficientFunds(error)).toBe(true);
@@ -87,32 +60,6 @@ describe("viem error classification", () => {
   });
 
   describe("extractRevertReason", () => {
-    const extractRevertReason = (error: unknown): string | undefined => {
-      if (error instanceof Error) {
-        // Try Viem's "execution reverted:" format first
-        const execMatch = error.message.match(EXECUTION_REVERTED_RE);
-        if (execMatch?.[1]) {
-          return execMatch[1].trim();
-        }
-
-        // Try legacy formats
-        const revertMatch = error.message.match(REVERT_REASON_STRING_RE);
-        if (revertMatch) {
-          return revertMatch[1];
-        }
-
-        const customErrorMatch = error.message.match(REVERT_CUSTOM_ERROR_RE);
-        if (customErrorMatch) {
-          return customErrorMatch[1];
-        }
-
-        if (error.message.includes("execution reverted")) {
-          return "execution reverted";
-        }
-      }
-      return;
-    };
-
     it("extracts revert reason from error message", () => {
       const error = new Error("Transaction reverted with reason string 'Insufficient allowance'");
       const reason = extractRevertReason(error);
