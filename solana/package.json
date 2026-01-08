@@ -1,7 +1,7 @@
 {
   "name": "@prb/effect-solana",
   "description": "Effect-TS integration for Solana",
-  "version": "1.0.0-beta.1",
+  "version": "1.0.0-beta.2",
   "type": "module",
   "scripts": {
     "build": "just build",
@@ -25,6 +25,7 @@
   "homepage": "https://github.com/PaulRBerg/prb-effect/tree/main/solana#readme",
   "devDependencies": {
     "@biomejs/biome": "catalog:dev",
+    "@coral-xyz/anchor": "^0.31.1",
     "@effect/platform": "catalog:effect",
     "@effect/vitest": "catalog:dev",
     "@sablier/devkit": "catalog:dev",
@@ -63,6 +64,7 @@
     "CONTRIBUTING.md"
   ],
   "peerDependencies": {
+    "@coral-xyz/anchor": "^0.31.1",
     "@effect/platform": "catalog:peers",
     "effect": "catalog:peers",
     "@solana/kit": "^2.2.0",
@@ -74,6 +76,9 @@
     "react-dom": "catalog:peers"
   },
   "peerDependenciesMeta": {
+    "@coral-xyz/anchor": {
+      "optional": true
+    },
     "@solana/web3.js": {
       "optional": true
     },

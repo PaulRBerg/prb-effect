@@ -102,7 +102,7 @@ export type TransactionServiceShape = {
    */
   readonly sendAndConfirm: (
     instructions: readonly Instruction[],
-    opts?: ConfirmOpts
+    opts?: ConfirmOpts & { computeBudget?: ComputeBudgetConfig }
   ) => Effect.Effect<
     TransactionReceipt,
     | TransactionSendError
@@ -356,7 +356,9 @@ export const TransactionServiceLive = Layer.effect(
 
       sendAndConfirm: (instructions, opts) =>
         Effect.gen(function* () {
-          const tx = yield* service.build(instructions);
+          const tx = yield* service.build(instructions, {
+            computeBudget: opts?.computeBudget,
+          });
           const signed = yield* service.sign(tx);
           const signature = yield* service.send(signed);
           return yield* service.confirm(signature, opts);

@@ -192,6 +192,34 @@ const program = Effect.gen(function* () {
 });
 ```
 
+### ProgramWriter
+
+Build instructions from Anchor IDLs (Solana equivalent of EVM's ContractWriter).
+
+```typescript
+import { ProgramWriter } from "@prb/effect-solana";
+import type { Idl } from "@prb/effect-solana";
+
+const program = Effect.gen(function* () {
+  const writer = yield* ProgramWriter;
+
+  // Build instruction from IDL
+  const instruction = yield* writer.build(
+    idl,
+    {
+      method: "withdraw",
+      args: [amount],
+      accounts: {
+        signer,
+        streamRecipient,
+        // ... other accounts
+      },
+    },
+    programId,
+  );
+});
+```
+
 ### PdaService
 
 Program Derived Address utilities.
@@ -217,6 +245,7 @@ import {
   SignerServiceLive,
   TokenServiceLive,
   TransactionServiceLive,
+  ProgramWriterLive,
 } from "@prb/effect-solana";
 
 // Create custom implementations
@@ -231,7 +260,7 @@ const MySignerLayer = Layer.succeed(SignerService, {
 });
 
 // Compose layers
-const AppLayer = Layer.mergeAll(BalanceServiceLive, TokenServiceLive, TransactionServiceLive).pipe(
+const AppLayer = Layer.mergeAll(BalanceServiceLive, TokenServiceLive, TransactionServiceLive, ProgramWriterLive).pipe(
   Layer.provide(Layer.merge(MyRpcLayer, MySignerLayer)),
 );
 ```
@@ -316,6 +345,10 @@ SpanNames.TOKEN_GET_ACCOUNT;
 
 // PDA operations
 SpanNames.PDA_DERIVE;
+
+// Program operations
+SpanNames.PROGRAM_BUILD;
+SpanNames.PROGRAM_CREATE;
 
 // And more...
 ```
