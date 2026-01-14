@@ -31,7 +31,6 @@ alias b := build
     echo "🔨 Building the package..."
     bun tsc -p tsconfig.build.json
     bun tsc-alias -p tsconfig.build.json
-    npm pack --silent
     echo "✅ Package built successfully"
 
 # ---------------------------------------------------------------------------- #

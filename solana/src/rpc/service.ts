@@ -46,42 +46,40 @@ export class RpcService extends Context.Tag("esolana/RpcService")<RpcService, Rp
  *
  * @category Layers
  */
-export const makeRpcServiceLive = (config: ClusterConfig) => {
-  // Create RPC client once during layer construction
-  const rpcClient = createSolanaRpc(config.rpcUrl);
-
-  // Lazy initialization for WebSocket subscription client
-  let rpcSubscriptionsClient: RpcSubscriptions<SolanaRpcSubscriptionsApi> | null = null;
-
-  return Layer.succeed(
+export const makeRpcServiceLive = (config: ClusterConfig) =>
+  Layer.effect(
     RpcService,
-    RpcService.of({
-      getCluster: () => Effect.succeed(config.cluster),
+    Effect.gen(function* () {
+      // Create RPC client once during layer construction
+      const rpcClient = createSolanaRpc(config.rpcUrl);
 
-      getRpc: () => Effect.succeed(rpcClient),
+      // Memoized WebSocket subscription client - created once on first access
+      const getCachedSubscriptions = yield* Effect.cachedFunction((wsUrl: string) =>
+        Effect.sync(() => createSolanaRpcSubscriptions(wsUrl))
+      );
 
-      getRpcSubscriptions: () => {
-        const wsUrl = config.wsUrl;
-        if (!wsUrl) {
-          return Effect.fail(
-            new ConnectionNotFoundError({
-              cluster: config.cluster,
-              message: `WebSocket URL not configured for cluster: ${config.cluster}`,
-            })
-          );
-        }
-        return Effect.sync(() => {
-          if (!rpcSubscriptionsClient) {
-            rpcSubscriptionsClient = createSolanaRpcSubscriptions(wsUrl);
+      return RpcService.of({
+        getCluster: () => Effect.succeed(config.cluster),
+
+        getRpc: () => Effect.succeed(rpcClient),
+
+        getRpcSubscriptions: () => {
+          const wsUrl = config.wsUrl;
+          if (!wsUrl) {
+            return Effect.fail(
+              new ConnectionNotFoundError({
+                cluster: config.cluster,
+                message: `WebSocket URL not configured for cluster: ${config.cluster}`,
+              })
+            );
           }
-          return rpcSubscriptionsClient;
-        });
-      },
+          return getCachedSubscriptions(wsUrl);
+        },
 
-      getRpcUrl: () => Effect.succeed(config.rpcUrl),
+        getRpcUrl: () => Effect.succeed(config.rpcUrl),
+      });
     })
   );
-};
 
 /**
  * Default devnet configuration for development.

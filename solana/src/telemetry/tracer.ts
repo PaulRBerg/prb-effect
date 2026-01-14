@@ -37,6 +37,11 @@ export const SpanNames = {
   PDA_DERIVE_ADDRESS: "esol.pda.deriveAddress",
   PDA_DERIVE_BUMP: "esol.pda.deriveBump",
   PDA_FIND: "esol.pda.find",
+
+  // Program Operations
+  PROGRAM_BUILD: "esol.program.build",
+  PROGRAM_BUILD_INSTRUCTION: "esol.program.buildInstruction",
+  PROGRAM_CREATE: "esol.program.create",
   RPC_GET_ACCOUNT_INFO: "esol.rpc.getAccountInfo",
   // RPC Operations
   RPC_GET_BALANCE: "esol.rpc.getBalance",

@@ -47,11 +47,11 @@ alias bt := build-tgz
     na vitest {{ args }}
 alias tu := test-unit
 
-# Run unit tests with UI
+# Run integration tests for all packages
 [group("tests")]
-@test-unit-ui:
-    na vitest --ui
-alias tuui := test-unit-ui
+@test-integration +args="":
+    na vitest run '.integration.' {{ args }}
+alias ti := test-integration
 
 # ---------------------------------------------------------------------------- #
 #                                    TYPE CHECK                                #

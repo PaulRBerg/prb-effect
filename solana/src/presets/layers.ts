@@ -3,6 +3,8 @@ import type { BalanceService } from "@/src/balance/index.js";
 import { BalanceServiceLive } from "@/src/balance/index.js";
 import type { PdaService } from "@/src/pda/index.js";
 import { PdaServiceLive } from "@/src/pda/index.js";
+import type { ProgramWriter } from "@/src/program/index.js";
+import { ProgramWriterLive } from "@/src/program/index.js";
 import type { RpcService } from "@/src/rpc/index.js";
 import { makeRpcServiceLive } from "@/src/rpc/index.js";
 import type { SignerService, WalletAdapter } from "@/src/signer/index.js";
@@ -88,7 +90,7 @@ export function makeRpcLayer(config: SolanaClusterConfig): Layer.Layer<RpcServic
 }
 
 /**
- * Compose all application services (Balance, Token, Transaction, PDA).
+ * Compose all application services (Balance, Token, Transaction, PDA, ProgramWriter).
  * Requires RpcService and SignerService to be provided.
  *
  * @category Layers
@@ -111,7 +113,8 @@ export const effectSolanaServices = Layer.mergeAll(
   BalanceServiceLive,
   TokenServiceLive,
   TransactionServiceLive,
-  PdaServiceLive
+  PdaServiceLive,
+  ProgramWriterLive
 );
 
 /**
@@ -179,7 +182,13 @@ export function makeSolanaLayer(
   config: SolanaClusterConfig,
   getAdapter: () => WalletAdapter
 ): Layer.Layer<
-  RpcService | SignerService | BalanceService | TokenService | TransactionService | PdaService
+  | RpcService
+  | SignerService
+  | BalanceService
+  | TokenService
+  | TransactionService
+  | PdaService
+  | ProgramWriter
 > {
   const rpcLayer = makeRpcLayer(config);
   const signerLayer = makeSignerLayer(getAdapter);

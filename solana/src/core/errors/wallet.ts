@@ -11,10 +11,3 @@ export class SignatureError extends Schema.TaggedError<SignatureError>()("Signat
   cause: Schema.optional(Schema.Unknown),
   message: Schema.String,
 }) {}
-
-export class UserRejectedError extends Schema.TaggedError<UserRejectedError>()(
-  "UserRejectedError",
-  {
-    message: Schema.String,
-  }
-) {}

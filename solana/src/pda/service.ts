@@ -2,6 +2,7 @@ import type { Address, ProgramDerivedAddressBump } from "@solana/addresses";
 import { getAddressEncoder, getProgramDerivedAddress } from "@solana/addresses";
 import { Context, Effect, Layer } from "effect";
 import { SpanNames } from "@/src/telemetry/index.js";
+import { PdaDerivationError } from "./types.js";
 
 export type PdaSeed = Uint8Array | Address;
 
@@ -16,7 +17,7 @@ export type PdaServiceShape = {
   readonly derive: (
     seeds: readonly PdaSeed[],
     programAddress: Address
-  ) => Effect.Effect<ProgramDerivedAddress>;
+  ) => Effect.Effect<ProgramDerivedAddress, PdaDerivationError>;
 
   /**
    * Derive a PDA and return only the address (without bump).
@@ -24,7 +25,7 @@ export type PdaServiceShape = {
   readonly deriveAddress: (
     seeds: readonly PdaSeed[],
     programAddress: Address
-  ) => Effect.Effect<Address>;
+  ) => Effect.Effect<Address, PdaDerivationError>;
 
   /**
    * Derive a PDA and return only the bump seed.
@@ -32,7 +33,7 @@ export type PdaServiceShape = {
   readonly deriveBump: (
     seeds: readonly PdaSeed[],
     programAddress: Address
-  ) => Effect.Effect<ProgramDerivedAddressBump>;
+  ) => Effect.Effect<ProgramDerivedAddressBump, PdaDerivationError>;
 };
 
 export class PdaService extends Context.Tag("esolana/PdaService")<PdaService, PdaServiceShape>() {}
@@ -56,12 +57,19 @@ const makeService = (): PdaServiceShape => {
     derive: (seeds, programAddress) =>
       Effect.gen(function* () {
         const seedBytes = seeds.map(toSeedBytes);
-        return yield* Effect.promise(() =>
-          getProgramDerivedAddress({
-            programAddress,
-            seeds: seedBytes,
-          })
-        );
+        return yield* Effect.tryPromise({
+          catch: (cause) =>
+            new PdaDerivationError({
+              cause,
+              message: `Failed to derive PDA for program ${programAddress}`,
+              programAddress,
+            }),
+          try: () =>
+            getProgramDerivedAddress({
+              programAddress,
+              seeds: seedBytes,
+            }),
+        });
       }).pipe(
         Effect.withSpan(SpanNames.PDA_DERIVE, {
           attributes: {

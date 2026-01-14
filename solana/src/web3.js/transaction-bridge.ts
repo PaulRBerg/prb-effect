@@ -20,14 +20,20 @@ function getDecoder() {
 }
 
 /**
- * Detect if a transaction is versioned by checking the first byte.
- * Versioned transactions have bit 7 set (0x80).
+ * Detect if a serialized transaction contains a versioned message.
+ *
+ * Wire format: [signature_count (compact-u16)] [signatures (64 bytes each)] [message]
+ * Versioned messages have bit 7 set (0x80) in the first message byte.
  *
  * @internal
  */
-function isVersionedMessage(messageBytes: Uint8Array): boolean {
-  // biome-ignore lint/suspicious/noBitwiseOperators: Checking version bit in transaction message
-  return (messageBytes[0] & 0x80) !== 0;
+function isVersionedMessage(wireBytes: Uint8Array): boolean {
+  // First byte is signature count (compact-u16, but < 128 signatures = 1 byte)
+  const signatureCount = wireBytes[0] ?? 0;
+  // Message starts after: 1 byte count + (signatureCount * 64 bytes)
+  const messageOffset = 1 + signatureCount * 64;
+  // biome-ignore lint/suspicious/noBitwiseOperators: Checking version bit
+  return ((wireBytes[messageOffset] ?? 0) & 0x80) !== 0;
 }
 
 /**

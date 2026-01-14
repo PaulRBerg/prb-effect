@@ -79,7 +79,17 @@ export function makeSignerServiceFromLegacyAdapter(
 
           // Convert all kit → web3.js
           const legacyTxs = yield* Effect.all(
-            txs.map((tx) => Effect.promise(() => toWeb3Transaction(tx)))
+            txs.map((tx) =>
+              Effect.tryPromise({
+                catch: (cause) =>
+                  new SignatureError({
+                    cause,
+                    message:
+                      cause instanceof Error ? cause.message : "Failed to convert transaction",
+                  }),
+                try: () => toWeb3Transaction(tx),
+              })
+            )
           );
 
           // Sign all with legacy adapter
@@ -109,7 +119,14 @@ export function makeSignerServiceFromLegacyAdapter(
           }
 
           // Convert kit → web3.js
-          const legacyTx = yield* Effect.promise(() => toWeb3Transaction(tx));
+          const legacyTx = yield* Effect.tryPromise({
+            catch: (cause) =>
+              new SignatureError({
+                cause,
+                message: cause instanceof Error ? cause.message : "Failed to convert transaction",
+              }),
+            try: () => toWeb3Transaction(tx),
+          });
 
           // Sign with legacy adapter
           const signed = yield* Effect.tryPromise({

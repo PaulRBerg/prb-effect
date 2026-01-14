@@ -15,14 +15,16 @@ Type-safe, composable Solana abstractions built on Effect-TS and @solana/kit. Ex
 - `TokenService` — SPL token operations (ATA, balances)
 - `TransactionService` — Transaction lifecycle (build, sign, send, confirm)
 - `PdaService` — Program Derived Address utilities
+- `ProgramWriter` — Anchor IDL-based instruction building
 
 **High-level flow:**
 
 1. Configure cluster and RPC endpoints
 2. Provide a Layer (`RpcServiceLive`, `SignerServiceLive`, etc.)
 3. Read SOL/token balances via `BalanceService`/`TokenService`
-4. Execute transactions via `TransactionService`
-5. Use telemetry spans for observability
+4. Build instructions via `ProgramWriter` (from Anchor IDL)
+5. Execute transactions via `TransactionService`
+6. Use telemetry spans for observability
 
 ## Commands
 
@@ -44,13 +46,17 @@ src/
 ├── core/           # Core errors (RPC, transaction, wallet, account)
 ├── internal/       # Internal utilities (not exported)
 ├── pda/            # PDA derivation utilities
+├── presets/        # Layer factories for common setups
+├── program/        # ProgramWriter (Anchor IDL → instructions)
 ├── react-hooks/    # React integration hooks
 ├── rpc/            # RpcService
 ├── signer/         # SignerService
 ├── telemetry/      # Span names for tracing
+├── testing-kit/    # Test utilities (mocks, fixtures)
 ├── token/          # SPL token operations
 ├── tx/             # TransactionService
 ├── types/          # Shared type definitions
+├── web3.js/        # @solana/web3.js v1 interop (legacy signer, transaction bridge)
 └── index.ts        # Barrel exports
 ```
 

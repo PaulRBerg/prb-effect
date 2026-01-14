@@ -20,6 +20,27 @@ bun run lint        # Lint
 bun run format      # Format
 ```
 
+## Module Structure
+
+```
+src/
+├── action/         # Server action utilities (runServerAction)
+├── cache/          # Request-scoped cache utilities
+├── env/            # Environment variable helpers
+├── handlers/       # Route handlers (GET, POST, etc.)
+├── headers/        # Headers and Cookies services
+├── middleware/     # Composable middleware via Layers
+├── navigation/     # Navigation utilities
+├── params/         # Route/search params services
+├── react-cache/    # React cache integration
+├── react-hooks/    # Client-side Effect hooks
+├── runtime/        # Effect runtime management
+├── server-actions/ # Server action wrappers
+├── telemetry/      # OpenTelemetry and Sentry integration
+├── testing-kit/    # Test utilities (exported as effect-next/testing-kit)
+└── index.ts        # Barrel exports
+```
+
 ## Server/Client Boundaries
 
 - `"use client"` directive for client-only files (hooks, browser APIs)
