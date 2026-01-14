@@ -29,11 +29,14 @@ describe("viem error classification", () => {
       expect(isUserRejection(error)).toBe(false);
     });
 
-    it("returns false for non-Error objects", () => {
+    it("returns false for non-Error objects without rejection indicators", () => {
       expect(isUserRejection("string error")).toBe(false);
       expect(isUserRejection(null)).toBe(false);
       expect(isUserRejection(undefined)).toBe(false);
-      expect(isUserRejection({ message: "user rejected" })).toBe(false);
+      // Plain objects with rejection message are now detected (lenient matching)
+      expect(isUserRejection({ message: "user rejected" })).toBe(true);
+      // But objects without rejection indicators return false
+      expect(isUserRejection({ message: "network error" })).toBe(false);
     });
   });
 

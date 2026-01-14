@@ -6,8 +6,8 @@
 import { Schema } from "effect";
 
 /** Gas consumption exceeds block gas limit threshold */
-export class GasLimitExceededError extends Schema.TaggedError<GasLimitExceededError>()(
-  "GasLimitExceededError",
+export class GasLimitOverflowError extends Schema.TaggedError<GasLimitOverflowError>()(
+  "GasLimitOverflowError",
   {
     blockGasLimit: Schema.BigInt,
     estimatedGas: Schema.BigInt,

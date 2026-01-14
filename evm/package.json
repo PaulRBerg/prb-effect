@@ -1,7 +1,7 @@
 {
   "name": "@prb/effect-evm",
   "description": "Effect-TS integration for EVM and viem",
-  "version": "1.0.0-beta.1",
+  "version": "1.0.0-beta.2",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

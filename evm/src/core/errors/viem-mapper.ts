@@ -16,7 +16,7 @@ import {
 } from "@/src/core/errors/contract.js";
 import {
   InsufficientFundsError,
-  isUserRejectedError,
+  isLikelyUserRejectedError,
   UserRejectedError,
 } from "@/src/core/errors/transaction.js";
 import {
@@ -30,15 +30,17 @@ import {
 } from "@/src/wallet/index.js";
 
 const REVERT_REASON_RE = /reverted with reason: (.+?)(?:\n|$)/;
+const REVERT_REASON_STRING_RE = /reverted with reason string '(.+?)'/;
 const REVERT_CUSTOM_ERROR_RE = /reverted with custom error '(.+?)'/;
 const EXECUTION_REVERTED_RE = /execution reverted(?::?\s*)(.+?)(?:\n|$)/i;
+const EXECUTION_REVERTED_GENERIC_RE = /execution reverted/i;
 const TX_HASH_RE = /0x[a-fA-F0-9]{64}/;
 
 /**
  * Check if an error represents a user rejection (wallet user denied the request)
  */
 export function isUserRejection(error: unknown): boolean {
-  return isUserRejectedError(error) || error instanceof UserRejectedRequestError;
+  return isLikelyUserRejectedError(error) || error instanceof UserRejectedRequestError;
 }
 
 /**
@@ -107,7 +109,13 @@ export function extractRevertReason(error: unknown): string | undefined {
 
   // Fall back to regex matching on message
   if (error instanceof Error) {
-    // Try Viem's "execution reverted:" format first
+    // Try "reason string '...'" format (e.g., "Transaction reverted with reason string 'Insufficient allowance'")
+    const reasonStringMatch = error.message.match(REVERT_REASON_STRING_RE);
+    if (reasonStringMatch?.[1]) {
+      return reasonStringMatch[1];
+    }
+
+    // Try Viem's "execution reverted:" format with a reason
     const execMatch = error.message.match(EXECUTION_REVERTED_RE);
     if (execMatch?.[1]) {
       return execMatch[1].trim();
@@ -122,6 +130,11 @@ export function extractRevertReason(error: unknown): string | undefined {
     const customMatch = error.message.match(REVERT_CUSTOM_ERROR_RE);
     if (customMatch?.[1]) {
       return customMatch[1];
+    }
+
+    // Check for generic "execution reverted" without specific reason
+    if (EXECUTION_REVERTED_GENERIC_RE.test(error.message)) {
+      return "execution reverted";
     }
   }
 

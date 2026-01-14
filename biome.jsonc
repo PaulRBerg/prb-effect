@@ -42,7 +42,7 @@
       }
     },
     {
-      "includes": ["**/*.test.ts"],
+      "includes": ["**/*.test.ts", "**/*.test.integration.ts"],
       "linter": {
         "rules": {
           "suspicious": {

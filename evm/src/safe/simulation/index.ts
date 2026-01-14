@@ -10,7 +10,7 @@ export {
 // Encoding utilities
 export { decodeSimulationData, encodeMultiSend } from "./encoding.js";
 export {
-  GasLimitExceededError,
+  GasLimitOverflowError,
   InvalidGasThresholdError,
   SafeContractsNotDeployedError,
   SafeSimulationFailedError,

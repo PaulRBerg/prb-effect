@@ -13,6 +13,7 @@ export default mergeConfig(
       alias: { "@/src": srcDir },
     },
     test: {
+      exclude: ["src/**/*.test.integration.ts"],
       include: ["src/**/*.test.ts"],
       name: "evm",
       retry: CI ? 3 : 0,

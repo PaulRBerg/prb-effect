@@ -15,7 +15,7 @@ import { safeAbis } from "./abis.js";
 import { getMultiSendAddress, getSimulateAccessorAddress } from "./addresses.js";
 import { decodeSimulationData, encodeMultiSend } from "./encoding.js";
 import {
-  GasLimitExceededError,
+  GasLimitOverflowError,
   InvalidGasThresholdError,
   SafeContractsNotDeployedError,
   SafeSimulationFailedError,
@@ -44,7 +44,7 @@ export type SafeSimulationServiceShape = {
     | TransactionSizeTooLargeError
     | SafeSimulationFailedError
     | SimulationDecodeError
-    | GasLimitExceededError
+    | GasLimitOverflowError
   >;
 };
 
@@ -225,7 +225,7 @@ export const SafeSimulationServiceLive = Layer.effect(
 
           if (result.success && result.gas > threshold) {
             return yield* Effect.fail(
-              new GasLimitExceededError({
+              new GasLimitOverflowError({
                 blockGasLimit: block.gasLimit,
                 estimatedGas: result.gas,
                 message:
