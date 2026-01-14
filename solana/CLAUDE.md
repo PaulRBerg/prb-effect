@@ -44,13 +44,16 @@ src/
 ├── core/           # Core errors (RPC, transaction, wallet, account)
 ├── internal/       # Internal utilities (not exported)
 ├── pda/            # PDA derivation utilities
+├── presets/        # Layer factories for common setups
 ├── react-hooks/    # React integration hooks
 ├── rpc/            # RpcService
 ├── signer/         # SignerService
 ├── telemetry/      # Span names for tracing
+├── testing-kit/    # Test utilities (mocks, fixtures)
 ├── token/          # SPL token operations
 ├── tx/             # TransactionService
 ├── types/          # Shared type definitions
+├── web3.js/        # @solana/web3.js v1 interop (legacy signer, transaction bridge)
 └── index.ts        # Barrel exports
 ```
 

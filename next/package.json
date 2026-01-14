@@ -3,6 +3,10 @@
   "description": "Effect-TS integration for Next.js",
   "version": "1.0.0-beta.1",
   "type": "module",
+  "scripts": {
+    "build": "just build",
+    "prepack": "bun install --frozen-lockfile && just build"
+  },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "author": {
