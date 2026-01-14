@@ -27,7 +27,7 @@ export type TokenServiceShape = {
   /**
    * Get the Associated Token Account address for an owner and mint.
    */
-  readonly getAssociatedTokenAddress: (params: ATAParams) => Effect.Effect<Address>;
+  readonly getAssociatedTokenAddress: (params: ATAParams) => Effect.Effect<Address, Error>;
 
   /**
    * Get or create an Associated Token Account.
@@ -38,7 +38,7 @@ export type TokenServiceShape = {
       address: Address;
       instruction?: Instruction;
     },
-    RpcError
+    Error | RpcError
   >;
 
   /**
@@ -91,13 +91,18 @@ export const TokenServiceLive = Layer.effect(
       getAssociatedTokenAddress: (params) =>
         Effect.gen(function* () {
           const tokenProgram = params.tokenProgram ?? TOKEN_PROGRAM_ADDRESS;
-          const pda = yield* Effect.promise(() =>
-            findAssociatedTokenPda({
-              mint: params.mint,
-              owner: params.owner,
-              tokenProgram,
-            })
-          );
+          const pda = yield* Effect.tryPromise({
+            catch: (cause) =>
+              new Error(`Failed to derive ATA for mint ${params.mint} and owner ${params.owner}`, {
+                cause,
+              }),
+            try: () =>
+              findAssociatedTokenPda({
+                mint: params.mint,
+                owner: params.owner,
+                tokenProgram,
+              }),
+          });
           return pda[0];
         }).pipe(
           Effect.withSpan(SpanNames.TOKEN_GET_ATA, {
@@ -142,13 +147,18 @@ export const TokenServiceLive = Layer.effect(
       getOrCreateATA: (params) =>
         Effect.gen(function* () {
           const tokenProgram = params.tokenProgram ?? TOKEN_PROGRAM_ADDRESS;
-          const pda = yield* Effect.promise(() =>
-            findAssociatedTokenPda({
-              mint: params.mint,
-              owner: params.owner,
-              tokenProgram,
-            })
-          );
+          const pda = yield* Effect.tryPromise({
+            catch: (cause) =>
+              new Error(`Failed to derive ATA for mint ${params.mint} and owner ${params.owner}`, {
+                cause,
+              }),
+            try: () =>
+              findAssociatedTokenPda({
+                mint: params.mint,
+                owner: params.owner,
+                tokenProgram,
+              }),
+          });
           const ata = pda[0];
 
           const rpc = yield* rpcService.getRpc();
@@ -175,15 +185,21 @@ export const TokenServiceLive = Layer.effect(
           // The actual signing happens later via TransactionService
           const payerSigner = createNoopSigner(params.payer);
 
-          const instruction = yield* Effect.promise(() =>
-            getCreateAssociatedTokenIdempotentInstructionAsync({
-              ata,
-              mint: params.mint,
-              owner: params.owner,
-              payer: payerSigner,
-              tokenProgram,
-            })
-          );
+          const instruction = yield* Effect.tryPromise({
+            catch: (cause) =>
+              new Error(
+                `Failed to create ATA instruction for mint ${params.mint} and owner ${params.owner}`,
+                { cause }
+              ),
+            try: () =>
+              getCreateAssociatedTokenIdempotentInstructionAsync({
+                ata,
+                mint: params.mint,
+                owner: params.owner,
+                payer: payerSigner,
+                tokenProgram,
+              }),
+          });
 
           return { address: ata, instruction };
         }).pipe(

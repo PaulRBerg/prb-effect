@@ -168,9 +168,18 @@ const checkSignatureStatus = (
   rpc: Effect.Effect.Success<ReturnType<RpcServiceShape["getRpc"]>>,
   signature: Signature,
   commitment: "processed" | "confirmed" | "finalized"
-): Effect.Effect<TransactionReceipt | null, TransactionFailedError | never> =>
+): Effect.Effect<TransactionReceipt | null, TransactionFailedError> =>
   Effect.gen(function* () {
-    const response = yield* Effect.promise(() => rpc.getSignatureStatuses([signature]).send());
+    const response = yield* Effect.tryPromise({
+      catch: (cause) =>
+        new TransactionFailedError({
+          cause,
+          logs: [],
+          message: "Failed to get signature status",
+          signature,
+        }),
+      try: () => rpc.getSignatureStatuses([signature]).send(),
+    });
 
     const status = response?.value?.[0];
     if (!status) {

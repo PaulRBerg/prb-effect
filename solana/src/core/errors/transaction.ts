@@ -26,6 +26,7 @@ export class TransactionSendError extends Schema.TaggedError<TransactionSendErro
 export class TransactionFailedError extends Schema.TaggedError<TransactionFailedError>()(
   "TransactionFailedError",
   {
+    cause: Schema.optional(Schema.Unknown),
     logs: Schema.optional(Schema.Array(Schema.String)),
     message: Schema.String,
     signature: Schema.String,

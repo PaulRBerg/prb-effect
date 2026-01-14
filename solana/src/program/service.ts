@@ -190,27 +190,28 @@ export const ProgramWriterLive = Layer.effect(
             );
           }
 
-          try {
-            // Convert args to Anchor format (bigint -> BN)
-            const anchorArgs = toAnchorArgs(args);
+          // Convert args to Anchor format (bigint -> BN)
+          const anchorArgs = toAnchorArgs(args);
 
-            // Convert accounts to PublicKeys
-            const anchorAccounts = toAnchorAccounts(accounts);
+          // Convert accounts to PublicKeys
+          const anchorAccounts = toAnchorAccounts(accounts);
 
-            // Build instruction using Anchor's fluent API
-            const builder = (methodFn as (...methodArgs: unknown[]) => unknown)(...anchorArgs);
-            const withAccounts = (
-              builder as { accountsPartial: (a: unknown) => unknown }
-            ).accountsPartial(anchorAccounts);
-            const anchorInstruction = yield* Effect.promise(() =>
-              (withAccounts as { instruction: () => Promise<TransactionInstruction> }).instruction()
-            );
+          // Build instruction using Anchor's fluent API
+          const builder = (methodFn as (...methodArgs: unknown[]) => unknown)(...anchorArgs);
+          const withAccounts = (
+            builder as { accountsPartial: (a: unknown) => unknown }
+          ).accountsPartial(anchorAccounts);
 
-            // Convert to Solana kit format
-            return toKitInstruction(anchorInstruction);
-          } catch (error) {
-            return yield* Effect.fail(new InstructionBuildError(method, error));
-          }
+          const anchorInstruction = yield* Effect.tryPromise({
+            catch: (error) => new InstructionBuildError(method, error),
+            try: () =>
+              (
+                withAccounts as { instruction: () => Promise<TransactionInstruction> }
+              ).instruction(),
+          });
+
+          // Convert to Solana kit format
+          return toKitInstruction(anchorInstruction);
         }).pipe(
           Effect.withSpan(SpanNames.PROGRAM_BUILD_INSTRUCTION, {
             attributes: { method: params.method },
@@ -226,25 +227,25 @@ export const ProgramWriterLive = Layer.effect(
           // Build IDL with address override if provided
           const idlWithAddress = programId ? { ...idl, address: programId as string } : idl;
 
-          try {
-            // Create Program with a dummy provider (we're only using it for instruction building)
-            // Anchor requires a provider but we only need the IDL parsing
-            const program = new Program(
-              idlWithAddress as Idl,
-              {
-                connection: {
-                  getAccountInfo: (pubkey: PublicKey) =>
-                    rpc.getAccountInfo(pubkey.toBase58() as Address, { encoding: "base64" }).send(),
-                  // Minimal connection interface for Anchor
-                  getLatestBlockhash: () => rpc.getLatestBlockhash().send(),
-                } as unknown as Program["provider"]["connection"],
-              } as unknown as Program["provider"]
-            );
-
-            return program as unknown as Program<typeof params.idl>;
-          } catch (error) {
-            return yield* Effect.fail(new ProgramCreationError(error));
-          }
+          return yield* Effect.try({
+            catch: (error) => new ProgramCreationError(error),
+            try: () =>
+              // Create Program with a dummy provider (we're only using it for instruction building)
+              // Anchor requires a provider but we only need the IDL parsing
+              new Program(
+                idlWithAddress as Idl,
+                {
+                  connection: {
+                    getAccountInfo: (pubkey: PublicKey) =>
+                      rpc
+                        .getAccountInfo(pubkey.toBase58() as Address, { encoding: "base64" })
+                        .send(),
+                    // Minimal connection interface for Anchor
+                    getLatestBlockhash: () => rpc.getLatestBlockhash().send(),
+                  } as unknown as Program["provider"]["connection"],
+                } as unknown as Program["provider"]
+              ) as unknown as Program<typeof params.idl>,
+          });
         }).pipe(Effect.withSpan(SpanNames.PROGRAM_CREATE)),
     };
 
