@@ -47,6 +47,12 @@ alias bt := build-tgz
     na vitest {{ args }}
 alias tu := test-unit
 
+# Run integration tests for all packages
+[group("tests")]
+@test-integration +args="":
+    na vitest run '.integration.' {{ args }}
+alias ti := test-integration
+
 # ---------------------------------------------------------------------------- #
 #                                    TYPE CHECK                                #
 # ---------------------------------------------------------------------------- #

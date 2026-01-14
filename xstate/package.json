@@ -1,7 +1,7 @@
 {
   "name": "@prb/effect-xstate",
   "description": "Effect-TS and xState v5 workflow utilities",
-  "version": "1.0.0-beta.0",
+  "version": "1.0.0-beta.1",
   "type": "module",
   "scripts": {
     "build": "just build",
