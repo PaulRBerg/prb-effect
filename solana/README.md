@@ -1,8 +1,12 @@
 # @prb/effect-solana
 
-Effect-TS integration for the Solana blockchain ecosystem.
+[![npm version](https://img.shields.io/npm/v/@prb/effect-solana.svg)](https://www.npmjs.com/package/@prb/effect-solana)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## Installation
+Effect-TS integration for the Solana blockchain ecosystem. Type-safe, composable abstractions built on
+[@solana/kit](https://github.com/solana-labs/solana-web3.js) v2.
+
+## 📦 Installation
 
 ```bash
 npm install @prb/effect-solana effect @solana/kit
@@ -12,34 +16,46 @@ pnpm add @prb/effect-solana effect @solana/kit
 bun add @prb/effect-solana effect @solana/kit
 ```
 
-## Quick Start
+### Peer Dependencies
+
+Required:
+
+- `effect` ^3.x
+- `@solana/kit` ^2.2.0
+- `@solana-program/system` ^0.8.0
+- `@solana-program/token` ^0.8.0
+- `@solana-program/compute-budget` ^0.8.0
+
+Optional:
+
+- `@coral-xyz/anchor` ^0.31.1 (for Anchor IDL support)
+- `@solana/web3.js` ^1.95.0 (for legacy interop)
+- `react`, `react-dom` (for React hooks)
+
+## 🚀 Quick Start
 
 ```typescript
 import { Effect, Layer } from "effect";
-import { BalanceService, BalanceServiceLive, RpcService, RpcServiceLive } from "@prb/effect-solana";
+import { BalanceService, makeSolanaLayer } from "@prb/effect-solana";
 import type { Address } from "@solana/kit";
 
-// Create a custom RPC layer
-const MyRpcLayer = Layer.succeed(RpcService, {
-  getRpc: () => Effect.succeed(/* your RPC client */),
-  getRpcUrl: () => Effect.succeed("https://api.devnet.solana.com"),
-});
-
-// Compose with BalanceService
-const MainLayer = BalanceServiceLive.pipe(Layer.provide(MyRpcLayer));
+// Create a complete Solana layer
+const SolanaLayer = makeSolanaLayer(
+  { cluster: "devnet" },
+  () => walletAdapter, // your wallet adapter
+);
 
 // Read SOL balance
 const program = Effect.gen(function* () {
   const balance = yield* BalanceService;
   const address = "YOUR_ADDRESS" as Address;
-  const sol = yield* balance.getSolBalance(address);
-  console.log(`Balance: ${sol} lamports`);
+  return yield* balance.getSolBalance(address);
 });
 
-Effect.runPromise(Effect.provide(program, MainLayer));
+Effect.runPromise(Effect.provide(program, SolanaLayer));
 ```
 
-## Services
+## 🔧 Services
 
 ### RpcService
 
@@ -98,10 +114,10 @@ const program = Effect.gen(function* () {
 
 ### TokenService
 
-SPL token operations.
+SPL token operations (supports both Token and Token-2022 programs).
 
 ```typescript
-import { TokenService } from "@prb/effect-solana";
+import { TokenService, TOKEN_2022_PROGRAM_ADDRESS } from "@prb/effect-solana";
 
 const program = Effect.gen(function* () {
   const token = yield* TokenService;
@@ -109,7 +125,7 @@ const program = Effect.gen(function* () {
   // Get associated token address
   const ata = yield* token.getAssociatedTokenAddress({ owner, mint });
 
-  // Token-2022: pass tokenProgram to work with Token-2022 mints
+  // Token-2022 support
   const ata2022 = yield* token.getAssociatedTokenAddress({
     owner,
     mint,
@@ -117,16 +133,14 @@ const program = Effect.gen(function* () {
   });
 
   // Get or create ATA
-  const { address, instruction } = yield* token.getOrCreateATA({ owner, mint, payer });
+  const { address, instruction } = yield* token.getOrCreateATA({
+    owner,
+    mint,
+    payer,
+  });
 
   // Get token balance
   const balance = yield* token.getTokenBalance(ata);
-
-  // Get mint account
-  const mint = yield* token.getMint(params.mint);
-
-  // Get token account
-  const account = yield* token.getTokenAccount(ata);
 
   // Build transfer instruction
   const transfer = yield* token.getTransferInstruction({
@@ -135,17 +149,6 @@ const program = Effect.gen(function* () {
     authority: owner,
     amount: 1_000_000n,
   });
-
-  const transfer2022 = yield* token.getTransferInstruction({
-    source: ata2022,
-    destination: recipientAta2022,
-    authority: owner,
-    amount: 1_000_000n,
-    tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
-  });
-
-  // Check if token account exists
-  const exists = yield* token.tokenAccountExists(ata);
 });
 ```
 
@@ -159,42 +162,35 @@ import { TransactionService } from "@prb/effect-solana";
 const program = Effect.gen(function* () {
   const tx = yield* TransactionService;
 
-  // Build transaction
+  // Build transaction with compute budget
   const message = yield* tx.build(instructions, {
     computeBudget: { unitLimit: 600_000, microLamports: 10_000 },
   });
 
-  // Sign transaction
+  // Sign, send, and confirm
   const signed = yield* tx.sign(message);
-
-  // Send transaction
   const signature = yield* tx.send(signed);
-
-  // Confirm transaction
   const receipt = yield* tx.confirm(signature, {
     commitment: "confirmed",
     timeout: 60_000,
   });
 
-  // Or do all at once
+  // Or all at once
   const receipt2 = yield* tx.sendAndConfirm(instructions, {
     commitment: "confirmed",
   });
 
-  // Batch send and confirm
-  const receipts = yield* tx.sendAndConfirmBatch(
-    [{ instructions }, { instructions: [instruction2], computeBudget: { unitLimit: 300_000 } }],
-    { concurrency: 2, confirm: { commitment: "confirmed" } },
-  );
-
-  // Simulate before sending
-  yield* tx.simulate(message);
+  // Batch transactions
+  const receipts = yield* tx.sendAndConfirmBatch([{ instructions }, { instructions: [instruction2] }], {
+    concurrency: 2,
+    confirm: { commitment: "confirmed" },
+  });
 });
 ```
 
 ### ProgramWriter
 
-Build instructions from Anchor IDLs (Solana equivalent of EVM's ContractWriter).
+Build instructions from Anchor IDLs.
 
 ```typescript
 import { ProgramWriter } from "@prb/effect-solana";
@@ -203,17 +199,12 @@ import type { Idl } from "@prb/effect-solana";
 const program = Effect.gen(function* () {
   const writer = yield* ProgramWriter;
 
-  // Build instruction from IDL
   const instruction = yield* writer.build(
     idl,
     {
       method: "withdraw",
       args: [amount],
-      accounts: {
-        signer,
-        streamRecipient,
-        // ... other accounts
-      },
+      accounts: { signer, streamRecipient /* ... */ },
     },
     programId,
   );
@@ -233,16 +224,29 @@ const program = Effect.gen(function* () {
 });
 ```
 
-## Layer Composition
+## 🧩 Layer Composition
 
-Compose services to build your application layer:
+### Using Presets
+
+```typescript
+import { makeSolanaLayer, makeRpcLayer, makeSignerLayer } from "@prb/effect-solana";
+
+// Complete layer with all services
+const AppLayer = makeSolanaLayer({ cluster: "devnet" }, () => walletAdapter);
+
+// Or compose manually
+const rpcLayer = makeRpcLayer({ cluster: "devnet", rpcUrl: "https://my-rpc.com" });
+const signerLayer = makeSignerLayer(() => walletAdapter);
+```
+
+### Manual Composition
 
 ```typescript
 import { Layer } from "effect";
 import {
   BalanceServiceLive,
-  RpcServiceLive,
-  SignerServiceLive,
+  RpcService,
+  SignerService,
   TokenServiceLive,
   TransactionServiceLive,
   ProgramWriterLive,
@@ -265,106 +269,15 @@ const AppLayer = Layer.mergeAll(BalanceServiceLive, TokenServiceLive, Transactio
 );
 ```
 
-## Constants
-
-The library exports common Solana constants:
-
-```typescript
-import {
-  LAMPORTS_PER_SOL,
-  ClusterEndpoints,
-  SYSTEM_PROGRAM_ADDRESS,
-  TOKEN_PROGRAM_ADDRESS,
-  TOKEN_2022_PROGRAM_ADDRESS,
-  ASSOCIATED_TOKEN_PROGRAM_ADDRESS,
-  COMPUTE_BUDGET_PROGRAM_ADDRESS,
-  MEMO_PROGRAM_ADDRESS,
-} from "@prb/effect-solana";
-
-// Use cluster endpoints
-const devnetUrl = ClusterEndpoints.devnet;
-const mainnetUrl = ClusterEndpoints["mainnet-beta"];
-```
-
-## Types
-
-Re-exported Solana types and custom definitions:
-
-```typescript
-import type {
-  Address,
-  Commitment,
-  Lamports,
-  Signature,
-  TransactionError,
-  Cluster,
-  ClusterConfig,
-  Microlamports,
-} from "@prb/effect-solana";
-```
-
-## Error Handling
-
-All errors are tagged for discriminated union handling:
-
-```typescript
-import { Effect } from "effect";
-import { WalletNotConnectedError, TransactionFailedError, TransactionTimeoutError, RpcError } from "@prb/effect-solana";
-
-const handled = program.pipe(
-  Effect.catchTag("WalletNotConnectedError", (e) => Effect.succeed("Please connect wallet")),
-  Effect.catchTag("TransactionFailedError", (e) => Effect.succeed(`TX failed: ${e.message}`)),
-  Effect.catchTag("TransactionTimeoutError", (e) => Effect.succeed(`TX timed out: ${e.signature}`)),
-  Effect.catchTag("RpcError", (e) => Effect.succeed(`RPC error at ${e.url}: ${e.message}`)),
-);
-```
-
-## Telemetry
-
-The library includes built-in OpenTelemetry spans for observability:
-
-```typescript
-import { SpanNames } from "@prb/effect-solana";
-
-// Balance operations
-SpanNames.BALANCE_GET_SOL;
-SpanNames.BALANCE_WATCH_SOL;
-
-// Transaction operations
-SpanNames.TX_BUILD;
-SpanNames.TX_SIGN;
-SpanNames.TX_SEND;
-SpanNames.TX_CONFIRM;
-SpanNames.TX_SEND_AND_CONFIRM;
-SpanNames.TX_SIMULATE;
-
-// Token operations
-SpanNames.TOKEN_GET_ATA;
-SpanNames.TOKEN_CREATE_ATA;
-SpanNames.TOKEN_GET_ACCOUNT;
-
-// PDA operations
-SpanNames.PDA_DERIVE;
-
-// Program operations
-SpanNames.PROGRAM_BUILD;
-SpanNames.PROGRAM_CREATE;
-
-// And more...
-```
-
-## React Integration
-
-The library provides React hooks for integrating Solana operations into React applications:
+## ⚛️ React Integration
 
 ```typescript
 import { EffectSolanaProvider, useEffectMemo } from "@prb/effect-solana";
 import { BalanceService } from "@prb/effect-solana";
-import type { Address } from "@solana/kit";
 
 function App() {
   return (
-    <EffectSolanaProvider layer={MainLayer}>
+    <EffectSolanaProvider layer={AppLayer}>
       <Balance address={yourAddress} />
     </EffectSolanaProvider>
   );
@@ -377,7 +290,7 @@ function Balance({ address }: { address: Address }) {
         const balance = yield* BalanceService;
         return yield* balance.getSolBalance(address);
       }),
-    [address],
+    [address]
   );
 
   if (result.status === "loading") return <div>Loading...</div>;
@@ -386,54 +299,88 @@ function Balance({ address }: { address: Address }) {
 }
 ```
 
-Available React hooks:
+### Available Hooks
 
 - `useEffectMemo` - Run an Effect with memoization
 - `useEffectOnce` - Run an Effect once on mount
 - `useStream` - Subscribe to an Effect Stream
 - `useForkEffect` - Fork an Effect as a background fiber
-- `EffectSolanaProvider` - Context provider for Effect runtime
 - `useEffectSolanaRuntime` - Access the Effect runtime
 
-## Examples
+## 🚨 Error Handling
 
-### Send SOL Transfer
+All errors are tagged for discriminated union handling:
 
 ```typescript
 import { Effect } from "effect";
-import { TransactionService } from "@prb/effect-solana";
-import { getTransferSolInstruction } from "@solana-program/system";
+import {
+  WalletNotConnectedError,
+  TransactionFailedError,
+  TransactionTimeoutError,
+  RpcError,
+  catchUserRejection,
+} from "@prb/effect-solana";
 
-const sendSol = (params: { from: Address; to: Address; amount: Lamports }) =>
-  Effect.gen(function* () {
-    const tx = yield* TransactionService;
+const handled = program.pipe(
+  Effect.catchTag("WalletNotConnectedError", () => Effect.succeed("Please connect wallet")),
+  Effect.catchTag("TransactionFailedError", (e) => Effect.succeed(`TX failed: ${e.message}`)),
+  Effect.catchTag("TransactionTimeoutError", (e) => Effect.succeed(`TX timed out: ${e.signature}`)),
+  Effect.catchTag("RpcError", (e) => Effect.succeed(`RPC error: ${e.message}`)),
+);
 
-    const instruction = getTransferSolInstruction({
-      source: params.from,
-      destination: params.to,
-      amount: params.amount,
-    });
-
-    const receipt = yield* tx.sendAndConfirm([instruction]);
-    return receipt.signature;
-  });
+// Convenience operator for user rejections
+const result = sendTransaction(tx).pipe(catchUserRejection(null));
 ```
 
-### Watch Balance Changes
+### Error Types
+
+| Error                      | Description                        |
+| -------------------------- | ---------------------------------- |
+| `RpcError`                 | RPC communication failure          |
+| `WalletNotConnectedError`  | Wallet not connected               |
+| `SignatureError`           | Transaction signing failed         |
+| `UserRejectedError`        | User rejected the transaction      |
+| `TransactionSendError`     | Failed to send transaction         |
+| `TransactionFailedError`   | Transaction execution failed       |
+| `TransactionTimeoutError`  | Transaction confirmation timed out |
+| `BlockhashExpiredError`    | Blockhash expired before confirm   |
+| `SimulationFailedError`    | Transaction simulation failed      |
+| `AccountNotFoundError`     | Account does not exist             |
+| `InsufficientBalanceError` | Insufficient SOL balance           |
+
+## 📊 Telemetry
+
+Built-in OpenTelemetry spans for observability:
 
 ```typescript
-import { Effect, Stream } from "effect";
-import { BalanceService } from "@prb/effect-solana";
+import { SpanNames } from "@prb/effect-solana";
 
-const watchBalance = (address: Address) =>
-  Effect.gen(function* () {
-    const balance = yield* BalanceService;
-    const stream = yield* balance.watchBalance({ address });
-
-    yield* Stream.runForEach(stream, (lamports) => Effect.sync(() => console.log(`Balance: ${lamports}`)));
-  });
+// Examples: SpanNames.TX_SEND, SpanNames.BALANCE_GET_SOL, SpanNames.TOKEN_GET_ATA
 ```
 
-## License
+## 📚 Constants
 
-MIT
+```typescript
+import {
+  LAMPORTS_PER_SOL,
+  ClusterEndpoints,
+  SYSTEM_PROGRAM_ADDRESS,
+  TOKEN_PROGRAM_ADDRESS,
+  TOKEN_2022_PROGRAM_ADDRESS,
+  ASSOCIATED_TOKEN_PROGRAM_ADDRESS,
+  COMPUTE_BUDGET_PROGRAM_ADDRESS,
+  MEMO_PROGRAM_ADDRESS,
+} from "@prb/effect-solana";
+```
+
+## 🔗 Legacy Interop
+
+Bridge utilities for `@solana/web3.js` v1 compatibility:
+
+```typescript
+import { LegacySigner, transactionBridge } from "@prb/effect-solana/web3.js";
+```
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](../LICENSE) file for details.
