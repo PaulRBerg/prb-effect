@@ -8,12 +8,13 @@
  */
 
 import type { Idl } from "@coral-xyz/anchor";
-import { BN, Program } from "@coral-xyz/anchor";
+import { Program } from "@coral-xyz/anchor";
 import type { Address } from "@solana/addresses";
 import type { Instruction } from "@solana/instructions";
 import { AccountRole } from "@solana/instructions";
 import type { TransactionInstruction } from "@solana/web3.js";
 import { PublicKey } from "@solana/web3.js";
+import BN from "bn.js";
 import { Context, Effect, Layer } from "effect";
 import { RpcService } from "@/src/rpc/index.js";
 import { SpanNames } from "@/src/telemetry/index.js";

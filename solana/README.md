@@ -9,11 +9,11 @@ Effect-TS integration for the Solana blockchain ecosystem. Type-safe, composable
 ## 📦 Installation
 
 ```bash
-npm install @prb/effect-solana effect @solana/kit
+npm install @prb/effect-solana effect
 # or
-pnpm add @prb/effect-solana effect @solana/kit
+pnpm add @prb/effect-solana effect
 # or
-bun add @prb/effect-solana effect @solana/kit
+bun add @prb/effect-solana effect
 ```
 
 ### Peer Dependencies
@@ -21,7 +21,6 @@ bun add @prb/effect-solana effect @solana/kit
 Required:
 
 - `effect` ^3.x
-- `@solana/kit` ^2.2.0
 - `@solana-program/system` ^0.8.0
 - `@solana-program/token` ^0.8.0
 - `@solana-program/compute-budget` ^0.8.0
