@@ -1,11 +1,13 @@
 {
   "name": "@prb/effect-xstate",
   "description": "Effect-TS and xState v5 workflow utilities",
+  "homepage": "https://github.com/PaulRBerg/prb-effect/tree/main/xstate#readme",
   "license": "MIT",
   "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "sideEffects": false,
   "type": "module",
-  "version": "1.0.0-beta.1",
+  "types": "./dist/index.d.ts",
+  "version": "1.0.0-beta.2",
   "scripts": {
     "build": "just build",
     "prepack": "bun install --frozen-lockfile && just build"
@@ -13,6 +15,14 @@
   "author": {
     "name": "Paul Razvan Berg",
     "url": "https://github.com/PaulRBerg"
+  },
+  "repository": {
+    "directory": "xstate",
+    "type": "git",
+    "url": "git+https://github.com/PaulRBerg/prb-effect.git"
+  },
+  "bugs": {
+    "url": "https://github.com/PaulRBerg/prb-effect/issues"
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:dev",
@@ -44,6 +54,15 @@
   "files": [
     "dist/**",
     "README.md"
+  ],
+  "keywords": [
+    "effect",
+    "effect-ts",
+    "react",
+    "state-machine",
+    "typescript",
+    "workflow",
+    "xstate"
   ],
   "peerDependencies": {
     "@xstate/react": "catalog:peers",

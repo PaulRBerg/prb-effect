@@ -4,9 +4,10 @@
   "homepage": "https://github.com/PaulRBerg/prb-effect/tree/main/solana#readme",
   "license": "MIT",
   "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "sideEffects": false,
   "type": "module",
-  "version": "1.0.0-beta.3",
+  "types": "./dist/index.d.ts",
+  "version": "1.0.0-beta.4",
   "scripts": {
     "build": "just build",
     "prepack": "bun install --frozen-lockfile && just build"
@@ -16,9 +17,9 @@
     "url": "https://github.com/PaulRBerg"
   },
   "repository": {
+    "directory": "solana",
     "type": "git",
-    "url": "git+https://github.com/PaulRBerg/prb-effect.git",
-    "directory": "solana"
+    "url": "git+https://github.com/PaulRBerg/prb-effect.git"
   },
   "bugs": {
     "url": "https://github.com/PaulRBerg/prb-effect/issues"
@@ -66,6 +67,16 @@
     "README.md",
     "DOCS.md",
     "CONTRIBUTING.md"
+  ],
+  "keywords": [
+    "anchor",
+    "effect",
+    "effect-ts",
+    "react",
+    "solana",
+    "spl-token",
+    "typescript",
+    "web3"
   ],
   "peerDependencies": {
     "@coral-xyz/anchor": "^0.31.1",

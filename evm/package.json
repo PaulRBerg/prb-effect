@@ -3,9 +3,10 @@
   "description": "Effect-TS integration for Ethereum Virtual Machine (EVM) frontend development",
   "homepage": "https://github.com/PaulRBerg/prb-effect/tree/main/evm#readme",
   "main": "./dist/index.js",
+  "sideEffects": false,
   "type": "module",
   "types": "./dist/index.d.ts",
-  "version": "1.0.0-beta.2",
+  "version": "1.0.0-beta.3",
   "scripts": {
     "build": "just build",
     "prepack": "bun install --frozen-lockfile && just build"
@@ -16,9 +17,9 @@
   },
   "license": "MIT",
   "repository": {
+    "directory": "evm",
     "type": "git",
-    "url": "git+https://github.com/PaulRBerg/prb-effect.git",
-    "directory": "evm"
+    "url": "git+https://github.com/PaulRBerg/prb-effect.git"
   },
   "bugs": {
     "url": "https://github.com/PaulRBerg/prb-effect/issues"
@@ -61,6 +62,17 @@
     "README.md",
     "DOCS.md",
     "CONTRIBUTING.md"
+  ],
+  "keywords": [
+    "effect",
+    "effect-ts",
+    "ethereum",
+    "evm",
+    "react",
+    "typescript",
+    "viem",
+    "wagmi",
+    "web3"
   ],
   "peerDependencies": {
     "@effect/platform": "catalog:peers",

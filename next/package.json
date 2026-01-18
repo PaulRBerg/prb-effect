@@ -4,9 +4,10 @@
   "homepage": "https://github.com/PaulRBerg/prb-effect/tree/main/next#readme",
   "license": "MIT",
   "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "sideEffects": false,
   "type": "module",
-  "version": "1.0.0-beta.1",
+  "types": "./dist/index.d.ts",
+  "version": "1.0.0-beta.2",
   "scripts": {
     "build": "just build",
     "prepack": "bun install --frozen-lockfile && just build"
@@ -16,9 +17,9 @@
     "url": "https://github.com/PaulRBerg"
   },
   "repository": {
+    "directory": "next",
     "type": "git",
-    "url": "git+https://github.com/PaulRBerg/prb-effect.git",
-    "directory": "next"
+    "url": "git+https://github.com/PaulRBerg/prb-effect.git"
   },
   "bugs": {
     "url": "https://github.com/PaulRBerg/prb-effect/issues"
@@ -59,6 +60,16 @@
     "dist/**",
     "DOCS.md",
     "CONTRIBUTING.md"
+  ],
+  "keywords": [
+    "effect",
+    "effect-ts",
+    "next",
+    "nextjs",
+    "react",
+    "server-actions",
+    "server-components",
+    "typescript"
   ],
   "peerDependencies": {
     "@effect/opentelemetry": "^0.60.0",
