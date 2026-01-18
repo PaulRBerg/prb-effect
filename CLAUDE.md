@@ -52,7 +52,6 @@ just xstate::build       # Build @prb/effect-xstate
 
 ### TypeScript
 
-- Prefer `type` over `interface`
 - Use `function` declarations for named functions
 - Avoid `any`; use `unknown` if type is truly unknown
 - Use `readonly` for immutable properties

@@ -1,7 +1,7 @@
 import { fileURLToPath } from "node:url";
 import { defineConfig, mergeConfig } from "vitest/config";
 
-import configShared from "../vitest.shared";
+import configShared from "../vitest.shared.js";
 
 const CI = Boolean(process.env.CI);
 const srcDir = fileURLToPath(new URL("./src", import.meta.url));

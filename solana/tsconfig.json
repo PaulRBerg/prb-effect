@@ -1,13 +1,19 @@
 {
   "extends": "../tsconfig.json",
   "compilerOptions": {
+    "lib": ["ESNext", "DOM"],
     "jsx": "react-jsx",
-    "rootDir": ".",
     "paths": {
       "@/src": ["./src"],
       "@/src/*": ["./src/*"]
     }
   },
-  "exclude": ["./dist", "./node_modules"],
-  "include": ["src/**/*.ts", "src/**/*.tsx", "tests/**/*.ts"]
+  "exclude": ["**/node_modules/", "dist/"],
+  "include": [
+    // Directories
+    "src/",
+    // Files
+    "vitest.*.ts",
+    "../vitest.shared.ts"
+  ]
 }
