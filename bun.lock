@@ -7,7 +7,7 @@
       "devDependencies": {
         "@biomejs/biome": "^2.3.11",
         "@effect/vitest": "^0.27.0",
-        "@sablier/devkit": "^1.10.3",
+        "@sablier/devkit": "^1.11.0",
         "@types/bs58": "^5.0.0",
         "@typescript/native-preview": "^7.0.0-dev.20260118.1",
         "@vitest/ui": "^4.0.17",
@@ -21,7 +21,7 @@
     },
     "evm": {
       "name": "@prb/effect-evm",
-      "version": "1.0.0-beta.2",
+      "version": "1.0.0-beta.3",
       "devDependencies": {
         "@biomejs/biome": "catalog:dev",
         "@effect/platform": "catalog:effect",
@@ -62,7 +62,7 @@
     },
     "next": {
       "name": "@prb/effect-next",
-      "version": "1.0.0-beta.1",
+      "version": "1.0.0-beta.2",
       "devDependencies": {
         "@biomejs/biome": "catalog:dev",
         "@effect/opentelemetry": "^0.60.0",
@@ -103,7 +103,7 @@
     },
     "solana": {
       "name": "@prb/effect-solana",
-      "version": "1.0.0-beta.3",
+      "version": "1.0.0-beta.4",
       "dependencies": {
         "bn.js": "^5.2.1",
       },
@@ -152,7 +152,7 @@
     },
     "xstate": {
       "name": "@prb/effect-xstate",
-      "version": "1.0.0-beta.1",
+      "version": "1.0.0-beta.2",
       "devDependencies": {
         "@biomejs/biome": "catalog:dev",
         "@effect/vitest": "catalog:dev",
@@ -196,7 +196,7 @@
     "dev": {
       "@biomejs/biome": "^2.3.11",
       "@effect/vitest": "^0.27.0",
-      "@sablier/devkit": "^1.10.3",
+      "@sablier/devkit": "^1.11.0",
       "@types/node": "^25.0.2",
       "@types/react": "^19.0.0",
       "@types/react-dom": "^19.0.0",
@@ -558,7 +558,7 @@
 
     "@rollup/rollup-win32-x64-msvc": ["@rollup/rollup-win32-x64-msvc@4.53.5", "", { "os": "win32", "cpu": "x64" }, "sha512-JRpZUhCfhZ4keB5v0fe02gQJy05GqboPOaxvjugW04RLSYYoB/9t2lx2u/tMs/Na/1NXfY8QYjgRljRpN+MjTQ=="],
 
-    "@sablier/devkit": ["@sablier/devkit@1.10.3", "", { "peerDependencies": { "vitest": ">=2.0.0" }, "optionalPeers": ["vitest"] }, "sha512-S1pgZoz6G7c8XO3HP5/kipT+W3MFdRaRc7wu9LbM82RVPeWoTfhsZb2a2/8A8CgpT3/MTr0P4So3jBT6ewSO2w=="],
+    "@sablier/devkit": ["@sablier/devkit@1.11.0", "", { "peerDependencies": { "vitest": ">=2.0.0" }, "optionalPeers": ["vitest"] }, "sha512-M6ybChkeYQgibKr6oCc3P8t8nXkhAYJEieAbk/8R0gsJDPHUEWfplJ+DCGFkGg/AigopA6rnBCb6qnoGzN9/Rg=="],
 
     "@safe-global/safe-apps-provider": ["@safe-global/safe-apps-provider@0.18.6", "", { "dependencies": { "@safe-global/safe-apps-sdk": "^9.1.0", "events": "^3.3.0" } }, "sha512-4LhMmjPWlIO8TTDC2AwLk44XKXaK6hfBTWyljDm0HQ6TWlOEijVWNrt2s3OCVMSxlXAcEzYfqyu1daHZooTC2Q=="],
 
