@@ -1,19 +1,20 @@
 {
   "name": "@prb/effect-next",
   "description": "Effect-TS integration for Next.js",
-  "version": "1.0.0-beta.1",
+  "homepage": "https://github.com/PaulRBerg/prb-effect/tree/main/next#readme",
+  "license": "MIT",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "type": "module",
+  "version": "1.0.0-beta.1",
   "scripts": {
     "build": "just build",
     "prepack": "bun install --frozen-lockfile && just build"
   },
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
   "author": {
     "name": "Paul Razvan Berg",
     "url": "https://github.com/PaulRBerg"
   },
-  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/PaulRBerg/prb-effect.git",
@@ -22,7 +23,6 @@
   "bugs": {
     "url": "https://github.com/PaulRBerg/prb-effect/issues"
   },
-  "homepage": "https://github.com/PaulRBerg/prb-effect/tree/main/next#readme",
   "devDependencies": {
     "@biomejs/biome": "catalog:dev",
     "@effect/opentelemetry": "^0.60.0",

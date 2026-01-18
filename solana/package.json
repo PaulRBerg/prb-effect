@@ -1,19 +1,20 @@
 {
   "name": "@prb/effect-solana",
-  "description": "Effect-TS integration for Solana",
-  "version": "1.0.0-beta.3",
+  "description": "Effect-TS integration for Solana frontend development",
+  "homepage": "https://github.com/PaulRBerg/prb-effect/tree/main/solana#readme",
+  "license": "MIT",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "type": "module",
+  "version": "1.0.0-beta.3",
   "scripts": {
     "build": "just build",
     "prepack": "bun install --frozen-lockfile && just build"
   },
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
   "author": {
     "name": "Paul Razvan Berg",
     "url": "https://github.com/PaulRBerg"
   },
-  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/PaulRBerg/prb-effect.git",
@@ -22,7 +23,6 @@
   "bugs": {
     "url": "https://github.com/PaulRBerg/prb-effect/issues"
   },
-  "homepage": "https://github.com/PaulRBerg/prb-effect/tree/main/solana#readme",
   "dependencies": {
     "bn.js": "^5.2.1"
   },
@@ -70,12 +70,12 @@
   "peerDependencies": {
     "@coral-xyz/anchor": "^0.31.1",
     "@effect/platform": "catalog:peers",
-    "effect": "catalog:peers",
-    "@solana/kit": "^2.2.0",
+    "@solana-program/compute-budget": "^0.8.0",
     "@solana-program/system": "^0.8.0",
     "@solana-program/token": "^0.8.0",
-    "@solana-program/compute-budget": "^0.8.0",
+    "@solana/kit": "^2.2.0",
     "@solana/web3.js": "^1.95.0",
+    "effect": "catalog:peers",
     "react": "catalog:peers",
     "react-dom": "catalog:peers"
   },

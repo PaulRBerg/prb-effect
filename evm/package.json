@@ -1,14 +1,15 @@
 {
   "name": "@prb/effect-evm",
-  "description": "Effect-TS integration for EVM and viem",
-  "version": "1.0.0-beta.2",
+  "description": "Effect-TS integration for Ethereum Virtual Machine (EVM) frontend development",
+  "homepage": "https://github.com/PaulRBerg/prb-effect/tree/main/evm#readme",
+  "main": "./dist/index.js",
   "type": "module",
+  "types": "./dist/index.d.ts",
+  "version": "1.0.0-beta.2",
   "scripts": {
     "build": "just build",
     "prepack": "bun install --frozen-lockfile && just build"
   },
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
   "author": {
     "name": "Paul Razvan Berg",
     "url": "https://github.com/PaulRBerg"
@@ -22,12 +23,9 @@
   "bugs": {
     "url": "https://github.com/PaulRBerg/prb-effect/issues"
   },
-  "homepage": "https://github.com/PaulRBerg/prb-effect/tree/main/evm#readme",
   "devDependencies": {
-    "@effect/platform": "catalog:effect",
-    "effect": "catalog:effect",
-    "viem": "^2.43.1",
     "@biomejs/biome": "catalog:dev",
+    "@effect/platform": "catalog:effect",
     "@effect/vitest": "catalog:dev",
     "@sablier/devkit": "catalog:dev",
     "@safe-global/safe-apps-sdk": "9.1.0",
@@ -37,11 +35,13 @@
     "@typescript/native-preview": "catalog:dev",
     "@vitest/ui": "catalog:dev",
     "@wagmi/core": "^2.22.1",
+    "effect": "catalog:effect",
     "jsdom": "catalog:dev",
     "react": "catalog:",
     "react-dom": "catalog:",
     "tsc-alias": "catalog:dev",
     "typescript": "catalog:dev",
+    "viem": "^2.43.1",
     "vitest": "catalog:dev",
     "wagmi": "^2.19.5"
   },

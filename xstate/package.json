@@ -1,19 +1,19 @@
 {
   "name": "@prb/effect-xstate",
   "description": "Effect-TS and xState v5 workflow utilities",
-  "version": "1.0.0-beta.1",
+  "license": "MIT",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "type": "module",
+  "version": "1.0.0-beta.1",
   "scripts": {
     "build": "just build",
     "prepack": "bun install --frozen-lockfile && just build"
   },
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
   "author": {
     "name": "Paul Razvan Berg",
     "url": "https://github.com/PaulRBerg"
   },
-  "license": "MIT",
   "devDependencies": {
     "@biomejs/biome": "catalog:dev",
     "@effect/vitest": "catalog:dev",

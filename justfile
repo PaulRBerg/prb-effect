@@ -71,4 +71,4 @@ alias ti := test-integration
     echo "🔍 Type checking effect-xstate..."
     cd xstate && na tsgo --noEmit
 
-    echo "✅ Type check passed"
+    echo "✅ All type check passed"
