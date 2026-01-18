@@ -4,6 +4,7 @@
   "homepage": "https://github.com/PaulRBerg/prb-effect#readme",
   "license": "MIT",
   "private": true,
+  "type": "module",
   "version": "1.0.0",
   "author": {
     "name": "Paul Razvan Berg",

@@ -1,3 +1,5 @@
+"use strict";
+
 const baseConfig = require("@sablier/devkit/prettier");
 
 /**

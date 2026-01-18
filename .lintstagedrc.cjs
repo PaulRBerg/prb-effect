@@ -1,3 +1,5 @@
+"use strict";
+
 /**
  * @type {import("lint-staged").Configuration}
  */
