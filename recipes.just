@@ -10,27 +10,30 @@ import "./node_modules/@sablier/devkit/just/base.just"
 default:
     @just --list
 
+# Clean build artifacts
+@clean:
+    echo "🧹 Deleting files..."
+    nlx del-cli \
+        dist \
+        *.tgz
+
 # ---------------------------------------------------------------------------- #
-#                                  BUILD & DEV                                 #
+#                                     BUILD                                    #
 # ---------------------------------------------------------------------------- #
 
 # Build the package (clean, compile, pack)
-[group("dev")]
+[group("build")]
 @build:
     just clean
     just tsc-build
 alias b := build
 
-# Clean build artifacts
-@clean:
-    nlx del-cli dist *.tgz
-    echo "🗑️  Cleaned build files"
-
 # Build with TypeScript CLI
+[group("build")]
 @tsc-build:
     echo "🔨 Building the package..."
-    bun tsc -p tsconfig.build.json
-    bun tsc-alias -p tsconfig.build.json
+    na tsc -p tsconfig.build.json
+    na tsc-alias -p tsconfig.build.json
     echo "✅ Package built successfully"
 
 # ---------------------------------------------------------------------------- #
@@ -40,23 +43,23 @@ alias b := build
 # Run all tests
 [group("tests")]
 @test *args:
-    bun vitest run {{ args }}
+    na vitest run {{ args }}
 alias t := test
 
 # Run tests with UI
 [group("tests")]
 @test-ui *args:
-    bun vitest --ui {{ args }}
+    na vitest --ui {{ args }}
 alias tui := test-ui
 
 # Run unit tests (excludes integration tests)
 [group("tests")]
 @test-unit *args:
-    bun vitest run --exclude '**/*.integration.test.ts' {{ args }}
+    na vitest run --exclude '**/*.integration.test.ts' {{ args }}
 alias tu := test-unit
 
 # Run integration tests only
 [group("tests")]
 @test-integration *args:
-    bun vitest run '.integration.' {{ args }}
+    na vitest run '.integration.' {{ args }}
 alias ti := test-integration

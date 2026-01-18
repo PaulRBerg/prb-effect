@@ -15,10 +15,6 @@ mod xstate "xstate"
 default:
     just --list
 
-# Clean build artifacts
-clean:
-    nlx del-cli "**/dist" "**/*.tsbuildinfo" "**/*.tgz"
-
 # Build all packages (.tgz)
 [group("dev")]
 @build-tgz:
@@ -36,6 +32,14 @@ clean:
 
     echo '{{ GREEN }}✓ All packages built{{ NORMAL }}'
 alias bt := build-tgz
+
+# Clean build artifacts
+@clean:
+    echo "🧹 Deleting files..."
+    nlx del-cli --verbose \
+        "**/dist" \
+        "**/*.tsbuildinfo" \
+        "**/*.tgz"
 
 # ---------------------------------------------------------------------------- #
 #                                     TESTS                                    #
