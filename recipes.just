@@ -24,14 +24,14 @@ default:
 # Build the package (clean, compile, pack)
 [group("build")]
 @build:
-    just clean
+    just --quiet clean
     just tsc-build
 alias b := build
 
 # Build with TypeScript CLI
 [group("build")]
 @tsc-build:
-    echo "🔨 Building the package..."
+    echo "🔨 Building the {{ PACKAGE_NAME }} package..."
     na tsc -p tsconfig.build.json
     na tsc-alias -p tsconfig.build.json
     echo "✅ Package built successfully"

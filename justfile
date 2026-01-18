@@ -17,21 +17,21 @@ default:
 
 # Build all packages (.tgz)
 [group("dev")]
-@build-tgz:
-    echo '{{ CYAN }}→ Building @prb/effect-next...{{ NORMAL }}'
-    cd next && npm pack --silent
+@build:
+    cd evm && just build
     echo ""
 
-    echo '{{ CYAN }}→ Building @prb/effect-evm...{{ NORMAL }}'
-    cd evm && npm pack --silent
+    cd next && just build
     echo ""
 
-    echo '{{ CYAN }}→ Building @prb/effect-xstate...{{ NORMAL }}'
-    cd xstate && npm pack --silent
+    cd solana && just build
+    echo ""
+
+    cd xstate && just build
     echo ""
 
     echo '{{ GREEN }}✓ All packages built{{ NORMAL }}'
-alias bt := build-tgz
+alias b := build
 
 # Clean build artifacts
 @clean:
