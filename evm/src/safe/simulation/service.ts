@@ -8,6 +8,7 @@
  */
 
 import { Context, Effect, Layer } from "effect";
+import type { Address, Hex, PublicClient } from "viem";
 import { BaseError as CoreError, encodeFunctionData, zeroAddress } from "viem";
 import type { ClientNotFoundError } from "@/src/core/index.js";
 import { PublicClientService } from "@/src/core/index.js";
@@ -52,6 +53,46 @@ export class SafeSimulationService extends Context.Tag("ew3/SafeSimulation")<
   SafeSimulationService,
   SafeSimulationServiceShape
 >() {}
+
+function extractRevertData(error: unknown): string | undefined {
+  if (!(error instanceof CoreError)) {
+    return undefined;
+  }
+
+  const revertError = error.walk((err) => {
+    const typedErr = err as unknown as Record<string, unknown>;
+    return typeof typedErr.data === "string";
+  });
+
+  if (!revertError) {
+    return undefined;
+  }
+
+  const typedErr = revertError as unknown as Record<string, unknown>;
+  const extractedData = typedErr.data;
+  return typeof extractedData === "string" ? extractedData : undefined;
+}
+
+async function callSimulateAndExtractRevertData(
+  client: PublicClient,
+  safeAddress: Address,
+  safeCalldata: Hex
+): Promise<string> {
+  try {
+    await client.call({
+      account: safeAddress,
+      data: safeCalldata,
+      to: safeAddress,
+    });
+    throw new Error("simulateAndRevert did not revert");
+  } catch (error: unknown) {
+    const revertData = extractRevertData(error);
+    if (revertData) {
+      return revertData;
+    }
+    throw error;
+  }
+}
 
 export const SafeSimulationServiceLive = Layer.effect(
   SafeSimulationService,
@@ -161,36 +202,7 @@ export const SafeSimulationServiceLive = Layer.effect(
                   cause: error,
                   message: "Network error or unexpected behavior during simulation",
                 }),
-              // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Async error extraction requires try-catch
-              try: async () => {
-                try {
-                  await client.call({
-                    account: safeAddress,
-                    data: safeCalldata,
-                    to: safeAddress,
-                  });
-                  // Should never reach here
-                  throw new Error("simulateAndRevert did not revert");
-                } catch (error: unknown) {
-                  // Use viem's official BaseError API to extract revert data
-                  if (error instanceof CoreError) {
-                    // viem's BaseError.walk() traverses the error chain to find matching errors
-                    // We use it to find an error with revert data (the 'data' property)
-                    const revertError = error.walk((err) => {
-                      const typedErr = err as unknown as Record<string, unknown>;
-                      return typeof typedErr.data === "string";
-                    });
-                    if (revertError) {
-                      const typedErr = revertError as unknown as Record<string, unknown>;
-                      const extractedData = typedErr.data;
-                      if (typeof extractedData === "string") {
-                        return extractedData;
-                      }
-                    }
-                  }
-                  throw error;
-                }
-              },
+              try: () => callSimulateAndExtractRevertData(client, safeAddress, safeCalldata),
             });
 
             // Decode the revert data

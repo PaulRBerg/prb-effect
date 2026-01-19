@@ -1,5 +1,6 @@
 import { Context, Effect, Layer } from "effect";
 import type { Address } from "viem";
+import { mainnet } from "viem/chains";
 import { normalize } from "viem/ens";
 import type { ClientNotFoundError } from "@/src/core/index.js";
 import { PublicClientService } from "@/src/core/index.js";
@@ -12,8 +13,6 @@ import {
   EnsTextNotFoundError,
 } from "@/src/ens/errors.js";
 import { SpanNames } from "@/src/telemetry/index.js";
-
-const MAINNET_CHAIN_ID = 1;
 
 type AssetGatewayUrls = {
   arweave?: string;
@@ -100,7 +99,7 @@ export const EnsResolverLive = Layer.effect(
     return EnsResolver.of({
       getAddress: (name: string, opts?: { coinType?: bigint }) =>
         Effect.gen(function* () {
-          const client = yield* publicClientService.get(MAINNET_CHAIN_ID);
+          const client = yield* publicClientService.get(mainnet.id);
           const normalizedName = normalize(name);
 
           const result = yield* Effect.tryPromise({
@@ -138,7 +137,7 @@ export const EnsResolverLive = Layer.effect(
 
       getAvatar: (name: string, opts?: { assetGatewayUrls?: AssetGatewayUrls }) =>
         Effect.gen(function* () {
-          const client = yield* publicClientService.get(MAINNET_CHAIN_ID);
+          const client = yield* publicClientService.get(mainnet.id);
           const normalizedName = normalize(name);
 
           const result = yield* Effect.tryPromise({
@@ -175,7 +174,7 @@ export const EnsResolverLive = Layer.effect(
 
       getName: (address: Address) =>
         Effect.gen(function* () {
-          const client = yield* publicClientService.get(MAINNET_CHAIN_ID);
+          const client = yield* publicClientService.get(mainnet.id);
 
           const result = yield* Effect.tryPromise({
             catch: (cause) =>
@@ -210,7 +209,7 @@ export const EnsResolverLive = Layer.effect(
 
       getResolver: (name: string) =>
         Effect.gen(function* () {
-          const client = yield* publicClientService.get(MAINNET_CHAIN_ID);
+          const client = yield* publicClientService.get(mainnet.id);
           const normalizedName = normalize(name);
 
           const result = yield* Effect.tryPromise({
@@ -246,7 +245,7 @@ export const EnsResolverLive = Layer.effect(
 
       getText: (name: string, key: string) =>
         Effect.gen(function* () {
-          const client = yield* publicClientService.get(MAINNET_CHAIN_ID);
+          const client = yield* publicClientService.get(mainnet.id);
           const normalizedName = normalize(name);
 
           const result = yield* Effect.tryPromise({

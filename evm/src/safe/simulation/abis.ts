@@ -2,6 +2,8 @@
  * Safe multisig ABIs for gas simulation and multi-send operations.
  *
  * @see https://github.com/safe-global/safe-deployments
+ * @see https://github.com/safe-global/safe-core-sdk/issues/1182
+ * @see https://ethereum.stackexchange.com/q/168410/24693
  */
 
 const multisigAbi = [
