@@ -6,7 +6,7 @@ import {
   AddChainError,
   ChainSwitchError,
   SignMessageError,
-  SignTransactionError,
+  SignTxError,
   SignTypedDataError,
   WalletConnectionError,
 } from "@/src/wallet/index.js";
@@ -79,16 +79,16 @@ describe("SignTypedDataError", () => {
   );
 });
 
-describe("SignTransactionError", () => {
+describe("SignTxError", () => {
   it("has correct _tag", () => {
-    const error = new SignTransactionError({
+    const error = new SignTxError({
       message: "Failed to sign transaction",
     });
-    expect(error._tag).toBe("SignTransactionError");
+    expect(error._tag).toBe("SignTxError");
   });
 
   it("stores message without cause", () => {
-    const error = new SignTransactionError({
+    const error = new SignTxError({
       message: "Failed to sign transaction",
     });
     expect(error.message).toBe("Failed to sign transaction");
@@ -97,7 +97,7 @@ describe("SignTransactionError", () => {
 
   it("stores message with cause", () => {
     const cause = new Error("User rejected");
-    const error = new SignTransactionError({
+    const error = new SignTxError({
       cause,
       message: "Failed to sign transaction",
     });
@@ -107,8 +107,8 @@ describe("SignTransactionError", () => {
 
   it.effect("can be caught with catchTag", () =>
     Effect.gen(function* () {
-      const caught = yield* Effect.fail(new SignTransactionError({ message: "test" })).pipe(
-        Effect.catchTag("SignTransactionError", (e) => Effect.succeed(e))
+      const caught = yield* Effect.fail(new SignTxError({ message: "test" })).pipe(
+        Effect.catchTag("SignTxError", (e) => Effect.succeed(e))
       );
       expect(caught.message).toBe("test");
     })

@@ -16,7 +16,7 @@ import type {
   SafeContractsNotDeployedError,
   SafeSimulationFailedError,
   SimulationDecodeError,
-  TransactionSizeTooLargeError,
+  TxSizeTooLargeError,
 } from "./errors.js";
 import { buildSafeCalldata } from "./internal/calldata/index.js";
 import { resolveSafeContracts } from "./internal/contracts/index.js";
@@ -43,7 +43,7 @@ export type SafeSimulationServiceShape = {
     | ClientNotFoundError
     | InvalidGasThresholdError
     | SafeContractsNotDeployedError
-    | TransactionSizeTooLargeError
+    | TxSizeTooLargeError
     | SafeSimulationFailedError
     | SimulationDecodeError
     | GasLimitOverflowError

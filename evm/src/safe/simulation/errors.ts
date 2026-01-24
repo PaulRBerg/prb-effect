@@ -36,8 +36,8 @@ export class SafeContractsNotDeployedError extends Schema.TaggedError<SafeContra
 ) {}
 
 /** Transaction size too large */
-export class TransactionSizeTooLargeError extends Schema.TaggedError<TransactionSizeTooLargeError>()(
-  "TransactionSizeTooLargeError",
+export class TxSizeTooLargeError extends Schema.TaggedError<TxSizeTooLargeError>()(
+  "TxSizeTooLargeError",
   {
     actualSize: Schema.Number,
     maxSize: Schema.Number,

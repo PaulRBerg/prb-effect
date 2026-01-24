@@ -6,11 +6,7 @@ import type {
   WalletNotConnectedError,
   WrongNetworkError,
 } from "@/src/core/index.js";
-import {
-  PublicClientService,
-  TransactionFailedError,
-  WalletClientService,
-} from "@/src/core/index.js";
+import { PublicClientService, TxFailedError, WalletClientService } from "@/src/core/index.js";
 import type { GasPriceUnavailableError } from "@/src/gas/index.js";
 import { GasService } from "@/src/gas/index.js";
 import { bumpByPercent } from "@/src/internal/index.js";
@@ -23,7 +19,7 @@ export type TxReplacementShape = {
     policy?: TxPolicy
   ) => Effect.Effect<
     Hash,
-    | TransactionFailedError
+    | TxFailedError
     | WalletNotConnectedError
     | WrongNetworkError
     | ClientNotFoundError
@@ -36,7 +32,7 @@ export type TxReplacementShape = {
     policy?: TxPolicy
   ) => Effect.Effect<
     Hash,
-    | TransactionFailedError
+    | TxFailedError
     | WalletNotConnectedError
     | WrongNetworkError
     | ClientNotFoundError
@@ -116,7 +112,7 @@ const sendReplacement = (params: {
   bump: FeeBump;
 }): Effect.Effect<
   Hash,
-  TransactionFailedError | WalletNotConnectedError | WrongNetworkError | ClientNotFoundError,
+  TxFailedError | WalletNotConnectedError | WrongNetworkError | ClientNotFoundError,
   WalletClientService
 > =>
   Effect.gen(function* () {
@@ -125,7 +121,7 @@ const sendReplacement = (params: {
 
     return yield* Effect.tryPromise({
       catch: (cause) =>
-        new TransactionFailedError({
+        new TxFailedError({
           cause,
           hash: params.hash,
           message: `Failed to ${params.action} transaction ${params.hash}`,
@@ -181,7 +177,7 @@ export const TxReplacementLive = Layer.effect(
         const client = yield* publicClientService.get(chainId);
         const tx = yield* Effect.tryPromise({
           catch: (cause) =>
-            new TransactionFailedError({
+            new TxFailedError({
               cause,
               hash,
               message: `Failed to get transaction ${hash}`,

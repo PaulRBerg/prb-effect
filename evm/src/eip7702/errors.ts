@@ -18,8 +18,8 @@ export class Eip7702AuthorizationPreparationError extends Schema.TaggedError<Eip
   }
 ) {}
 
-export class Eip7702SendTransactionError extends Schema.TaggedError<Eip7702SendTransactionError>()(
-  "Eip7702SendTransactionError",
+export class Eip7702SendTxError extends Schema.TaggedError<Eip7702SendTxError>()(
+  "Eip7702SendTxError",
   {
     cause: Schema.optional(Schema.Unknown),
     chainId: Schema.Number,

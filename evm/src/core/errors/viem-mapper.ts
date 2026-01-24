@@ -23,7 +23,7 @@ import {
   AddChainError,
   ChainSwitchError,
   SignMessageError,
-  SignTransactionError,
+  SignTxError,
   SignTypedDataError,
   WalletConnectionError,
   WatchAssetError,
@@ -145,7 +145,7 @@ export function extractRevertReason(error: unknown): string | undefined {
  * Check if an error represents a transaction replacement
  * Returns replacement info if replaced, false otherwise
  */
-export function isTransactionReplaced(error: unknown): { newHash: Hash; replaced: true } | false {
+export function isTxReplaced(error: unknown): { newHash: Hash; replaced: true } | false {
   const byExecutionError =
     error instanceof TransactionExecutionError
       ? getReplacementHashFromExecutionError(error)
@@ -348,7 +348,7 @@ export function classifyWalletError(
   error: unknown,
   operation: "signTransaction",
   context?: { chainId?: number }
-): UserRejectedError | SignTransactionError;
+): UserRejectedError | SignTxError;
 export function classifyWalletError(
   error: unknown,
   operation: "watchAsset",
@@ -373,7 +373,7 @@ export function classifyWalletError(
   | AddChainError
   | SignMessageError
   | SignTypedDataError
-  | SignTransactionError
+  | SignTxError
   | WatchAssetError {
   // Check for user rejection first
   if (isUserRejection(error)) {
@@ -423,7 +423,7 @@ export function classifyWalletError(
       });
 
     case "signTransaction":
-      return new SignTransactionError({
+      return new SignTxError({
         cause: error,
         message: error instanceof Error ? error.message : "Failed to sign transaction",
       });

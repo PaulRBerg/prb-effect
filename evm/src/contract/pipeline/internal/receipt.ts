@@ -1,10 +1,6 @@
 import { Effect } from "effect";
 import type { Hash, TransactionReceipt } from "viem";
-import type {
-  ClientNotFoundError,
-  ReceiptTimeoutError,
-  TransactionFailedError,
-} from "@/src/core/index.js";
+import type { ClientNotFoundError, ReceiptTimeoutError, TxFailedError } from "@/src/core/index.js";
 import type { TxManagerShape, TxPolicy } from "@/src/tx/index.js";
 
 export type OnReplacedCallback = (
@@ -25,10 +21,7 @@ export const waitForReceiptFollowingReplacements = (
     policy: TxPolicy;
     onReplaced?: OnReplacedCallback;
   }
-): Effect.Effect<
-  TransactionReceipt,
-  TransactionFailedError | ReceiptTimeoutError | ClientNotFoundError
-> =>
+): Effect.Effect<TransactionReceipt, TxFailedError | ReceiptTimeoutError | ClientNotFoundError> =>
   Effect.gen(function* () {
     let waitHash = params.hash;
 
@@ -42,7 +35,7 @@ export const waitForReceiptFollowingReplacements = (
       }
 
       const error = exit.left;
-      if (error._tag === "TransactionReplacedError") {
+      if (error._tag === "TxReplacedError") {
         const oldHash = error.oldHash as Hash;
         const newHash = error.newHash as Hash;
 

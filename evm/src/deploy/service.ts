@@ -6,8 +6,8 @@ import type {
   ClientNotFoundError,
   ContractWriteError,
   ReceiptTimeoutError,
-  TransactionFailedError,
-  TransactionReplacedError,
+  TxFailedError,
+  TxReplacedError,
   UserRejectedError,
   WrongNetworkError,
 } from "@/src/core/index.js";
@@ -60,8 +60,8 @@ export type DeployServiceShape = {
     | WalletNotConnectedError
     | WrongNetworkError
     | ReceiptTimeoutError
-    | TransactionFailedError
-    | TransactionReplacedError
+    | TxFailedError
+    | TxReplacedError
   >;
 
   readonly deployAndTrack: <TAbi extends Abi>(
@@ -87,8 +87,8 @@ export type DeployServiceShape = {
         | WalletNotConnectedError
         | WrongNetworkError
         | ReceiptTimeoutError
-        | TransactionFailedError
-        | TransactionReplacedError
+        | TxFailedError
+        | TxReplacedError
       >;
     },
     never,

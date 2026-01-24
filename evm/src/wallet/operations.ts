@@ -11,7 +11,7 @@ import type {
 import {
   AccountNotConnectedError,
   SignMessageError,
-  SignTransactionError,
+  SignTxError,
   SignTypedDataError,
 } from "@/src/wallet/index.js";
 
@@ -245,7 +245,7 @@ export function signTypedData<
 export function signTransaction(
   provider: WalletProvider,
   params: SignTransactionParams
-): Effect.Effect<Hex, SignTransactionError | AccountNotConnectedError> {
+): Effect.Effect<Hex, SignTxError | AccountNotConnectedError> {
   return Effect.gen(function* () {
     // Get the current account if not provided
     const account =
@@ -271,7 +271,7 @@ export function signTransaction(
       catch: (cause) => {
         const errorMessage = cause instanceof Error ? cause.message : "Failed to sign transaction";
         const isRejection = isLikelyUserRejection(cause);
-        return new SignTransactionError({
+        return new SignTxError({
           cause,
           message: isRejection ? "User rejected the request" : errorMessage,
         });

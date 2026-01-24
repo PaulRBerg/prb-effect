@@ -11,15 +11,11 @@ import type {
 import { MIN_TX_GAS } from "@/src/constants/index.js";
 import type {
   ClientNotFoundError,
-  TransactionReplacementReason,
+  TxReplacementReason,
   WalletNotConnectedError,
   WrongNetworkError,
 } from "@/src/core/index.js";
-import {
-  PublicClientService,
-  TransactionFailedError,
-  WalletClientService,
-} from "@/src/core/index.js";
+import { PublicClientService, TxFailedError, WalletClientService } from "@/src/core/index.js";
 
 export type TxRequestMeta = {
   readonly accessList?: AccessList | undefined;
@@ -58,11 +54,11 @@ export type TxState =
       status: "replaced";
       oldHash: Hash;
       newHash: Hash;
-      reason: TransactionReplacementReason;
+      reason: TxReplacementReason;
     })
   | ({ readonly tx?: TxRequestMeta | undefined } & {
       status: "failed";
-      error: TransactionFailedError;
+      error: TxFailedError;
     });
 
 export const initialTxState: TxState = { status: "idle" };
@@ -88,14 +84,14 @@ export const makeTxTracker = Effect.gen(function* () {
  * @param newMaxPriorityFeePerGas - New max priority fee per gas (optional)
  * @returns Effect that resolves to the new transaction hash
  */
-export const speedupTransaction = (
+export const speedupTx = (
   chainId: number,
   hash: Hash,
   newMaxFeePerGas: bigint,
   newMaxPriorityFeePerGas?: bigint
 ): Effect.Effect<
   Hash,
-  TransactionFailedError | WalletNotConnectedError | WrongNetworkError | ClientNotFoundError,
+  TxFailedError | WalletNotConnectedError | WrongNetworkError | ClientNotFoundError,
   PublicClientService | WalletClientService
 > =>
   Effect.gen(function* () {
@@ -107,7 +103,7 @@ export const speedupTransaction = (
     // Get original transaction
     const tx = yield* Effect.tryPromise({
       catch: (cause) =>
-        new TransactionFailedError({
+        new TxFailedError({
           cause,
           hash,
           message: `Failed to get transaction ${hash}`,
@@ -117,7 +113,7 @@ export const speedupTransaction = (
 
     if (!tx) {
       yield* Effect.fail(
-        new TransactionFailedError({
+        new TxFailedError({
           hash,
           message: `Transaction ${hash} not found`,
         })
@@ -129,7 +125,7 @@ export const speedupTransaction = (
     // Create replacement transaction with same nonce but higher fees
     const newHash = yield* Effect.tryPromise({
       catch: (cause) =>
-        new TransactionFailedError({
+        new TxFailedError({
           cause,
           hash,
           message: `Failed to speed up transaction ${hash}`,
@@ -159,14 +155,14 @@ export const speedupTransaction = (
  * @param newMaxFeePerGas - New max fee per gas (must be higher than original)
  * @returns Effect that resolves to the cancellation transaction hash
  */
-export const cancelTransaction = (
+export const cancelTx = (
   chainId: number,
   hash: Hash,
   newMaxFeePerGas: bigint,
   newMaxPriorityFeePerGas?: bigint
 ): Effect.Effect<
   Hash,
-  TransactionFailedError | WalletNotConnectedError | WrongNetworkError | ClientNotFoundError,
+  TxFailedError | WalletNotConnectedError | WrongNetworkError | ClientNotFoundError,
   PublicClientService | WalletClientService
 > =>
   Effect.gen(function* () {
@@ -178,7 +174,7 @@ export const cancelTransaction = (
     // Get original transaction
     const tx = yield* Effect.tryPromise({
       catch: (cause) =>
-        new TransactionFailedError({
+        new TxFailedError({
           cause,
           hash,
           message: `Failed to get transaction ${hash}`,
@@ -188,7 +184,7 @@ export const cancelTransaction = (
 
     if (!tx) {
       yield* Effect.fail(
-        new TransactionFailedError({
+        new TxFailedError({
           hash,
           message: `Transaction ${hash} not found`,
         })
@@ -200,7 +196,7 @@ export const cancelTransaction = (
     // Create cancellation transaction: same nonce, zero value to self, higher fees
     const newHash = yield* Effect.tryPromise({
       catch: (cause) =>
-        new TransactionFailedError({
+        new TxFailedError({
           cause,
           hash,
           message: `Failed to cancel transaction ${hash}`,

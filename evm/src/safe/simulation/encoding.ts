@@ -8,10 +8,10 @@
 import type { Address, Hex } from "viem";
 import { decodeAbiParameters, encodeFunctionData, encodePacked } from "viem";
 import { safeAbis } from "./abis.js";
-import type { SafeSimulationTransaction } from "./types.js";
+import type { SafeSimulationTx } from "./types.js";
 
 /** Internal transaction format for Safe multiSend encoding */
-type InternalTransaction = {
+type InternalTx = {
   data: Hex;
   operation: 0 | 1;
   to: Address;
@@ -36,7 +36,7 @@ type InternalTransaction = {
  *
  * @see https://github.com/safe-global/safe-smart-account/blob/c4859f4/contracts/common/StorageAccessible.sol#L32-L43
  */
-export function encodeInternalTransaction(tx: InternalTransaction): string {
+export function encodeInternalTx(tx: InternalTx): string {
   const encoded = encodePacked(
     ["uint8", "address", "uint256", "uint256", "bytes"],
     [tx.operation, tx.to, tx.value, BigInt((tx.data.length - 2) / 2), tx.data]
@@ -50,7 +50,7 @@ export function encodeInternalTransaction(tx: InternalTransaction): string {
  * @param transactions - Array of transactions to encode
  * @returns Encoded calldata for multiSend function
  */
-export function encodeMultiSend(transactions: SafeSimulationTransaction[]): Hex {
+export function encodeMultiSend(transactions: SafeSimulationTx[]): Hex {
   const internals = transactions.map((tx) => ({
     data: tx.data,
     operation: tx.operation ?? 0,
@@ -58,7 +58,7 @@ export function encodeMultiSend(transactions: SafeSimulationTransaction[]): Hex 
     value: tx.value,
   }));
 
-  const packedData = `0x${internals.map(encodeInternalTransaction).join("")}` as Hex;
+  const packedData = `0x${internals.map(encodeInternalTx).join("")}` as Hex;
 
   return encodeFunctionData({
     abi: safeAbis.multiSend,

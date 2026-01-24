@@ -9,9 +9,9 @@ import type {
   InsufficientFundsError,
   ReceiptTimeoutError,
   SimulationFailedError,
-  TransactionFailedError,
-  TransactionReplacedError,
   TransportError,
+  TxFailedError,
+  TxReplacedError,
   UserRejectedError,
   WalletNotConnectedError,
   WrongNetworkError,
@@ -42,8 +42,8 @@ export type WriteAndTrackError =
   | InsufficientFundsError
   | UserRejectedError
   | GasPriceUnavailableError
-  | TransactionFailedError
-  | TransactionReplacedError
+  | TxFailedError
+  | TxReplacedError
   | ReceiptTimeoutError
   | ClientNotFoundError
   | TransportError

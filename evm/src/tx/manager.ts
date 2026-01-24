@@ -3,13 +3,13 @@ import { Clock, Context, Effect, Fiber, Layer, Ref, Stream } from "effect";
 import type { Hash, TransactionReceipt } from "viem";
 import { WaitForTransactionReceiptTimeoutError } from "viem";
 import { DEFAULT_RECEIPT_TIMEOUT, DEFAULT_STUCK_TX_MS } from "@/src/constants/index.js";
-import type { ClientNotFoundError, TransactionReplacementReason } from "@/src/core/index.js";
+import type { ClientNotFoundError, TxReplacementReason } from "@/src/core/index.js";
 import {
   PublicClientService,
   ReceiptTimeoutError,
-  TransactionFailedError,
-  TransactionReplacedError,
   TransportError,
+  TxFailedError,
+  TxReplacedError,
 } from "@/src/core/index.js";
 import { SpanNames } from "@/src/telemetry/index.js";
 import type { TxPolicy } from "./policy.js";
@@ -37,7 +37,7 @@ export type TxManagerShape = {
     timeoutOrPolicy?: number | TxPolicy
   ) => Effect.Effect<
     TransactionReceipt,
-    TransactionFailedError | ReceiptTimeoutError | TransactionReplacedError | ClientNotFoundError
+    TxFailedError | ReceiptTimeoutError | TxReplacedError | ClientNotFoundError
   >;
 
   /**
@@ -202,7 +202,7 @@ export const TxManagerLive = Layer.effect(
               | {
                   oldHash: Hash;
                   newHash: Hash;
-                  reason: TransactionReplacementReason;
+                  reason: TxReplacementReason;
                 }
               | undefined;
 
@@ -239,7 +239,7 @@ export const TxManagerLive = Layer.effect(
                   : cause;
 
               yield* tracker.set({
-                error: new TransactionFailedError({
+                error: new TxFailedError({
                   cause: failure,
                   hash,
                   message: failure instanceof Error ? failure.message : String(failure),
@@ -293,7 +293,7 @@ export const TxManagerLive = Layer.effect(
 
           return yield* Effect.tryPromise({
             catch: (cause) => {
-              if (cause instanceof TransactionReplacedError) {
+              if (cause instanceof TxReplacedError) {
                 return cause;
               }
 
@@ -313,14 +313,14 @@ export const TxManagerLive = Layer.effect(
                 });
               }
 
-              return new TransactionFailedError({
+              return new TxFailedError({
                 cause,
                 hash,
                 message: `Failed to get receipt for ${hash}`,
               });
             },
             try: async () => {
-              let replacement: { newHash: Hash; reason: TransactionReplacementReason } | undefined;
+              let replacement: { newHash: Hash; reason: TxReplacementReason } | undefined;
 
               const receipt = await client.waitForTransactionReceipt({
                 hash,
@@ -336,7 +336,7 @@ export const TxManagerLive = Layer.effect(
 
               // Only throw if there's an actual replacement (different hash)
               if (replacement && replacement.newHash !== hash) {
-                throw new TransactionReplacedError({
+                throw new TxReplacedError({
                   message: `Transaction ${hash} was ${replacement.reason} with ${replacement.newHash}`,
                   newHash: replacement.newHash,
                   oldHash: hash,

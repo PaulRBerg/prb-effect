@@ -5,7 +5,7 @@ import { fromWatchCallback } from "@/src/internal/index.js";
 import { SpanNames } from "@/src/telemetry/index.js";
 import { SubscriptionDroppedError, SubscriptionNotSupportedError } from "./errors.js";
 
-export function watchPendingTransactions(
+export function watchPendingTxs(
   publicClientService: PublicClientServiceShape,
   params: {
     chainId: number;

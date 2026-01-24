@@ -54,7 +54,7 @@ describe("TxManager", () => {
       )
     );
 
-    it.effect("returns TransactionFailedError on failure", () =>
+    it.effect("returns TxFailedError on failure", () =>
       Effect.gen(function* () {
         const manager = yield* TxManager;
         const exit = yield* manager.waitForReceipt(TEST_CHAIN_ID, TEST_TX_HASH).pipe(Effect.exit);
@@ -99,7 +99,7 @@ describe("TxManager", () => {
       )
     );
 
-    it.effect("returns TransactionReplacedError when transaction is replaced", () =>
+    it.effect("returns TxReplacedError when transaction is replaced", () =>
       Effect.gen(function* () {
         const manager = yield* TxManager;
         const result = yield* manager
@@ -108,8 +108,8 @@ describe("TxManager", () => {
 
         Either.match(result, {
           onLeft: (error) => {
-            expect(error._tag).toBe("TransactionReplacedError");
-            if (error._tag === "TransactionReplacedError") {
+            expect(error._tag).toBe("TxReplacedError");
+            if (error._tag === "TxReplacedError") {
               expect(error.oldHash).toBe(TEST_TX_HASH);
               expect(error.newHash).toBe(
                 "0x9999999999999999999999999999999999999999999999999999999999999999"

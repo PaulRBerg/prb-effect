@@ -6,7 +6,7 @@ import type {
   ClientNotFoundError,
   InsufficientFundsError,
   ReceiptTimeoutError,
-  TransactionFailedError,
+  TxFailedError,
   UserRejectedError,
   WalletNotConnectedError,
   WrongNetworkError,
@@ -36,7 +36,7 @@ export type MockTransferServiceConfig = {
     | WalletNotConnectedError
     | WrongNetworkError
     | ClientNotFoundError
-    | TransactionFailedError
+    | TxFailedError
   >;
 
   sendAndWait?: (params: {
@@ -52,7 +52,7 @@ export type MockTransferServiceConfig = {
     | WalletNotConnectedError
     | WrongNetworkError
     | ClientNotFoundError
-    | TransactionFailedError
+    | TxFailedError
     | ReceiptTimeoutError
   >;
 

@@ -257,7 +257,7 @@ export const makeWriteAndTrack = (deps: WriteAndTrackDeps) =>
           }
 
           const error = exit.left;
-          if (error._tag === "TransactionReplacedError") {
+          if (error._tag === "TxReplacedError") {
             const newHash = error.newHash as Hash;
             const now = yield* Clock.currentTimeMillis;
 

@@ -3,7 +3,7 @@ import { dual } from "effect/Function";
 
 import { isTaggedError } from "./predicates.js";
 
-export type TransactionReplacementReason = "cancelled" | "replaced" | "repriced";
+export type TxReplacementReason = "cancelled" | "replaced" | "repriced";
 
 export class UserRejectedError extends Schema.TaggedError<UserRejectedError>()(
   "UserRejectedError",
@@ -12,24 +12,18 @@ export class UserRejectedError extends Schema.TaggedError<UserRejectedError>()(
   }
 ) {}
 
-export class TransactionFailedError extends Schema.TaggedError<TransactionFailedError>()(
-  "TransactionFailedError",
-  {
-    cause: Schema.optional(Schema.Unknown),
-    hash: Schema.String,
-    message: Schema.String,
-  }
-) {}
+export class TxFailedError extends Schema.TaggedError<TxFailedError>()("TxFailedError", {
+  cause: Schema.optional(Schema.Unknown),
+  hash: Schema.String,
+  message: Schema.String,
+}) {}
 
-export class TransactionReplacedError extends Schema.TaggedError<TransactionReplacedError>()(
-  "TransactionReplacedError",
-  {
-    message: Schema.String,
-    newHash: Schema.String,
-    oldHash: Schema.String,
-    reason: Schema.Literal("cancelled", "replaced", "repriced"),
-  }
-) {}
+export class TxReplacedError extends Schema.TaggedError<TxReplacedError>()("TxReplacedError", {
+  message: Schema.String,
+  newHash: Schema.String,
+  oldHash: Schema.String,
+  reason: Schema.Literal("cancelled", "replaced", "repriced"),
+}) {}
 
 export class ReceiptTimeoutError extends Schema.TaggedError<ReceiptTimeoutError>()(
   "ReceiptTimeoutError",

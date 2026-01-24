@@ -8,7 +8,7 @@ import {
   isUserRejection,
   PublicClientService,
   ReceiptTimeoutError,
-  TransactionFailedError,
+  TxFailedError,
   UserRejectedError,
   WalletClientService,
   WalletNotConnectedError,
@@ -35,7 +35,7 @@ export type TransferServiceShape = {
     | WalletNotConnectedError
     | WrongNetworkError
     | ClientNotFoundError
-    | TransactionFailedError
+    | TxFailedError
   >;
 
   readonly sendAndWait: (params: {
@@ -51,7 +51,7 @@ export type TransferServiceShape = {
     | WalletNotConnectedError
     | WrongNetworkError
     | ClientNotFoundError
-    | TransactionFailedError
+    | TxFailedError
     | ReceiptTimeoutError
   >;
 
@@ -73,7 +73,7 @@ export class TransferService extends Context.Tag("ew3/TransferService")<
 const classifyTransferError = (
   error: unknown,
   to: Address
-): InsufficientFundsError | UserRejectedError | TransactionFailedError => {
+): InsufficientFundsError | UserRejectedError | TxFailedError => {
   if (isUserRejection(error)) {
     return new UserRejectedError({
       message: error instanceof Error ? error.message : "User rejected the transaction",
@@ -88,7 +88,7 @@ const classifyTransferError = (
     });
   }
 
-  return new TransactionFailedError({
+  return new TxFailedError({
     cause: error,
     hash: "0x",
     message: error instanceof Error ? error.message : `Failed to send transfer to ${to}`,
@@ -227,7 +227,7 @@ export const TransferServiceLive = Layer.effect(
                 timeout: 30_000,
               });
             }
-            return new TransactionFailedError({
+            return new TxFailedError({
               cause: error,
               hash,
               message: `Failed to wait for transaction ${hash}`,

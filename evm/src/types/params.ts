@@ -100,7 +100,7 @@ export type MulticallResult<TResult = unknown> =
 /**
  * Result from a transaction
  */
-export type TransactionResult = {
+export type TxResult = {
   readonly hash: Hash;
   readonly receipt: TransactionReceipt;
 };

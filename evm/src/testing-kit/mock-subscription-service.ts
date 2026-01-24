@@ -29,7 +29,7 @@ export type MockSubscriptionServiceConfig = {
     pollingInterval?: number;
   }) => Effect.Effect<Stream.Stream<Log, never>>;
 
-  watchPendingTransactions?: (params: {
+  watchPendingTxs?: (params: {
     chainId: number;
     pollingInterval?: number;
   }) => Effect.Effect<Stream.Stream<Hash, never>>;
@@ -55,7 +55,7 @@ export type MockSubscriptionServiceConfig = {
     stream: Stream.Stream<Log, never>;
   }>;
 
-  watchPendingTransactionsRetrying?: (params: {
+  watchPendingTxsRetrying?: (params: {
     chainId: number;
     pollingInterval?: number;
     retry?: SubscriptionRetryConfig;
@@ -89,14 +89,14 @@ const defaultConfig: Required<MockSubscriptionServiceConfig> = {
       const stream = yield* defaultConfig.watchLogs(watchParams);
       return { stateRef, stream };
     }),
-  watchPendingTransactions: () => Effect.succeed(Stream.empty),
-  watchPendingTransactionsRetrying: (params) =>
+  watchPendingTxs: () => Effect.succeed(Stream.empty),
+  watchPendingTxsRetrying: (params) =>
     Effect.gen(function* () {
       const stateRef = yield* SubscriptionRef.make<SubscriptionConnectionState>({
         status: "connected",
       });
       const { retry: _retry, ...watchParams } = params;
-      const stream = yield* defaultConfig.watchPendingTransactions(watchParams);
+      const stream = yield* defaultConfig.watchPendingTxs(watchParams);
       return { stateRef, stream };
     }),
 };
@@ -146,9 +146,6 @@ export const makeMockSubscriptionServiceLayer = (
     watchBlocksRetrying: withChainIdCheck(supportedChainId, merged.watchBlocksRetrying),
     watchLogs: withChainIdCheck(supportedChainId, merged.watchLogs),
     watchLogsRetrying: withChainIdCheck(supportedChainId, merged.watchLogsRetrying),
-    watchPendingTransactions: withChainIdCheck(supportedChainId, merged.watchPendingTransactions),
-    watchPendingTransactionsRetrying: withChainIdCheck(
-      supportedChainId,
-      merged.watchPendingTransactionsRetrying
-    ),
+    watchPendingTxs: withChainIdCheck(supportedChainId, merged.watchPendingTxs),
+    watchPendingTxsRetrying: withChainIdCheck(supportedChainId, merged.watchPendingTxsRetrying),
   }));

@@ -263,7 +263,7 @@ export const SafeAppsServiceLive = (config?: SafeAppsServiceConfig) =>
           const receipt = yield* txManager
             .waitForReceipt(info.chainId, onchainHash, policy.receiptPolicy)
             .pipe(
-              Effect.catchTag("TransactionReplacedError", (error) =>
+              Effect.catchTag("TxReplacedError", (error) =>
                 Effect.fail(
                   new SafeTxLookupError({
                     cause: error,

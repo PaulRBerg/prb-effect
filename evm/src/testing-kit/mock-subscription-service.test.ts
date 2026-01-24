@@ -122,11 +122,11 @@ describe("testing-kit: makeMockSubscriptionServiceLayer", () => {
     );
   });
 
-  describe("watchPendingTransactions", () => {
+  describe("watchPendingTxs", () => {
     it.effect("returns a Stream", () =>
       Effect.gen(function* () {
         const service = yield* SubscriptionService;
-        const txStream = yield* service.watchPendingTransactions({
+        const txStream = yield* service.watchPendingTxs({
           chainId: mainnet.id,
         });
 
@@ -137,7 +137,7 @@ describe("testing-kit: makeMockSubscriptionServiceLayer", () => {
     it.effect("emits transaction hashes when configured", () =>
       Effect.gen(function* () {
         const service = yield* SubscriptionService;
-        const txStream = yield* service.watchPendingTransactions({
+        const txStream = yield* service.watchPendingTxs({
           chainId: mainnet.id,
         });
 
@@ -151,7 +151,7 @@ describe("testing-kit: makeMockSubscriptionServiceLayer", () => {
       }).pipe(
         Effect.provide(
           makeMockSubscriptionServiceLayer({
-            watchPendingTransactions: () =>
+            watchPendingTxs: () =>
               Effect.succeed(
                 Stream.make(
                   "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef" as Hash
@@ -166,7 +166,7 @@ describe("testing-kit: makeMockSubscriptionServiceLayer", () => {
       Effect.gen(function* () {
         const service = yield* SubscriptionService;
         const exit = yield* Effect.exit(
-          service.watchPendingTransactions({
+          service.watchPendingTxs({
             chainId: 123_456_789,
           })
         );

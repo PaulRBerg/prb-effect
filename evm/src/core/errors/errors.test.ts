@@ -12,8 +12,8 @@ import {
   MulticallError,
   ReceiptTimeoutError,
   SimulationFailedError,
-  TransactionFailedError,
   TransportError,
+  TxFailedError,
   WalletNotConnectedError,
 } from "@/src/core/index.js";
 
@@ -294,18 +294,18 @@ describe("MulticallError", () => {
   );
 });
 
-describe("TransactionFailedError", () => {
+describe("TxFailedError", () => {
   it("has correct _tag", () => {
-    const error = new TransactionFailedError({
+    const error = new TxFailedError({
       hash: "0xabcd",
       message: "Transaction failed",
     });
-    expect(error._tag).toBe("TransactionFailedError");
+    expect(error._tag).toBe("TxFailedError");
   });
 
   it("stores hash, message, and optional cause", () => {
     const cause = new Error("Transaction error");
-    const error = new TransactionFailedError({
+    const error = new TxFailedError({
       cause,
       hash: "0xabcd",
       message: "Transaction failed",
@@ -318,8 +318,8 @@ describe("TransactionFailedError", () => {
   it.effect("can be caught with catchTag", () =>
     Effect.gen(function* () {
       const caught = yield* Effect.fail(
-        new TransactionFailedError({ hash: "0xabcd", message: "test" })
-      ).pipe(Effect.catchTag("TransactionFailedError", (e) => Effect.succeed(e)));
+        new TxFailedError({ hash: "0xabcd", message: "test" })
+      ).pipe(Effect.catchTag("TxFailedError", (e) => Effect.succeed(e)));
       expect(caught.hash).toBe("0xabcd");
       expect(caught.message).toBe("test");
     })

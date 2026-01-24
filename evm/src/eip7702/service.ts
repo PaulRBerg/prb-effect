@@ -5,8 +5,8 @@ import { prepareAuthorization } from "viem/actions";
 import type {
   ClientNotFoundError,
   ReceiptTimeoutError,
-  TransactionFailedError,
-  TransactionReplacedError,
+  TxFailedError,
+  TxReplacedError,
   WrongNetworkError,
 } from "@/src/core/index.js";
 import {
@@ -20,7 +20,7 @@ import {
 } from "@/src/core/index.js";
 import type { TxPolicy } from "@/src/tx/index.js";
 import { defaultPolicy, TxManager } from "@/src/tx/index.js";
-import type { TransactionResult } from "@/src/types/index.js";
+import type { TxResult } from "@/src/types/index.js";
 import type { Erc7579ModeCode } from "./erc7579.js";
 import {
   ERC7579_MODE_SIMPLE_BATCH,
@@ -30,7 +30,7 @@ import {
 import {
   Eip7702AuthorizationPreparationError,
   Eip7702AuthorizationSigningError,
-  Eip7702SendTransactionError,
+  Eip7702SendTxError,
 } from "./errors.js";
 
 export type Eip7702Call = {
@@ -70,12 +70,12 @@ export type ApproveAndExecuteParams = {
   readonly tx?: Eip7702TxOverrides | undefined;
 };
 
-export type DelegateAndExecuteResult = TransactionResult;
+export type DelegateAndExecuteResult = TxResult;
 
 function mapSendEip7702TransactionCause(
   chainId: number,
   cause: unknown
-): Eip7702SendTransactionError | InsufficientFundsError | UserRejectedError {
+): Eip7702SendTxError | InsufficientFundsError | UserRejectedError {
   if (isUserRejection(cause)) {
     return new UserRejectedError({
       message: cause instanceof Error ? cause.message : "User rejected the request",
@@ -90,7 +90,7 @@ function mapSendEip7702TransactionCause(
     });
   }
 
-  return new Eip7702SendTransactionError({
+  return new Eip7702SendTxError({
     cause,
     chainId,
     message: cause instanceof Error ? cause.message : "Failed to send EIP-7702 transaction",
@@ -114,7 +114,7 @@ export type Eip7702ServiceShape = {
     Hash,
     | Eip7702AuthorizationPreparationError
     | Eip7702AuthorizationSigningError
-    | Eip7702SendTransactionError
+    | Eip7702SendTxError
     | InsufficientFundsError
     | UserRejectedError
     | WalletNotConnectedError
@@ -128,7 +128,7 @@ export type Eip7702ServiceShape = {
     }
   ) => Effect.Effect<
     DelegateAndExecuteResult,
-    | Eip7702SendTransactionError
+    | Eip7702SendTxError
     | Eip7702AuthorizationPreparationError
     | Eip7702AuthorizationSigningError
     | InsufficientFundsError
@@ -137,8 +137,8 @@ export type Eip7702ServiceShape = {
     | WrongNetworkError
     | ClientNotFoundError
     | ReceiptTimeoutError
-    | TransactionFailedError
-    | TransactionReplacedError
+    | TxFailedError
+    | TxReplacedError
   >;
 
   readonly approveAndExecute: (
@@ -147,7 +147,7 @@ export type Eip7702ServiceShape = {
     Hash,
     | Eip7702AuthorizationPreparationError
     | Eip7702AuthorizationSigningError
-    | Eip7702SendTransactionError
+    | Eip7702SendTxError
     | InsufficientFundsError
     | UserRejectedError
     | WalletNotConnectedError
@@ -161,7 +161,7 @@ export type Eip7702ServiceShape = {
     }
   ) => Effect.Effect<
     DelegateAndExecuteResult,
-    | Eip7702SendTransactionError
+    | Eip7702SendTxError
     | Eip7702AuthorizationPreparationError
     | Eip7702AuthorizationSigningError
     | InsufficientFundsError
@@ -170,8 +170,8 @@ export type Eip7702ServiceShape = {
     | WrongNetworkError
     | ClientNotFoundError
     | ReceiptTimeoutError
-    | TransactionFailedError
-    | TransactionReplacedError
+    | TxFailedError
+    | TxReplacedError
   >;
 };
 

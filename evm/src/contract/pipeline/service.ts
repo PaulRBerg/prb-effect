@@ -3,7 +3,7 @@ import { Context } from "effect";
 import type { Abi, Hash } from "viem";
 import type {
   ClientNotFoundError,
-  TransactionFailedError,
+  TxFailedError,
   WalletNotConnectedError,
 } from "@/src/core/index.js";
 import type { GasPriceUnavailableError } from "@/src/gas/index.js";
@@ -29,7 +29,7 @@ export type ContractPipelineShape = {
           policy?: TxPolicy
         ) => Effect.Effect<
           Hash,
-          | TransactionFailedError
+          | TxFailedError
           | WalletNotConnectedError
           | ClientNotFoundError
           | GasPriceUnavailableError
@@ -39,7 +39,7 @@ export type ContractPipelineShape = {
           policy?: TxPolicy
         ) => Effect.Effect<
           Hash,
-          | TransactionFailedError
+          | TxFailedError
           | WalletNotConnectedError
           | ClientNotFoundError
           | GasPriceUnavailableError

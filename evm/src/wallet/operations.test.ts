@@ -423,7 +423,7 @@ describe("signTransaction", () => {
       if (Exit.isFailure(exit)) {
         const error = Cause.failureOption(exit.cause);
         if (error._tag === "Some") {
-          expect(error.value._tag).toBe("SignTransactionError");
+          expect(error.value._tag).toBe("SignTxError");
           expect(error.value.message).toBe("User rejected the request");
         }
       }

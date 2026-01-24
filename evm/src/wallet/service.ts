@@ -4,8 +4,8 @@ import { parseHexInt } from "@/src/internal/index.js";
 import type {
   SignMessageError,
   SignMessageParams,
-  SignTransactionError,
   SignTransactionParams,
+  SignTxError,
   SignTypedDataError,
   SignTypedDataParams,
   WalletProvider,
@@ -113,7 +113,7 @@ export type WalletServiceShape = {
   ) => Effect.Effect<Hex, SignTypedDataError | AccountNotConnectedError>;
   readonly signTransaction: (
     params: SignTransactionParams
-  ) => Effect.Effect<Hex, SignTransactionError | AccountNotConnectedError>;
+  ) => Effect.Effect<Hex, SignTxError | AccountNotConnectedError>;
 };
 
 export class WalletService extends Context.Tag("ew3/WalletService")<

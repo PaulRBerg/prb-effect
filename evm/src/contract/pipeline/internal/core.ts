@@ -11,8 +11,8 @@ import type {
   InsufficientFundsError,
   ReceiptTimeoutError,
   SimulationFailedError,
-  TransactionFailedError,
   TransportError,
+  TxFailedError,
   UserRejectedError,
   WalletNotConnectedError,
   WrongNetworkError,
@@ -47,7 +47,7 @@ type CorePipelineError =
   | InsufficientFundsError
   | UserRejectedError
   | GasPriceUnavailableError
-  | TransactionFailedError
+  | TxFailedError
   | ReceiptTimeoutError
   | ClientNotFoundError
   | TransportError

@@ -15,7 +15,7 @@ export {
   SafeContractsNotDeployedError,
   SafeSimulationFailedError,
   SimulationDecodeError,
-  TransactionSizeTooLargeError,
+  TxSizeTooLargeError,
 } from "./errors.js";
 // Service
 export {
@@ -28,5 +28,5 @@ export type {
   SafeOperation,
   SafeSimulateBatchParams,
   SafeSimulationResult,
-  SafeSimulationTransaction,
+  SafeSimulationTx,
 } from "./types.js";

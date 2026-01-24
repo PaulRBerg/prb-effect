@@ -3,7 +3,7 @@
  */
 import { Effect } from "effect";
 import type { Hex } from "viem";
-import { TransactionSizeTooLargeError } from "../../errors.js";
+import { TxSizeTooLargeError } from "../../errors.js";
 
 /**
  * Enforce chain-specific transaction size constraints (if provided).
@@ -11,7 +11,7 @@ import { TransactionSizeTooLargeError } from "../../errors.js";
 export function enforceTxSizeLimit(
   safeCalldata: Hex,
   txSizeLimit?: number
-): Effect.Effect<void, TransactionSizeTooLargeError> {
+): Effect.Effect<void, TxSizeTooLargeError> {
   if (!txSizeLimit) {
     return Effect.void;
   }
@@ -20,7 +20,7 @@ export function enforceTxSizeLimit(
     const sizeInBytes = (safeCalldata.length - 2) / 2;
     if (sizeInBytes > txSizeLimit) {
       return yield* Effect.fail(
-        new TransactionSizeTooLargeError({
+        new TxSizeTooLargeError({
           actualSize: sizeInBytes,
           maxSize: txSizeLimit,
           message: `Transaction size (${sizeInBytes} bytes) exceeds chain limit (${txSizeLimit} bytes). Try splitting into smaller batches.`,

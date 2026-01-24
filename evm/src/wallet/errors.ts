@@ -13,13 +13,10 @@ export class SignTypedDataError extends Schema.TaggedError<SignTypedDataError>()
   }
 ) {}
 
-export class SignTransactionError extends Schema.TaggedError<SignTransactionError>()(
-  "SignTransactionError",
-  {
-    cause: Schema.optional(Schema.Unknown),
-    message: Schema.String,
-  }
-) {}
+export class SignTxError extends Schema.TaggedError<SignTxError>()("SignTxError", {
+  cause: Schema.optional(Schema.Unknown),
+  message: Schema.String,
+}) {}
 
 export class WalletConnectionError extends Schema.TaggedError<WalletConnectionError>()(
   "WalletConnectionError",

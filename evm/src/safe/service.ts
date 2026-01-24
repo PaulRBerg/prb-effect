@@ -4,7 +4,7 @@ import type { Hash, Hex } from "viem";
 import type {
   ClientNotFoundError,
   ReceiptTimeoutError,
-  TransactionFailedError,
+  TxFailedError,
 } from "@/src/core/errors/index.js";
 import type {
   OffchainSignatureTimeoutError,
@@ -50,7 +50,7 @@ export type SafeAppsServiceShape = {
     SafeTxResult,
     | SafeTxExecutionTimeoutError
     | SafeTxLookupError
-    | TransactionFailedError
+    | TxFailedError
     | ReceiptTimeoutError
     | ClientNotFoundError
   >;

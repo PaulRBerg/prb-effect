@@ -7,7 +7,7 @@ import { makeBackoffSchedule } from "@/src/internal/index.js";
 import { watchBlocks } from "./block-subscription.js";
 import type { SubscriptionDroppedError, SubscriptionNotSupportedError } from "./errors.js";
 import { watchLogs } from "./log-subscription.js";
-import { watchPendingTransactions } from "./pending-tx.js";
+import { watchPendingTxs } from "./pending-tx.js";
 
 export type SubscriptionRetryConfig = {
   /**
@@ -58,7 +58,7 @@ export type SubscriptionServiceShape = {
     pollingInterval?: number;
   }) => Effect.Effect<Stream.Stream<Log, SubscriptionDroppedError>, ClientNotFoundError>;
 
-  readonly watchPendingTransactions: (params: {
+  readonly watchPendingTxs: (params: {
     chainId: number;
     pollingInterval?: number;
   }) => Effect.Effect<
@@ -81,7 +81,7 @@ export type SubscriptionServiceShape = {
     retry?: SubscriptionRetryConfig;
   }) => Effect.Effect<RetryingSubscriptionStream<Log>, ClientNotFoundError>;
 
-  readonly watchPendingTransactionsRetrying: (params: {
+  readonly watchPendingTxsRetrying: (params: {
     chainId: number;
     pollingInterval?: number;
     retry?: SubscriptionRetryConfig;
@@ -154,9 +154,9 @@ export const SubscriptionServiceLive = Layer.effect(
           return { stateRef, stream };
         }),
 
-      watchPendingTransactions: (params) => watchPendingTransactions(publicClientService, params),
+      watchPendingTxs: (params) => watchPendingTxs(publicClientService, params),
 
-      watchPendingTransactionsRetrying: (params) =>
+      watchPendingTxsRetrying: (params) =>
         Effect.gen(function* () {
           const stateRef = yield* SubscriptionRef.make<SubscriptionConnectionState>({
             status: "connecting",
@@ -164,7 +164,7 @@ export const SubscriptionServiceLive = Layer.effect(
 
           const { retry, ...watchParams } = params;
           const schedule = makeSubscriptionRetrySchedule(retry);
-          const stream = (yield* watchPendingTransactions(publicClientService, watchParams)).pipe(
+          const stream = (yield* watchPendingTxs(publicClientService, watchParams)).pipe(
             Stream.onStart(SubscriptionRef.set(stateRef, { status: "connected" })),
             Stream.tapError((error) =>
               SubscriptionRef.set(stateRef, { error, status: "retrying" })
