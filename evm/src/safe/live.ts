@@ -1,5 +1,5 @@
-import { Duration, Effect, Layer, Option, Ref } from "effect";
-import type { Address, Hash, Hex } from "viem";
+import { Effect, Layer, Option, Ref } from "effect";
+import type { Hash, Hex } from "viem";
 import { isAddress, isHash, isHex } from "viem";
 import {
   SAFE_EXECUTION_TIMEOUT,
@@ -7,10 +7,10 @@ import {
   SAFE_SIGNATURE_POLL_INTERVAL,
   SAFE_SIGNATURE_TIMEOUT,
 } from "@/src/constants/index.js";
-import { SpanNames } from "@/src/telemetry/index.js";
 import { TxManager } from "@/src/tx/index.js";
 import type { SafeAppsSdkConfig } from "./adapter.js";
 import { loadSafeSdk } from "./adapter.js";
+import type { SafeAppsSdkUnavailableError } from "./errors.js";
 import {
   NotInSafeAppContextError,
   OffchainSignatureTimeoutError,
@@ -21,415 +21,415 @@ import {
   SafeMultisigTxSubmissionError,
   SignTypedDataError,
 } from "./errors.js";
+import { pollUntil } from "./internal/poll.js";
 import { SafeAppsService } from "./service.js";
 import type { EIP712TypedData, SafeMultisigInfo, SafeMultisigTx } from "./types.js";
 
 export type SafeAppsServiceConfig = SafeAppsSdkConfig;
 
-/**
- * Validate that a string is a valid Ethereum address, failing with context if not.
- */
-const validateAddress = (
-  value: string,
-  context: string
-): Effect.Effect<Address, SafeMultisigTxLookupError> =>
-  isAddress(value)
-    ? Effect.succeed(value)
-    : Effect.fail(
-        new SafeMultisigTxLookupError({
-          message: `Invalid address from SDK in ${context}: ${value}`,
-          retryable: false,
-          safeTxHash: "",
-        })
-      );
+// --- SDK Response Types (internal - SDK is optional dependency) ---
 
-/**
- * Validate that a string is a valid transaction hash, failing with context if not.
- */
-const validateHash = (
-  value: string,
-  context: string
-): Effect.Effect<Hash, SafeMultisigTxLookupError> =>
-  isHash(value)
-    ? Effect.succeed(value)
-    : Effect.fail(
-        new SafeMultisigTxLookupError({
-          message: `Invalid hash from SDK in ${context}: ${value}`,
-          retryable: false,
-          safeTxHash: "",
-        })
-      );
+type SdkMultisigInfo = { chainId: number; safeAddress: string };
+type SdkTxSendResult = { safeTxHash: string };
+type SdkTxDetails = { txHash?: string; txStatus?: string };
+type SdkSignResult = { messageHash?: string; safeTxHash?: string };
 
-/**
- * Validate that a string is valid hex, failing with context if not.
- */
-const validateHex = (
-  value: string,
-  context: string
-): Effect.Effect<Hex, SafeMultisigTxLookupError> =>
-  isHex(value)
-    ? Effect.succeed(value)
-    : Effect.fail(
-        new SafeMultisigTxLookupError({
-          message: `Invalid hex from SDK in ${context}: ${value}`,
-          retryable: false,
-          safeTxHash: "",
-        })
-      );
+// --- Validation Factory ---
+
+type Predicate<T extends string> = (value: string) => value is T;
+
+const makeValidator =
+  <T extends string>(predicate: Predicate<T>, label: string) =>
+  (value: string, context: string): Effect.Effect<T, SafeMultisigTxLookupError> =>
+    predicate(value)
+      ? Effect.succeed(value)
+      : Effect.fail(
+          new SafeMultisigTxLookupError({
+            message: `Invalid ${label} from SDK in ${context}: ${value}`,
+            retryable: false,
+            safeTxHash: "",
+          })
+        );
+
+const validateAddress = makeValidator(isAddress, "address");
+const validateHash = makeValidator(isHash, "hash");
+const validateHex = makeValidator(isHex, "hex");
+
+// --- SDK State ---
+
+/** SDK availability error - either SSR environment or SDK load failure */
+type SdkUnavailableError = NotInSafeAppContextError | SafeAppsSdkUnavailableError;
+
+/** Internal SDK state for lazy loading */
+type SdkState<T> =
+  | { readonly _tag: "pending" }
+  | { readonly _tag: "loaded"; readonly sdk: T }
+  | { readonly _tag: "unavailable"; readonly error: SdkUnavailableError };
+
+// --- SDK Wrapper Helper ---
+
+const withSdk = <A, E>(
+  getSdk: Effect.Effect<unknown, SdkUnavailableError>,
+  fn: (sdk: unknown) => Effect.Effect<A, E>,
+  mapError: (e: SdkUnavailableError) => E
+): Effect.Effect<A, E> => Effect.flatMap(Effect.mapError(getSdk, mapError), fn);
+
+// --- Service Implementation ---
 
 export const SafeAppsServiceLive = (config?: SafeAppsServiceConfig) =>
   Layer.scoped(
     SafeAppsService,
     Effect.gen(function* () {
-      // SSR guard - Safe Apps SDK requires browser environment
-      if (typeof window === "undefined") {
-        return yield* Effect.fail(
-          new NotInSafeAppContextError({
-            message: "Safe Apps SDK requires a browser environment (window is undefined)",
-          })
-        );
-      }
-
-      // Load SDK dynamically to keep it optional
-      const sdk = yield* loadSafeSdk(config);
-
       // Cache Safe info after first fetch
       const infoRef = yield* Ref.make<SafeMultisigInfo | null>(null);
 
       // Get TxManager for receipt waiting
       const txManager = yield* TxManager;
 
-      // --- Service method implementations ---
+      // biome-ignore lint/suspicious/noExplicitAny: SDK is optional dependency with dynamic types
+      const sdkRef = yield* Ref.make<SdkState<any>>({ _tag: "pending" });
 
-      const getInfo = () =>
-        Effect.gen(function* () {
-          const cached = yield* Ref.get(infoRef);
-          if (cached) {
-            return cached;
-          }
+      /** Get SDK, loading lazily on first call. Fails if not in Safe App context. */
+      const getSdk: Effect.Effect<unknown, SdkUnavailableError> = Effect.gen(function* () {
+        const state = yield* Ref.get(sdkRef);
 
-          const info = yield* Effect.tryPromise({
-            catch: (cause) =>
-              new SafeMultisigInfoUnavailableError({
-                cause,
-                message: "Failed to get Safe info from SDK",
-              }),
-            try: () => sdk.safe.getInfo(),
+        if (state._tag === "loaded") {
+          return state.sdk;
+        }
+        if (state._tag === "unavailable") {
+          return yield* Effect.fail(state.error);
+        }
+
+        // First call - check environment and load SDK
+        if (typeof window === "undefined") {
+          const error = new NotInSafeAppContextError({
+            message: "Safe Apps SDK requires a browser environment (window is undefined)",
           });
+          yield* Ref.set(sdkRef, { _tag: "unavailable", error });
+          return yield* Effect.fail(error);
+        }
 
-          const safeAddress = yield* validateAddress(info.safeAddress, "getInfo").pipe(
-            Effect.catchTag("SafeMultisigTxLookupError", (e) =>
-              Effect.fail(new SafeMultisigInfoUnavailableError({ cause: e, message: e.message }))
-            )
-          );
-
-          const safeInfo: SafeMultisigInfo = {
-            chainId: info.chainId,
-            safeAddress,
-          };
-
-          yield* Ref.set(infoRef, safeInfo);
-          return safeInfo;
-        }).pipe(Effect.withSpan(SpanNames.SAFE_GET_INFO));
-
-      const sendTxs = (txs: readonly SafeMultisigTx[], params?: { safeTxGas?: number }) =>
-        Effect.gen(function* () {
-          // Convert bigint values to strings (Safe SDK expects decimal strings)
-          const sdkTxs = txs.map((tx) => ({
-            data: tx.data,
-            to: tx.to,
-            value: tx.value?.toString() ?? "0",
-          }));
-
-          const result = yield* Effect.tryPromise({
-            catch: (cause) =>
-              new SafeMultisigTxSubmissionError({
-                cause,
-                message: "Failed to submit txs to Safe",
-              }),
-            try: () => sdk.txs.send({ params, txs: sdkTxs }),
-          });
-
-          const safeTxHash = yield* validateHash(result.safeTxHash, "sendTxs").pipe(
-            Effect.catchTag("SafeMultisigTxLookupError", (e) =>
-              Effect.fail(new SafeMultisigTxSubmissionError({ cause: e, message: e.message }))
-            )
-          );
-
-          const info = yield* getInfo();
-
-          return {
-            chainId: info.chainId,
-            safeAddress: info.safeAddress,
-            safeTxHash,
-          };
-        })
-          .pipe(
-            Effect.catchTag("SafeMultisigInfoUnavailableError", (error) =>
-              Effect.fail(
-                new SafeMultisigTxSubmissionError({
-                  cause: error,
-                  message: "Failed to get Safe info after tx submission",
-                })
-              )
-            )
+        // Try to load SDK - catch SDK unavailable error and store it
+        const loadResult = yield* loadSafeSdk(config).pipe(
+          Effect.map((sdk) => ({ _tag: "loaded" as const, sdk })),
+          Effect.catchTag("SafeAppsSdkUnavailableError", (error) =>
+            Effect.succeed({ _tag: "unavailable" as const, error } as const)
           )
-          .pipe(
-            Effect.withSpan(SpanNames.SAFE_SEND_TXS, {
-              attributes: { txCount: txs.length },
-            })
-          );
-
-      const getTx = (safeTxHash: Hash) =>
-        Effect.gen(function* () {
-          const tx = yield* Effect.tryPromise({
-            catch: (cause) =>
-              new SafeMultisigTxLookupError({
-                cause,
-                message: `Failed to lookup Safe tx ${safeTxHash}`,
-                retryable: true,
-                safeTxHash,
-              }),
-            try: () => sdk.txs.getBySafeTxHash(safeTxHash),
-          });
-
-          const txHash = tx.txHash ? yield* validateHash(tx.txHash, "getTx") : null;
-
-          return {
-            status: tx.txStatus ?? "AWAITING_CONFIRMATIONS",
-            txHash: txHash ? Option.some(txHash) : Option.none<Hash>(),
-          };
-        }).pipe(
-          Effect.withSpan(SpanNames.SAFE_GET_TX, {
-            attributes: { safeTxHash },
-          })
         );
 
-      const waitForTxReceipt = (
+        yield* Ref.set(sdkRef, loadResult);
+
+        if (loadResult._tag === "unavailable") {
+          return yield* Effect.fail(loadResult.error);
+        }
+
+        return loadResult.sdk;
+      });
+
+      // --- Service Methods ---
+
+      const getInfo = Effect.fn("SafeAppsService.getInfo")(function* () {
+        const cached = yield* Ref.get(infoRef);
+        if (cached) {
+          return cached;
+        }
+
+        const sdk = yield* withSdk(
+          getSdk,
+          (s) =>
+            Effect.tryPromise({
+              catch: (cause) =>
+                new SafeMultisigInfoUnavailableError({
+                  cause,
+                  message: "Failed to get Safe info from SDK",
+                }),
+              try: () =>
+                (s as { safe: { getInfo: () => Promise<SdkMultisigInfo> } }).safe.getInfo(),
+            }),
+          (e) => new SafeMultisigInfoUnavailableError({ cause: e, message: e.message })
+        );
+
+        const safeAddress = yield* validateAddress(sdk.safeAddress, "getInfo").pipe(
+          Effect.catchTag("SafeMultisigTxLookupError", (e) =>
+            Effect.fail(new SafeMultisigInfoUnavailableError({ cause: e, message: e.message }))
+          )
+        );
+
+        const safeInfo: SafeMultisigInfo = { chainId: sdk.chainId, safeAddress };
+        yield* Ref.set(infoRef, safeInfo);
+        return safeInfo;
+      });
+
+      const sendTxs = Effect.fn("SafeAppsService.sendTxs")(function* (
+        txs: readonly SafeMultisigTx[],
+        params?: { safeTxGas?: number }
+      ) {
+        // Convert bigint values to strings (Safe SDK expects decimal strings)
+        const sdkTxs = txs.map((tx) => ({
+          data: tx.data,
+          to: tx.to,
+          value: tx.value?.toString() ?? "0",
+        }));
+
+        const result = yield* withSdk(
+          getSdk,
+          (s) =>
+            Effect.tryPromise({
+              catch: (cause) =>
+                new SafeMultisigTxSubmissionError({
+                  cause,
+                  message: "Failed to submit txs to Safe",
+                }),
+              try: () =>
+                (
+                  s as {
+                    txs: {
+                      send: (opts: {
+                        params?: unknown;
+                        txs: unknown[];
+                      }) => Promise<SdkTxSendResult>;
+                    };
+                  }
+                ).txs.send({ params, txs: sdkTxs }),
+            }),
+          (e) => new SafeMultisigTxSubmissionError({ cause: e, message: e.message })
+        );
+
+        const safeTxHash = yield* validateHash(result.safeTxHash, "sendTxs").pipe(
+          Effect.catchTag("SafeMultisigTxLookupError", (e) =>
+            Effect.fail(new SafeMultisigTxSubmissionError({ cause: e, message: e.message }))
+          )
+        );
+
+        const info = yield* getInfo().pipe(
+          Effect.catchTag("SafeMultisigInfoUnavailableError", (error) =>
+            Effect.fail(
+              new SafeMultisigTxSubmissionError({
+                cause: error,
+                message: "Failed to get Safe info after tx submission",
+              })
+            )
+          )
+        );
+
+        return { chainId: info.chainId, safeAddress: info.safeAddress, safeTxHash };
+      });
+
+      const getTx = Effect.fn("SafeAppsService.getTx")(function* (safeTxHash: Hash) {
+        const tx = yield* withSdk(
+          getSdk,
+          (s) =>
+            Effect.tryPromise({
+              catch: (cause) =>
+                new SafeMultisigTxLookupError({
+                  cause,
+                  message: `Failed to lookup Safe tx ${safeTxHash}`,
+                  retryable: true,
+                  safeTxHash,
+                }),
+              try: () =>
+                (
+                  s as { txs: { getBySafeTxHash: (hash: string) => Promise<SdkTxDetails> } }
+                ).txs.getBySafeTxHash(safeTxHash),
+            }),
+          (e) =>
+            new SafeMultisigTxLookupError({
+              cause: e,
+              message: e.message,
+              retryable: false,
+              safeTxHash,
+            })
+        );
+
+        const txHash = tx.txHash ? yield* validateHash(tx.txHash, "getTx") : null;
+
+        return {
+          status: tx.txStatus ?? "AWAITING_CONFIRMATIONS",
+          txHash: txHash ? Option.some(txHash) : Option.none<Hash>(),
+        };
+      });
+
+      const waitForTxReceipt = Effect.fn("SafeAppsService.waitForTxReceipt")(function* (
         safeTxHash: Hash,
         policy: {
           pollInterval?: number;
           executionTimeout?: number;
           receiptPolicy?: { receiptTimeout?: number; pollingInterval?: number };
         } = {}
-      ) =>
-        Effect.gen(function* () {
-          const info = yield* getInfo();
-          const pollInterval = policy.pollInterval ?? SAFE_POLL_INTERVAL;
-          const executionTimeout = policy.executionTimeout ?? SAFE_EXECUTION_TIMEOUT;
+      ) {
+        const info = yield* getInfo().pipe(
+          Effect.catchTag("SafeMultisigInfoUnavailableError", (error) =>
+            Effect.fail(
+              new SafeMultisigTxLookupError({
+                cause: error,
+                message: "Failed to get Safe info for receipt waiting",
+                retryable: true,
+                safeTxHash,
+              })
+            )
+          )
+        );
 
-          // Poll Safe gateway until txHash appears
-          // Effect.sleep is interruptible, so this loop respects Effect's interruption model
-          const onchainHash = yield* Effect.gen(function* () {
-            let lastStatus = "AWAITING_CONFIRMATIONS";
-            let found: Hash | null = null;
+        const pollInterval = policy.pollInterval ?? SAFE_POLL_INTERVAL;
+        const executionTimeout = policy.executionTimeout ?? SAFE_EXECUTION_TIMEOUT;
 
-            const pollEffect = Effect.gen(function* () {
-              while (found === null) {
-                const tx = yield* getTx(safeTxHash);
-                lastStatus = tx.status;
+        // Track last status for timeout error message
+        let lastStatus = "AWAITING_CONFIRMATIONS";
 
-                if (Option.isSome(tx.txHash)) {
-                  found = tx.txHash.value;
-                } else {
-                  // Sleep is interruptible - key for Effect's interruption model
-                  yield* Effect.sleep(Duration.millis(pollInterval));
-                }
-              }
-            });
+        const onchainHash = yield* pollUntil(
+          Effect.gen(function* () {
+            const tx = yield* getTx(safeTxHash);
+            lastStatus = tx.status;
+            return tx.txHash;
+          }),
+          { interval: pollInterval, timeout: executionTimeout },
+          (timeout) =>
+            new SafeMultisigTxExecutionTimeoutError({
+              lastStatus,
+              message: `Safe tx ${safeTxHash} not executed within ${timeout}ms (last status: ${lastStatus})`,
+              safeTxHash,
+              timeout,
+            })
+        );
 
-            yield* pollEffect.pipe(
-              Effect.timeout(Duration.millis(executionTimeout)),
-              Effect.catchTag("TimeoutException", () =>
-                Effect.fail(
-                  new SafeMultisigTxExecutionTimeoutError({
-                    lastStatus,
-                    message: `Safe tx ${safeTxHash} not executed within ${executionTimeout}ms (last status: ${lastStatus})`,
-                    safeTxHash,
-                    timeout: executionTimeout,
-                  })
-                )
-              )
-            );
-
-            if (found === null) {
-              return yield* Effect.fail(
-                new SafeMultisigTxExecutionTimeoutError({
-                  lastStatus,
-                  message: `Safe tx ${safeTxHash} not executed within timeout`,
-                  safeTxHash,
-                  timeout: executionTimeout,
-                })
-              );
-            }
-            return found;
-          });
-
-          // Delegate to TxManager for on-chain receipt
-          const receipt = yield* txManager
-            .waitForReceipt(info.chainId, onchainHash, policy.receiptPolicy)
-            .pipe(
-              Effect.catchTag("TxReplacedError", (error) =>
-                Effect.fail(
-                  new SafeMultisigTxLookupError({
-                    cause: error,
-                    message: `Transaction was replaced: ${error.message}`,
-                    retryable: false,
-                    safeTxHash,
-                  })
-                )
-              )
-            );
-
-          return {
-            chainId: info.chainId,
-            onchainHash,
-            receipt,
-            safeAddress: info.safeAddress,
-            safeTxHash,
-          };
-        })
+        // Delegate to TxManager for on-chain receipt
+        const receipt = yield* txManager
+          .waitForReceipt(info.chainId, onchainHash, policy.receiptPolicy)
           .pipe(
-            Effect.catchTag("SafeMultisigInfoUnavailableError", (error) =>
+            Effect.catchTag("TxReplacedError", (error) =>
               Effect.fail(
                 new SafeMultisigTxLookupError({
                   cause: error,
-                  message: "Failed to get Safe info for receipt waiting",
-                  retryable: true,
+                  message: `Transaction was replaced: ${error.message}`,
+                  retryable: false,
                   safeTxHash,
                 })
               )
             )
-          )
-          .pipe(
-            Effect.withSpan(SpanNames.SAFE_WAIT_RECEIPT, {
-              attributes: { safeTxHash },
-            })
           );
 
-      const signTypedData = (typedData: EIP712TypedData) =>
-        Effect.gen(function* () {
-          const result = yield* Effect.tryPromise({
-            catch: (cause) =>
-              new SignTypedDataError({
-                cause,
-                message: "Failed to sign typed data via Safe",
-              }),
-            try: () =>
-              sdk.txs.signTypedMessage(typedData as Parameters<typeof sdk.txs.signTypedMessage>[0]),
-          });
+        return {
+          chainId: info.chainId,
+          onchainHash,
+          receipt,
+          safeAddress: info.safeAddress,
+          safeTxHash,
+        };
+      });
 
-          // SDK returns { safeTxHash } for on-chain or { messageHash } for off-chain
-          if ("messageHash" in result && result.messageHash) {
-            const messageHash = yield* validateHex(result.messageHash, "signTypedData").pipe(
-              Effect.catchTag("SafeMultisigTxLookupError", (e) =>
-                Effect.fail(new SignTypedDataError({ cause: e, message: e.message }))
-              )
-            );
-            return { _tag: "Offchain" as const, messageHash };
-          }
+      const signTypedData = Effect.fn("SafeAppsService.signTypedData")(function* (
+        typedData: EIP712TypedData
+      ) {
+        const result = yield* withSdk(
+          getSdk,
+          (s) =>
+            Effect.tryPromise({
+              catch: (cause) =>
+                new SignTypedDataError({ cause, message: "Failed to sign typed data via Safe" }),
+              try: () =>
+                (
+                  s as { txs: { signTypedMessage: (data: unknown) => Promise<SdkSignResult> } }
+                ).txs.signTypedMessage(typedData),
+            }),
+          (e) => new SignTypedDataError({ cause: e, message: e.message })
+        );
 
-          // Type assertion needed because TypeScript can't narrow SignMessageResponse properly
-          const onchainResult = result as { safeTxHash: string };
-          const safeTxHash = yield* validateHash(onchainResult.safeTxHash, "signTypedData").pipe(
+        // SDK returns { safeTxHash } for on-chain or { messageHash } for off-chain
+        if ("messageHash" in result && result.messageHash) {
+          const messageHash = yield* validateHex(result.messageHash, "signTypedData").pipe(
             Effect.catchTag("SafeMultisigTxLookupError", (e) =>
               Effect.fail(new SignTypedDataError({ cause: e, message: e.message }))
             )
           );
-          return { _tag: "Onchain" as const, safeTxHash };
-        }).pipe(Effect.withSpan(SpanNames.SAFE_SIGN_TYPED_DATA));
+          return { _tag: "Offchain" as const, messageHash };
+        }
 
-      const getOffchainSignature = (messageHash: Hex) =>
-        Effect.gen(function* () {
-          const sig = yield* Effect.tryPromise({
-            catch: (cause) =>
-              new SafeMultisigTxLookupError({
-                cause,
-                message: `Failed to get off-chain signature for ${messageHash}`,
-                retryable: true,
-                safeTxHash: messageHash,
-              }),
-            try: () => sdk.safe.getOffChainSignature(messageHash),
-          });
+        const safeTxHash = yield* validateHash(result.safeTxHash ?? "", "signTypedData").pipe(
+          Effect.catchTag("SafeMultisigTxLookupError", (e) =>
+            Effect.fail(new SignTypedDataError({ cause: e, message: e.message }))
+          )
+        );
+        return { _tag: "Onchain" as const, safeTxHash };
+      });
 
-          // Empty string or "0x" means signature not yet available
-          if (!sig || sig === "" || sig === "0x") {
-            return Option.none<Hex>();
-          }
-
-          const validatedSig = yield* validateHex(sig, "getOffchainSignature");
-          return Option.some(validatedSig);
-        }).pipe(
-          Effect.withSpan(SpanNames.SAFE_GET_OFFCHAIN_SIG, {
-            attributes: { messageHash },
-          })
+      const getOffchainSignature = Effect.fn("SafeAppsService.getOffchainSignature")(function* (
+        messageHash: Hex
+      ) {
+        const sig = yield* withSdk(
+          getSdk,
+          (s) =>
+            Effect.tryPromise({
+              catch: (cause) =>
+                new SafeMultisigTxLookupError({
+                  cause,
+                  message: `Failed to get off-chain signature for ${messageHash}`,
+                  retryable: true,
+                  safeTxHash: messageHash,
+                }),
+              try: () =>
+                (
+                  s as { safe: { getOffChainSignature: (hash: string) => Promise<string> } }
+                ).safe.getOffChainSignature(messageHash),
+            }),
+          (e) =>
+            new SafeMultisigTxLookupError({
+              cause: e,
+              message: e.message,
+              retryable: false,
+              safeTxHash: messageHash,
+            })
         );
 
-      const pollOffchainSignature = (
+        // Empty string or "0x" means signature not yet available
+        if (!sig || sig === "" || sig === "0x") {
+          return Option.none<Hex>();
+        }
+
+        const validatedSig = yield* validateHex(sig, "getOffchainSignature");
+        return Option.some(validatedSig);
+      });
+
+      const pollOffchainSignature = Effect.fn("SafeAppsService.pollOffchainSignature")(function* (
         messageHash: Hex,
         policy: { pollInterval?: number; timeout?: number } = {}
-      ) =>
-        Effect.gen(function* () {
-          const pollInterval = policy.pollInterval ?? SAFE_SIGNATURE_POLL_INTERVAL;
-          const timeout = policy.timeout ?? SAFE_SIGNATURE_TIMEOUT;
+      ) {
+        const pollInterval = policy.pollInterval ?? SAFE_SIGNATURE_POLL_INTERVAL;
+        const timeout = policy.timeout ?? SAFE_SIGNATURE_TIMEOUT;
 
-          // Poll until we get a signature
-          // Effect.sleep is interruptible, so this loop respects Effect's interruption model
-          let found: Hex | null = null;
-
-          const pollEffect = Effect.gen(function* () {
-            while (found === null) {
-              const sig = yield* getOffchainSignature(messageHash);
-              if (Option.isSome(sig)) {
-                found = sig.value;
-              } else {
-                // Sleep is interruptible - key for Effect's interruption model
-                yield* Effect.sleep(Duration.millis(pollInterval));
-              }
-            }
-          });
-
-          yield* pollEffect.pipe(
-            Effect.timeout(Duration.millis(timeout)),
-            Effect.catchTag("TimeoutException", () =>
-              Effect.fail(
-                new OffchainSignatureTimeoutError({
-                  message: `Off-chain signature for ${messageHash} not available within ${timeout}ms`,
-                  messageHash,
-                  timeout,
-                })
-              )
-            )
-          );
-
-          if (found === null) {
-            return yield* Effect.fail(
-              new OffchainSignatureTimeoutError({
-                message: `Off-chain signature for ${messageHash} not available within timeout`,
-                messageHash,
-                timeout,
-              })
-            );
-          }
-
-          return { messageHash, signature: found };
-        }).pipe(
-          Effect.withSpan(SpanNames.SAFE_POLL_OFFCHAIN_SIG, {
-            attributes: { messageHash },
-          })
+        const signature = yield* pollUntil(
+          getOffchainSignature(messageHash),
+          { interval: pollInterval, timeout },
+          (elapsed) =>
+            new OffchainSignatureTimeoutError({
+              message: `Off-chain signature for ${messageHash} not available within ${elapsed}ms`,
+              messageHash,
+              timeout: elapsed,
+            })
         );
 
-      const enableOffchainSigning = () =>
-        Effect.tryPromise({
-          catch: (cause) =>
-            new SafeMultisigSettingsError({
-              cause,
-              message: "Failed to enable off-chain signing mode",
-            }),
-          try: () => sdk.eth.setSafeSettings([{ offChainSigning: true }]),
-        })
-          .pipe(Effect.asVoid)
-          .pipe(Effect.withSpan(SpanNames.SAFE_ENABLE_OFFCHAIN));
+        return { messageHash, signature };
+      });
+
+      const enableOffchainSigning = Effect.fn("SafeAppsService.enableOffchainSigning")(
+        function* () {
+          yield* withSdk(
+            getSdk,
+            (s) =>
+              Effect.tryPromise({
+                catch: (cause) =>
+                  new SafeMultisigSettingsError({
+                    cause,
+                    message: "Failed to enable off-chain signing mode",
+                  }),
+                try: () =>
+                  (
+                    s as { eth: { setSafeSettings: (settings: unknown[]) => Promise<void> } }
+                  ).eth.setSafeSettings([{ offChainSigning: true }]),
+              }),
+            (e) => new SafeMultisigSettingsError({ cause: e, message: e.message })
+          );
+        }
+      );
 
       return SafeAppsService.of({
         enableOffchainSigning,
