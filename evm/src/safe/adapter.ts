@@ -1,11 +1,9 @@
+import type { Opts } from "@safe-global/safe-apps-sdk";
 import { Effect } from "effect";
 import { SafeAppsSdkUnavailableError } from "./errors.js";
 
 /** Configuration for SDK initialization */
-export type SafeAppsSdkConfig = {
-  allowedDomains?: RegExp[];
-  debug?: boolean;
-};
+export type SafeAppsSdkConfig = Opts;
 
 /** Load SDK dynamically - keeps the dependency optional at runtime */
 export const loadSafeSdk = (config?: SafeAppsSdkConfig) =>
@@ -22,6 +20,5 @@ export const loadSafeSdk = (config?: SafeAppsSdkConfig) =>
     },
   });
 
-/** Type for the loaded SDK instance - uses any due to optional SDK dependency */
-// biome-ignore lint/suspicious/noExplicitAny: SDK is optional dependency
-export type SafeAppsSDKInstance = any;
+/** Type for the loaded SDK instance - uses a minimal structural type. */
+export type { SafeAppsSDKInstance } from "./internal/sdk-types.js";

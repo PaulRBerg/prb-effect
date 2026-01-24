@@ -8,7 +8,7 @@ import {
   SAFE_SIGNATURE_TIMEOUT,
 } from "@/src/constants/index.js";
 import { TxManager } from "@/src/tx/index.js";
-import type { SafeAppsSdkConfig } from "./adapter.js";
+import type { SafeAppsSDKInstance, SafeAppsSdkConfig } from "./adapter.js";
 import { loadSafeSdk } from "./adapter.js";
 import type { SafeAppsSdkUnavailableError } from "./errors.js";
 import {
@@ -26,13 +26,6 @@ import { SafeAppsService } from "./service.js";
 import type { EIP712TypedData, SafeMultisigInfo, SafeMultisigTx } from "./types.js";
 
 export type SafeAppsServiceConfig = SafeAppsSdkConfig;
-
-// --- SDK Response Types (internal - SDK is optional dependency) ---
-
-type SdkMultisigInfo = { chainId: number; safeAddress: string };
-type SdkTxSendResult = { safeTxHash: string };
-type SdkTxDetails = { txHash?: string; txStatus?: string };
-type SdkSignResult = { messageHash?: string; safeTxHash?: string };
 
 // --- Validation Factory ---
 
@@ -69,8 +62,8 @@ type SdkState<T> =
 // --- SDK Wrapper Helper ---
 
 const withSdk = <A, E>(
-  getSdk: Effect.Effect<unknown, SdkUnavailableError>,
-  fn: (sdk: unknown) => Effect.Effect<A, E>,
+  getSdk: Effect.Effect<SafeAppsSDKInstance, SdkUnavailableError>,
+  fn: (sdk: SafeAppsSDKInstance) => Effect.Effect<A, E>,
   mapError: (e: SdkUnavailableError) => E
 ): Effect.Effect<A, E> => Effect.flatMap(Effect.mapError(getSdk, mapError), fn);
 
@@ -86,45 +79,46 @@ export const SafeAppsServiceLive = (config?: SafeAppsServiceConfig) =>
       // Get TxManager for receipt waiting
       const txManager = yield* TxManager;
 
-      // biome-ignore lint/suspicious/noExplicitAny: SDK is optional dependency with dynamic types
-      const sdkRef = yield* Ref.make<SdkState<any>>({ _tag: "pending" });
+      const sdkRef = yield* Ref.make<SdkState<SafeAppsSDKInstance>>({ _tag: "pending" });
 
       /** Get SDK, loading lazily on first call. Fails if not in Safe App context. */
-      const getSdk: Effect.Effect<unknown, SdkUnavailableError> = Effect.gen(function* () {
-        const state = yield* Ref.get(sdkRef);
+      const getSdk: Effect.Effect<SafeAppsSDKInstance, SdkUnavailableError> = Effect.gen(
+        function* () {
+          const state = yield* Ref.get(sdkRef);
 
-        if (state._tag === "loaded") {
-          return state.sdk;
+          if (state._tag === "loaded") {
+            return state.sdk;
+          }
+          if (state._tag === "unavailable") {
+            return yield* Effect.fail(state.error);
+          }
+
+          // First call - check environment and load SDK
+          if (typeof window === "undefined") {
+            const error = new NotInSafeAppContextError({
+              message: "Safe Apps SDK requires a browser environment (window is undefined)",
+            });
+            yield* Ref.set(sdkRef, { _tag: "unavailable", error });
+            return yield* Effect.fail(error);
+          }
+
+          // Try to load SDK - catch SDK unavailable error and store it
+          const loadResult = yield* loadSafeSdk(config).pipe(
+            Effect.map((sdk) => ({ _tag: "loaded" as const, sdk })),
+            Effect.catchTag("SafeAppsSdkUnavailableError", (error) =>
+              Effect.succeed({ _tag: "unavailable" as const, error } as const)
+            )
+          );
+
+          yield* Ref.set(sdkRef, loadResult);
+
+          if (loadResult._tag === "unavailable") {
+            return yield* Effect.fail(loadResult.error);
+          }
+
+          return loadResult.sdk;
         }
-        if (state._tag === "unavailable") {
-          return yield* Effect.fail(state.error);
-        }
-
-        // First call - check environment and load SDK
-        if (typeof window === "undefined") {
-          const error = new NotInSafeAppContextError({
-            message: "Safe Apps SDK requires a browser environment (window is undefined)",
-          });
-          yield* Ref.set(sdkRef, { _tag: "unavailable", error });
-          return yield* Effect.fail(error);
-        }
-
-        // Try to load SDK - catch SDK unavailable error and store it
-        const loadResult = yield* loadSafeSdk(config).pipe(
-          Effect.map((sdk) => ({ _tag: "loaded" as const, sdk })),
-          Effect.catchTag("SafeAppsSdkUnavailableError", (error) =>
-            Effect.succeed({ _tag: "unavailable" as const, error } as const)
-          )
-        );
-
-        yield* Ref.set(sdkRef, loadResult);
-
-        if (loadResult._tag === "unavailable") {
-          return yield* Effect.fail(loadResult.error);
-        }
-
-        return loadResult.sdk;
-      });
+      );
 
       // --- Service Methods ---
 
@@ -143,8 +137,7 @@ export const SafeAppsServiceLive = (config?: SafeAppsServiceConfig) =>
                   cause,
                   message: "Failed to get Safe info from SDK",
                 }),
-              try: () =>
-                (s as { safe: { getInfo: () => Promise<SdkMultisigInfo> } }).safe.getInfo(),
+              try: () => s.safe.getInfo(),
             }),
           (e) => new SafeMultisigInfoUnavailableError({ cause: e, message: e.message })
         );
@@ -180,17 +173,7 @@ export const SafeAppsServiceLive = (config?: SafeAppsServiceConfig) =>
                   cause,
                   message: "Failed to submit txs to Safe",
                 }),
-              try: () =>
-                (
-                  s as {
-                    txs: {
-                      send: (opts: {
-                        params?: unknown;
-                        txs: unknown[];
-                      }) => Promise<SdkTxSendResult>;
-                    };
-                  }
-                ).txs.send({ params, txs: sdkTxs }),
+              try: () => s.txs.send({ params, txs: sdkTxs }),
             }),
           (e) => new SafeMultisigTxSubmissionError({ cause: e, message: e.message })
         );
@@ -227,10 +210,7 @@ export const SafeAppsServiceLive = (config?: SafeAppsServiceConfig) =>
                   retryable: true,
                   safeTxHash,
                 }),
-              try: () =>
-                (
-                  s as { txs: { getBySafeTxHash: (hash: string) => Promise<SdkTxDetails> } }
-                ).txs.getBySafeTxHash(safeTxHash),
+              try: () => s.txs.getBySafeTxHash(safeTxHash),
             }),
           (e) =>
             new SafeMultisigTxLookupError({
@@ -326,17 +306,14 @@ export const SafeAppsServiceLive = (config?: SafeAppsServiceConfig) =>
             Effect.tryPromise({
               catch: (cause) =>
                 new SignTypedDataError({ cause, message: "Failed to sign typed data via Safe" }),
-              try: () =>
-                (
-                  s as { txs: { signTypedMessage: (data: unknown) => Promise<SdkSignResult> } }
-                ).txs.signTypedMessage(typedData),
+              try: () => s.txs.signTypedMessage(typedData),
             }),
           (e) => new SignTypedDataError({ cause: e, message: e.message })
         );
 
         // SDK returns { safeTxHash } for on-chain or { messageHash } for off-chain
-        if ("messageHash" in result && result.messageHash) {
-          const messageHash = yield* validateHex(result.messageHash, "signTypedData").pipe(
+        if ("messageHash" in result) {
+          const messageHash = yield* validateHex(result.messageHash ?? "", "signTypedData").pipe(
             Effect.catchTag("SafeMultisigTxLookupError", (e) =>
               Effect.fail(new SignTypedDataError({ cause: e, message: e.message }))
             )
@@ -344,7 +321,7 @@ export const SafeAppsServiceLive = (config?: SafeAppsServiceConfig) =>
           return { _tag: "Offchain" as const, messageHash };
         }
 
-        const safeTxHash = yield* validateHash(result.safeTxHash ?? "", "signTypedData").pipe(
+        const safeTxHash = yield* validateHash(result.safeTxHash, "signTypedData").pipe(
           Effect.catchTag("SafeMultisigTxLookupError", (e) =>
             Effect.fail(new SignTypedDataError({ cause: e, message: e.message }))
           )
@@ -366,10 +343,7 @@ export const SafeAppsServiceLive = (config?: SafeAppsServiceConfig) =>
                   retryable: true,
                   safeTxHash: messageHash,
                 }),
-              try: () =>
-                (
-                  s as { safe: { getOffChainSignature: (hash: string) => Promise<string> } }
-                ).safe.getOffChainSignature(messageHash),
+              try: () => s.safe.getOffChainSignature(messageHash),
             }),
           (e) =>
             new SafeMultisigTxLookupError({
@@ -421,10 +395,7 @@ export const SafeAppsServiceLive = (config?: SafeAppsServiceConfig) =>
                     cause,
                     message: "Failed to enable off-chain signing mode",
                   }),
-                try: () =>
-                  (
-                    s as { eth: { setSafeSettings: (settings: unknown[]) => Promise<void> } }
-                  ).eth.setSafeSettings([{ offChainSigning: true }]),
+                try: () => s.eth.setSafeSettings([{ offChainSigning: true }]),
               }),
             (e) => new SafeMultisigSettingsError({ cause: e, message: e.message })
           );
