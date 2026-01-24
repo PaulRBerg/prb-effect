@@ -1,10 +1,10 @@
 "use client";
 
 /**
- * Known Safe wallet domains for iframe origin validation.
- * Includes the main Safe app and chain-specific Safe deployments.
+ * Known Safe App domains for iframe origin validation.
+ * Includes the main Safe App and chain-specific Safe deployments.
  */
-export const DEFAULT_SAFE_ORIGINS = [
+export const DEFAULT_SAFE_APP_ORIGINS = [
   // Main Safe domains
   "https://app.safe.global",
   "https://gnosis-safe.io",
@@ -17,41 +17,41 @@ export const DEFAULT_SAFE_ORIGINS = [
 ] as const;
 
 const ORIGIN_PROTOCOL_PATTERN = /^[a-z]+:\/\//i;
-let safeOrigins = normalizeOrigins(DEFAULT_SAFE_ORIGINS);
-let safeOriginSet = new Set(safeOrigins);
-const safeOriginListeners = new Set<() => void>();
-let safeOriginsConfigured = false;
+let safeAppOrigins = normalizeOrigins(DEFAULT_SAFE_APP_ORIGINS);
+let safeAppOriginSet = new Set(safeAppOrigins);
+const safeAppOriginListeners = new Set<() => void>();
+let safeAppOriginsConfigured = false;
 
-/** Replace the Safe origins list (one-time configuration). */
-export function setSafeOrigins(origins: readonly string[]) {
-  configureSafeOrigins(normalizeOrigins(origins));
+/** Replace the Safe App origins list (one-time configuration). */
+export function setSafeAppOrigins(origins: readonly string[]) {
+  configureSafeAppOrigins(normalizeOrigins(origins));
 }
 
-/** Extend the Safe origins list (one-time configuration). */
-export function extendSafeOrigins(origins: readonly string[]) {
-  configureSafeOrigins(normalizeOrigins([...safeOrigins, ...origins]));
+/** Extend the Safe App origins list (one-time configuration). */
+export function extendSafeAppOrigins(origins: readonly string[]) {
+  configureSafeAppOrigins(normalizeOrigins([...safeAppOrigins, ...origins]));
 }
 
-/** Read the currently configured Safe origins list. */
-export function getSafeOrigins(): readonly string[] {
-  return [...safeOrigins];
+/** Read the currently configured Safe App origins list. */
+export function getSafeAppOrigins(): readonly string[] {
+  return [...safeAppOrigins];
 }
 
-/** Subscribe to Safe origin changes. */
-export function subscribeSafeOrigins(listener: () => void): () => void {
-  safeOriginListeners.add(listener);
+/** Subscribe to Safe App origin changes. */
+export function subscribeSafeAppOrigins(listener: () => void): () => void {
+  safeAppOriginListeners.add(listener);
   return () => {
-    safeOriginListeners.delete(listener);
+    safeAppOriginListeners.delete(listener);
   };
 }
 
-/** Check if the parent browsing context origin is a Safe domain. */
-export function isValidSafeOrigin(): boolean {
+/** Check if the parent browsing context origin is a Safe App domain. */
+export function isValidSafeAppOrigin(): boolean {
   const origin = getAncestorOrigin();
   if (!origin) {
     return false;
   }
-  return safeOriginSet.has(origin);
+  return safeAppOriginSet.has(origin);
 }
 
 /** Check whether the app is running inside an iframe. */
@@ -87,27 +87,27 @@ function getAncestorOrigin(): string | null {
   }
 }
 
-function updateSafeOrigins(nextOrigins: string[]) {
-  if (areSameOrigins(safeOrigins, nextOrigins)) {
+function updateSafeAppOrigins(nextOrigins: string[]) {
+  if (areSameOrigins(safeAppOrigins, nextOrigins)) {
     return;
   }
 
-  safeOrigins = nextOrigins;
-  safeOriginSet = new Set(safeOrigins);
-  notifySafeOriginListeners();
+  safeAppOrigins = nextOrigins;
+  safeAppOriginSet = new Set(safeAppOrigins);
+  notifySafeAppOriginListeners();
 }
 
-function configureSafeOrigins(nextOrigins: string[]) {
-  if (safeOriginsConfigured) {
-    throw new Error("Safe origins already configured.");
+function configureSafeAppOrigins(nextOrigins: string[]) {
+  if (safeAppOriginsConfigured) {
+    throw new Error("Safe App origins already configured.");
   }
 
-  safeOriginsConfigured = true;
-  updateSafeOrigins(nextOrigins);
+  safeAppOriginsConfigured = true;
+  updateSafeAppOrigins(nextOrigins);
 }
 
-function notifySafeOriginListeners() {
-  for (const listener of safeOriginListeners) {
+function notifySafeAppOriginListeners() {
+  for (const listener of safeAppOriginListeners) {
     listener();
   }
 }

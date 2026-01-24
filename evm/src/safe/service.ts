@@ -20,7 +20,7 @@ import type {
   OffchainSignaturePolicy,
   OffchainSignatureResult,
   SafeInfo,
-  SafeTransaction,
+  SafeMultisigTx,
   SafeTxResult,
   SafeTxSubmission,
   SafeWaitPolicy,
@@ -31,19 +31,19 @@ export type SafeAppsServiceShape = {
   /** Get Safe info (cached after first call) */
   readonly getInfo: () => Effect.Effect<SafeInfo, SafeInfoUnavailableError>;
 
-  /** Send transactions to Safe for execution */
-  readonly sendTransactions: (
-    txs: readonly SafeTransaction[],
+  /** Send txs to Safe for execution */
+  readonly sendTxs: (
+    txs: readonly SafeMultisigTx[],
     params?: { safeTxGas?: number }
   ) => Effect.Effect<SafeTxSubmission, SafeTxSubmissionError>;
 
-  /** Get Safe transaction details by safeTxHash */
-  readonly getTransaction: (
+  /** Get Safe tx details by safeTxHash */
+  readonly getTx: (
     safeTxHash: Hash
   ) => Effect.Effect<{ txHash: Option.Option<Hash>; status: string }, SafeTxLookupError>;
 
   /** Wait for Safe tx to execute and return receipt */
-  readonly waitForTransactionReceipt: (
+  readonly waitForTxReceipt: (
     safeTxHash: Hash,
     policy?: SafeWaitPolicy
   ) => Effect.Effect<

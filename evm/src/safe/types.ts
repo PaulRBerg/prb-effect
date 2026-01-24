@@ -2,31 +2,31 @@ import type { Address, Hash, Hex, TransactionReceipt } from "viem";
 
 /** Safe info returned from SDK */
 export type SafeInfo = {
-  safeAddress: Address;
   chainId: number;
+  safeAddress: Address;
 };
 
-/** Transaction to send via Safe */
-export type SafeTransaction = {
-  to: Address;
+/** Tx to send via Safe multisig */
+export type SafeMultisigTx = {
   data: Hex;
+  to: Address;
   value?: bigint; // Converted to string at SDK boundary
 };
 
-/** Result from sendTransactions */
+/** Result from sendTxs */
 export type SafeTxSubmission = {
-  safeTxHash: Hash;
-  safeAddress: Address;
   chainId: number;
+  safeAddress: Address;
+  safeTxHash: Hash;
 };
 
-/** Result from waitForTransactionReceipt */
+/** Result from waitForTxReceipt */
 export type SafeTxResult = {
-  safeTxHash: Hash;
+  chainId: number;
   onchainHash: Hash;
   receipt: TransactionReceipt;
   safeAddress: Address;
-  chainId: number;
+  safeTxHash: Hash;
 };
 
 /** Discriminated union for signTypedData result */
@@ -42,14 +42,14 @@ export type OffchainSignatureResult = {
 
 /** Policy for Safe tx waiting (aligns with TxPolicy from src/tx/policy.ts) */
 export type SafeWaitPolicy = {
-  /** Poll interval for Safe gateway in ms (default: 3000) */
-  pollInterval?: number;
   /** Timeout for Safe tx execution in ms (default: 300000 = 5 min) */
   executionTimeout?: number;
+  /** Poll interval for Safe gateway in ms (default: 3000) */
+  pollInterval?: number;
   /** Policy passed to TxManager.waitForReceipt */
   receiptPolicy?: {
-    receiptTimeout?: number;
     pollingInterval?: number;
+    receiptTimeout?: number;
   };
 };
 
@@ -64,13 +64,13 @@ export type OffchainSignaturePolicy = {
 /** EIP-712 typed data structure (local definition to avoid SDK import) */
 export type EIP712TypedData = {
   domain: {
-    name?: string;
-    version?: string;
     chainId?: number;
-    verifyingContract?: string;
+    name?: string;
     salt?: string;
+    verifyingContract?: string;
+    version?: string;
   };
-  types: Record<string, Array<{ name: string; type: string }>>;
   message: Record<string, unknown>;
   primaryType?: string;
+  types: Record<string, Array<{ name: string; type: string }>>;
 };

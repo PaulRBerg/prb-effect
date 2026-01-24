@@ -52,7 +52,7 @@ const makeMockSafeAppsService = (config: {
       enableOffchainSigning: () => Effect.void,
       getInfo: () => Effect.succeed(config.getInfoResult ?? defaultInfo),
       getOffchainSignature: () => Effect.succeed(config.offchainSignature ?? Option.none()),
-      getTransaction: () =>
+      getTx: () =>
         Effect.succeed(
           config.getTxResult ?? {
             status: "AWAITING_EXECUTION",
@@ -61,7 +61,7 @@ const makeMockSafeAppsService = (config: {
         ),
       pollOffchainSignature: (messageHash) =>
         Effect.succeed({ messageHash, signature: TEST_SIGNATURE }),
-      sendTransactions: () =>
+      sendTxs: () =>
         Effect.succeed({
           chainId: TEST_CHAIN_ID,
           safeAddress: TEST_SAFE_ADDRESS,
@@ -74,7 +74,7 @@ const makeMockSafeAppsService = (config: {
             safeTxHash: TEST_SAFE_TX_HASH,
           }
         ),
-      waitForTransactionReceipt: (safeTxHash) =>
+      waitForTxReceipt: (safeTxHash) =>
         Effect.succeed({
           chainId: TEST_CHAIN_ID,
           onchainHash: TEST_TX_HASH,
@@ -99,13 +99,11 @@ describe("SafeAppsService", () => {
     );
   });
 
-  describe("sendTransactions", () => {
+  describe("sendTxs", () => {
     it.effect("returns safeTxHash with safeAddress and chainId", () =>
       Effect.gen(function* () {
         const service = yield* SafeAppsService;
-        const result = yield* service.sendTransactions([
-          { data: "0x", to: TEST_ADDRESS, value: 0n },
-        ]);
+        const result = yield* service.sendTxs([{ data: "0x", to: TEST_ADDRESS, value: 0n }]);
 
         expect(result.safeTxHash).toBe(TEST_SAFE_TX_HASH);
         expect(result.safeAddress).toBe(TEST_SAFE_ADDRESS);
@@ -114,11 +112,11 @@ describe("SafeAppsService", () => {
     );
   });
 
-  describe("getTransaction", () => {
+  describe("getTx", () => {
     it.effect("returns txHash as Option when executed", () =>
       Effect.gen(function* () {
         const service = yield* SafeAppsService;
-        const result = yield* service.getTransaction(TEST_SAFE_TX_HASH);
+        const result = yield* service.getTx(TEST_SAFE_TX_HASH);
 
         expect(Option.isSome(result.txHash)).toBe(true);
         if (Option.isSome(result.txHash)) {
@@ -130,7 +128,7 @@ describe("SafeAppsService", () => {
     it.effect("returns Option.none when not yet executed", () =>
       Effect.gen(function* () {
         const service = yield* SafeAppsService;
-        const result = yield* service.getTransaction(TEST_SAFE_TX_HASH);
+        const result = yield* service.getTx(TEST_SAFE_TX_HASH);
 
         expect(Option.isNone(result.txHash)).toBe(true);
         expect(result.status).toBe("AWAITING_CONFIRMATIONS");
@@ -147,11 +145,11 @@ describe("SafeAppsService", () => {
     );
   });
 
-  describe("waitForTransactionReceipt", () => {
+  describe("waitForTxReceipt", () => {
     it.effect("returns SafeTxResult with receipt", () =>
       Effect.gen(function* () {
         const service = yield* SafeAppsService;
-        const result = yield* service.waitForTransactionReceipt(TEST_SAFE_TX_HASH);
+        const result = yield* service.waitForTxReceipt(TEST_SAFE_TX_HASH);
 
         expect(result.safeTxHash).toBe(TEST_SAFE_TX_HASH);
         expect(result.onchainHash).toBe(TEST_TX_HASH);

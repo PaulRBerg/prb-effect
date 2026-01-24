@@ -29,15 +29,15 @@ const render = (node: React.ReactElement) => {
   };
 };
 
-describe("useIsHostSafeMultisig", () => {
-  it("updates when safe origins are configured after mount", async () => {
+describe("useIsHostSafeApp", () => {
+  it("updates when Safe App origins are configured after mount", async () => {
     vi.resetModules();
-    vi.doMock("./use-safe-context.js", () => ({
-      useSafeContext: () => false,
+    vi.doMock("./use-is-safe-app-context.js", () => ({
+      useIsSafeAppContext: () => false,
     }));
 
-    const { useIsHostSafeMultisig } = await import("./use-is-host-safe-multisig.js");
-    const { setSafeOrigins } = await import("./safe-origins.js");
+    const { useIsHostSafeApp } = await import("./use-is-host-safe-app.js");
+    const { setSafeAppOrigins } = await import("./safe-app-origins.js");
 
     const originalParent = window.parent;
     const parent = { location: { origin: "https://safe.custom" } };
@@ -45,7 +45,7 @@ describe("useIsHostSafeMultisig", () => {
 
     const values: boolean[] = [];
     const Probe = (): null => {
-      const value = useIsHostSafeMultisig();
+      const value = useIsHostSafeApp();
       React.useEffect(() => {
         values.push(value);
       }, [value]);
@@ -61,7 +61,7 @@ describe("useIsHostSafeMultisig", () => {
     expect(values.at(-1)).toBe(false);
 
     await act(async () => {
-      setSafeOrigins(["https://safe.custom"]);
+      setSafeAppOrigins(["https://safe.custom"]);
       await flush();
     });
 

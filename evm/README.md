@@ -60,6 +60,7 @@ Effect.runPromise(program.pipe(Effect.provide(EvmLayer)));
 - **Subscriptions** — `SubscriptionService` (blocks/logs/pending tx)
 - **EIP-7702** — Delegation and atomic batching for EOAs
 - **React hooks** — `effect-evm/react-hooks` (primitives + convenience hooks)
+- **Safe App + Safe multisig** — `useIsSafeAppContext`, `useIsHostSafeApp`, `useIsSafeMultisigWallet`
 - **Wagmi integration** — `effect-evm/wagmi` (build layers from wagmi config)
 - **Browser persistence** — `browser` namespace (localStorage-backed stores)
 - **Testing** — `effect-evm/testing-kit` (mocks + `makeEffectEvmTestLayer`)

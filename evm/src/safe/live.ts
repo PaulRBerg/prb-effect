@@ -22,7 +22,7 @@ import {
   SignTypedDataError,
 } from "./errors.js";
 import { SafeAppsService } from "./service.js";
-import type { EIP712TypedData, SafeInfo } from "./types.js";
+import type { EIP712TypedData, SafeInfo, SafeMultisigTx } from "./types.js";
 
 export type SafeAppsServiceConfig = SafeAppsSdkConfig;
 
@@ -126,10 +126,7 @@ export const SafeAppsServiceLive = (config?: SafeAppsServiceConfig) =>
           return safeInfo;
         }).pipe(Effect.withSpan(SpanNames.SAFE_GET_INFO));
 
-      const sendTransactions = (
-        txs: readonly { to: Address; data: Hex; value?: bigint }[],
-        params?: { safeTxGas?: number }
-      ) =>
+      const sendTxs = (txs: readonly SafeMultisigTx[], params?: { safeTxGas?: number }) =>
         Effect.gen(function* () {
           // Convert bigint values to strings (Safe SDK expects decimal strings)
           const sdkTxs = txs.map((tx) => ({
@@ -142,12 +139,12 @@ export const SafeAppsServiceLive = (config?: SafeAppsServiceConfig) =>
             catch: (cause) =>
               new SafeTxSubmissionError({
                 cause,
-                message: "Failed to submit transactions to Safe",
+                message: "Failed to submit txs to Safe",
               }),
             try: () => sdk.txs.send({ params, txs: sdkTxs }),
           });
 
-          const safeTxHash = yield* validateHash(result.safeTxHash, "sendTransactions").pipe(
+          const safeTxHash = yield* validateHash(result.safeTxHash, "sendTxs").pipe(
             Effect.catchTag("SafeTxLookupError", (e) =>
               Effect.fail(new SafeTxSubmissionError({ cause: e, message: e.message }))
             )
@@ -166,7 +163,7 @@ export const SafeAppsServiceLive = (config?: SafeAppsServiceConfig) =>
               Effect.fail(
                 new SafeTxSubmissionError({
                   cause: error,
-                  message: "Failed to get Safe info after transaction submission",
+                  message: "Failed to get Safe info after tx submission",
                 })
               )
             )
@@ -177,20 +174,20 @@ export const SafeAppsServiceLive = (config?: SafeAppsServiceConfig) =>
             })
           );
 
-      const getTransaction = (safeTxHash: Hash) =>
+      const getTx = (safeTxHash: Hash) =>
         Effect.gen(function* () {
           const tx = yield* Effect.tryPromise({
             catch: (cause) =>
               new SafeTxLookupError({
                 cause,
-                message: `Failed to lookup Safe transaction ${safeTxHash}`,
+                message: `Failed to lookup Safe tx ${safeTxHash}`,
                 retryable: true,
                 safeTxHash,
               }),
             try: () => sdk.txs.getBySafeTxHash(safeTxHash),
           });
 
-          const txHash = tx.txHash ? yield* validateHash(tx.txHash, "getTransaction") : null;
+          const txHash = tx.txHash ? yield* validateHash(tx.txHash, "getTx") : null;
 
           return {
             status: tx.txStatus ?? "AWAITING_CONFIRMATIONS",
@@ -202,7 +199,7 @@ export const SafeAppsServiceLive = (config?: SafeAppsServiceConfig) =>
           })
         );
 
-      const waitForTransactionReceipt = (
+      const waitForTxReceipt = (
         safeTxHash: Hash,
         policy: {
           pollInterval?: number;
@@ -223,7 +220,7 @@ export const SafeAppsServiceLive = (config?: SafeAppsServiceConfig) =>
 
             const pollEffect = Effect.gen(function* () {
               while (found === null) {
-                const tx = yield* getTransaction(safeTxHash);
+                const tx = yield* getTx(safeTxHash);
                 lastStatus = tx.status;
 
                 if (Option.isSome(tx.txHash)) {
@@ -241,7 +238,7 @@ export const SafeAppsServiceLive = (config?: SafeAppsServiceConfig) =>
                 Effect.fail(
                   new SafeTxExecutionTimeoutError({
                     lastStatus,
-                    message: `Safe transaction ${safeTxHash} not executed within ${executionTimeout}ms (last status: ${lastStatus})`,
+                    message: `Safe tx ${safeTxHash} not executed within ${executionTimeout}ms (last status: ${lastStatus})`,
                     safeTxHash,
                     timeout: executionTimeout,
                   })
@@ -253,7 +250,7 @@ export const SafeAppsServiceLive = (config?: SafeAppsServiceConfig) =>
               return yield* Effect.fail(
                 new SafeTxExecutionTimeoutError({
                   lastStatus,
-                  message: `Safe transaction ${safeTxHash} not executed within timeout`,
+                  message: `Safe tx ${safeTxHash} not executed within timeout`,
                   safeTxHash,
                   timeout: executionTimeout,
                 })
@@ -432,11 +429,11 @@ export const SafeAppsServiceLive = (config?: SafeAppsServiceConfig) =>
         enableOffchainSigning,
         getInfo,
         getOffchainSignature,
-        getTransaction,
+        getTx,
         pollOffchainSignature,
-        sendTransactions,
+        sendTxs,
         signTypedData,
-        waitForTransactionReceipt,
+        waitForTxReceipt,
       });
     })
   );

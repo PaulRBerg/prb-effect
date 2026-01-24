@@ -229,6 +229,19 @@ function App() {
 }
 ```
 
+### Safe App vs Safe multisig
+
+Use Safe App hooks to detect the host iframe context, and Safe multisig hooks to detect the connected wallet.
+
+- Safe App context (SDK): `useIsSafeAppContext`
+- Safe App host (SDK + origin): `useIsHostSafeApp`
+- Safe multisig wallet (SDK + connector + host): `useIsSafeMultisigWallet`
+
+Safe App origin utilities let you control the allowed host list:
+
+- `DEFAULT_SAFE_APP_ORIGINS`
+- `getSafeAppOrigins`, `setSafeAppOrigins`, `extendSafeAppOrigins`, `subscribeSafeAppOrigins`
+
 ### Primitive hooks
 
 Low-level hooks for running Effects and Streams in React:

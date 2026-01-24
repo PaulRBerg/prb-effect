@@ -2,11 +2,15 @@
 
 import { useSyncExternalStore } from "react";
 import { useAccount } from "wagmi";
-import { isHostEmbedded, isValidSafeOrigin, subscribeSafeOrigins } from "./safe-origins.js";
-import { useSafeContext } from "./use-safe-context.js";
+import {
+  isHostEmbedded,
+  isValidSafeAppOrigin,
+  subscribeSafeAppOrigins,
+} from "./safe-app-origins.js";
+import { useIsSafeAppContext } from "./use-is-safe-app-context.js";
 
 /**
- * Detect if the connected wallet is a Safe multisig.
+ * Detect if the connected wallet is a Safe multisig wallet.
  *
  * Detection strategy (in order of reliability):
  * 1. Safe Apps SDK detection via postMessage (most reliable, works cross-origin)
@@ -17,16 +21,16 @@ import { useSafeContext } from "./use-safe-context.js";
  *
  * Notes:
  * - This is a broader heuristic: SDK context, connector ID, then host origin.
- * - For just SDK context, use `useSafeContext`.
- * - For a sync host-only check, use `useIsHostSafeMultisig`.
+ * - For just SDK context, use `useIsSafeAppContext`.
+ * - For a sync host-only check, use `useIsHostSafeApp`.
  */
-export function useIsWalletSafeMultisig(): boolean {
+export function useIsSafeMultisigWallet(): boolean {
   const { connector, isConnected } = useAccount();
-  const isSafeContext = useSafeContext();
+  const isSafeContext = useIsSafeAppContext();
 
   // Method 3: Iframe origin fallback (may fail cross-origin)
   const isSafeIframe = useSyncExternalStore(
-    subscribeSafeOrigins,
+    subscribeSafeAppOrigins,
     getSafeIframeSnapshot,
     getServerSnapshot
   );
@@ -46,7 +50,7 @@ export function useIsWalletSafeMultisig(): boolean {
 }
 
 function getSafeIframeSnapshot(): boolean {
-  return isHostEmbedded() && isValidSafeOrigin();
+  return isHostEmbedded() && isValidSafeAppOrigin();
 }
 
 function getServerSnapshot(): boolean {

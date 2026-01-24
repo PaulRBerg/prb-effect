@@ -26,7 +26,7 @@ export type {
   OffchainSignaturePolicy,
   OffchainSignatureResult,
   SafeInfo,
-  SafeTransaction,
+  SafeMultisigTx,
   SafeTxResult,
   SafeTxSubmission,
   SafeWaitPolicy,

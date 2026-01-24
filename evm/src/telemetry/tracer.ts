@@ -76,9 +76,9 @@ export const SpanNames = {
   // Safe Apps
   SAFE_GET_INFO: "ew3.safe.getInfo",
   SAFE_GET_OFFCHAIN_SIG: "ew3.safe.getOffchainSignature",
-  SAFE_GET_TX: "ew3.safe.getTransaction",
+  SAFE_GET_TX: "ew3.safe.getTx",
   SAFE_POLL_OFFCHAIN_SIG: "ew3.safe.pollOffchainSignature",
-  SAFE_SEND_TXS: "ew3.safe.sendTransactions",
+  SAFE_SEND_TXS: "ew3.safe.sendTxs",
   SAFE_SIGN_TYPED_DATA: "ew3.safe.signTypedData",
   SAFE_WAIT_RECEIPT: "ew3.safe.waitForReceipt",
   SIGNATURE_HASH_MESSAGE: "ew3.signature.hashMessage",
