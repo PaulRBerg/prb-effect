@@ -14,8 +14,13 @@ import { useSafeContext } from "./use-safe-context.js";
  * 3. Iframe origin validation (fallback, may fail cross-origin)
  *
  * @returns true if wallet is a Safe multisig
+ *
+ * Notes:
+ * - This is a broader heuristic: SDK context, connector ID, then host origin.
+ * - For just SDK context, use `useSafeContext`.
+ * - For a sync host-only check, use `useIsHostSafeMultisig`.
  */
-export function useIsSafeMultisig(): boolean {
+export function useIsWalletSafeMultisig(): boolean {
   const { connector, isConnected } = useAccount();
   const isSafeContext = useSafeContext();
 

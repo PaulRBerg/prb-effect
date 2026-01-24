@@ -36,5 +36,5 @@ export {
   setSafeOrigins,
 } from "./safe-origins.js";
 export { useIsHostSafeMultisig } from "./use-is-host-safe-multisig.js";
-export { useIsSafeMultisig } from "./use-is-safe-multisig.js";
+export { useIsWalletSafeMultisig } from "./use-is-wallet-safe-multisig.js";
 export { useSafeContext } from "./use-safe-context.js";

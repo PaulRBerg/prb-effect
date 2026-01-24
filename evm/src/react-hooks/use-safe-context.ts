@@ -20,6 +20,11 @@ const SAFE_SDK_TIMEOUT = 3000;
  *
  * @returns true if running in Safe App context, false otherwise
  *
+ * Notes:
+ * - This only verifies the Safe Apps SDK context (async).
+ * - For a host-based sync check, use `useIsHostSafeMultisig`.
+ * - For a full wallet detection heuristic, use `useIsWalletSafeMultisig`.
+ *
  * @example
  * ```tsx
  * function MyComponent() {

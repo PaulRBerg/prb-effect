@@ -10,6 +10,11 @@ import { useSafeContext } from "./use-safe-context.js";
  * This hook returns `true` when either:
  * - Safe Apps SDK confirms the Safe context (async, most reliable), or
  * - The app is embedded in a Safe-origin iframe (sync check).
+ *
+ * Notes:
+ * - This answers “is the host Safe?” and will return true even without a wallet.
+ * - For full wallet detection heuristics, use `useIsWalletSafeMultisig`.
+ * - For SDK-only checks, use `useSafeContext`.
  */
 export function useIsHostSafeMultisig(): boolean {
   const isSafeContext = useSafeContext();
