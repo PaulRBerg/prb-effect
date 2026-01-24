@@ -29,5 +29,12 @@ export {
 } from "@/src/integrations/react-hooks/provider.js";
 export type { WalletProviderRefActions } from "@/src/integrations/react-hooks/wallet-provider-ref.js";
 export { useWalletProviderRef } from "@/src/integrations/react-hooks/wallet-provider-ref.js";
+export {
+  DEFAULT_SAFE_ORIGINS,
+  extendSafeOrigins,
+  getSafeOrigins,
+  setSafeOrigins,
+} from "./safe-origins.js";
+export { useIsHostSafeMultisig } from "./use-is-host-safe-multisig.js";
 export { useIsSafeMultisig } from "./use-is-safe-multisig.js";
 export { useSafeContext } from "./use-safe-context.js";
