@@ -1,12 +1,12 @@
 {
-  "name": "@prb/effect-evm",
-  "description": "Effect-TS integration for Ethereum Virtual Machine (EVM) frontend development",
-  "homepage": "https://github.com/PaulRBerg/prb-effect/tree/main/evm#readme",
+  "name": "@prb/effect-evm-safe",
+  "description": "Effect-TS integration for Safe Apps",
+  "homepage": "https://github.com/PaulRBerg/prb-effect/tree/main/evm-safe#readme",
   "main": "./dist/index.js",
   "sideEffects": false,
   "type": "module",
   "types": "./dist/index.d.ts",
-  "version": "1.0.0-beta.6",
+  "version": "1.0.0-beta.0",
   "scripts": {
     "build": "just build",
     "prepack": "bun install --frozen-lockfile && just build"
@@ -17,7 +17,7 @@
   },
   "license": "MIT",
   "repository": {
-    "directory": "evm",
+    "directory": "evm-safe",
     "type": "git",
     "url": "git+https://github.com/PaulRBerg/prb-effect.git"
   },
@@ -28,7 +28,9 @@
     "@biomejs/biome": "catalog:dev",
     "@effect/platform": "catalog:effect",
     "@effect/vitest": "catalog:dev",
+    "@prb/effect-evm": "workspace:*",
     "@sablier/devkit": "catalog:dev",
+    "@safe-global/safe-apps-sdk": "9.1.0",
     "@types/node": "catalog:dev",
     "@types/react": "catalog:dev",
     "@types/react-dom": "catalog:dev",
@@ -65,21 +67,23 @@
   "keywords": [
     "effect",
     "effect-ts",
-    "ethereum",
     "evm",
-    "react",
+    "safe",
+    "safe-apps",
+    "multisig",
     "typescript",
-    "viem",
-    "wagmi",
     "web3"
   ],
   "peerDependencies": {
     "@effect/platform": "catalog:peers",
+    "@prb/effect-evm": "^1.0.0-beta.5",
+    "@safe-global/safe-apps-sdk": "catalog:peers",
     "@wagmi/core": "catalog:peers",
     "effect": "catalog:peers",
     "react": "catalog:peers",
     "react-dom": "catalog:peers",
-    "viem": "catalog:peers"
+    "viem": "catalog:peers",
+    "wagmi": "^2.19.5"
   },
   "peerDependenciesMeta": {
     "@wagmi/core": {
@@ -89,6 +93,9 @@
       "optional": true
     },
     "react-dom": {
+      "optional": true
+    },
+    "wagmi": {
       "optional": true
     }
   },

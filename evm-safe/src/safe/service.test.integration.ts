@@ -1,8 +1,8 @@
 import { describe, expect, it } from "@effect/vitest";
+import { MIN_TX_GAS } from "@prb/effect-evm/constants";
+import { TEST_ADDRESS, TEST_CHAIN_ID, TEST_TX_HASH } from "@prb/effect-evm/testing-kit";
 import { Effect, Layer, Option } from "effect";
 import type { Hash, Hex, TransactionReceipt } from "viem";
-import { MIN_TX_GAS } from "@/src/constants/index.js";
-import { TEST_ADDRESS, TEST_CHAIN_ID, TEST_TX_HASH } from "@/src/testing-kit/index.js";
 import { SafeAppsService } from "./service.js";
 import type { SafeMultisigInfo } from "./types.js";
 

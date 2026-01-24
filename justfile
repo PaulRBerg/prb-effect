@@ -3,6 +3,7 @@ import "./node_modules/@sablier/devkit/just/base.just"
 
 # Package modules
 mod evm "evm"
+mod evm_safe "evm-safe"
 mod next "next"
 mod solana "solana"
 mod xstate "xstate"
@@ -19,6 +20,9 @@ default:
 [group("dev")]
 @build:
     cd evm && just build
+    echo ""
+
+    cd evm-safe && just build
     echo ""
 
     cd next && just build
@@ -65,6 +69,9 @@ alias ti := test-integration
 @type-check:
     echo "🔍 Type checking effect-evm..."
     cd evm && na tsgo --noEmit
+
+    echo "🔍 Type checking effect-evm-safe..."
+    cd evm-safe && na tsgo --noEmit
 
     echo "🔍 Type checking effect-next..."
     cd next && na tsgo --noEmit

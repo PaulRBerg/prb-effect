@@ -1,0 +1,3 @@
+import "../recipes.just"
+
+export PACKAGE_NAME := "@prb/effect-evm-safe"

@@ -1,0 +1,22 @@
+import { fileURLToPath } from "node:url";
+import { defineConfig, mergeConfig } from "vitest/config";
+
+import configShared from "../vitest.shared.js";
+
+const CI = Boolean(process.env.CI);
+const srcDir = fileURLToPath(new URL("./src", import.meta.url));
+
+export default mergeConfig(
+  configShared,
+  defineConfig({
+    resolve: {
+      alias: { "@/src": srcDir },
+    },
+    test: {
+      exclude: ["src/**/*.test.integration.ts"],
+      include: ["src/**/*.test.ts"],
+      name: "evm-safe",
+      retry: CI ? 3 : 0,
+    },
+  })
+);

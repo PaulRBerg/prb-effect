@@ -7,9 +7,9 @@
  * @see https://github.com/safe-global/safe-smart-account/blob/c4859f4/contracts/common/StorageAccessible.sol#L32-L43
  */
 
+import type { ClientNotFoundError } from "@prb/effect-evm/core";
+import { PublicClientService } from "@prb/effect-evm/core";
 import { Context, Effect, Layer } from "effect";
-import type { ClientNotFoundError } from "@/src/core/index.js";
-import { PublicClientService } from "@/src/core/index.js";
 import type {
   GasLimitOverflowError,
   InvalidGasThresholdError,

@@ -21,11 +21,50 @@
     },
     "evm": {
       "name": "@prb/effect-evm",
-      "version": "1.0.0-beta.3",
+      "version": "1.0.0-beta.5",
       "devDependencies": {
         "@biomejs/biome": "catalog:dev",
         "@effect/platform": "catalog:effect",
         "@effect/vitest": "catalog:dev",
+        "@sablier/devkit": "catalog:dev",
+        "@types/node": "catalog:dev",
+        "@types/react": "catalog:dev",
+        "@types/react-dom": "catalog:dev",
+        "@typescript/native-preview": "catalog:dev",
+        "@vitest/ui": "catalog:dev",
+        "@wagmi/core": "^2.22.1",
+        "effect": "catalog:effect",
+        "jsdom": "catalog:dev",
+        "react": "catalog:",
+        "react-dom": "catalog:",
+        "tsc-alias": "catalog:dev",
+        "typescript": "catalog:dev",
+        "viem": "^2.43.1",
+        "vitest": "catalog:dev",
+        "wagmi": "^2.19.5",
+      },
+      "peerDependencies": {
+        "@effect/platform": "catalog:peers",
+        "@wagmi/core": "catalog:peers",
+        "effect": "catalog:peers",
+        "react": "catalog:peers",
+        "react-dom": "catalog:peers",
+        "viem": "catalog:peers",
+      },
+      "optionalPeers": [
+        "@wagmi/core",
+        "react",
+        "react-dom",
+      ],
+    },
+    "evm-safe": {
+      "name": "@prb/effect-evm-safe",
+      "version": "1.0.0-beta.0",
+      "devDependencies": {
+        "@biomejs/biome": "catalog:dev",
+        "@effect/platform": "catalog:effect",
+        "@effect/vitest": "catalog:dev",
+        "@prb/effect-evm": "workspace:*",
         "@sablier/devkit": "catalog:dev",
         "@safe-global/safe-apps-sdk": "9.1.0",
         "@types/node": "catalog:dev",
@@ -46,18 +85,20 @@
       },
       "peerDependencies": {
         "@effect/platform": "catalog:peers",
+        "@prb/effect-evm": "^1.0.0-beta.5",
         "@safe-global/safe-apps-sdk": "catalog:peers",
         "@wagmi/core": "catalog:peers",
         "effect": "catalog:peers",
         "react": "catalog:peers",
         "react-dom": "catalog:peers",
         "viem": "catalog:peers",
+        "wagmi": "^2.19.5",
       },
       "optionalPeers": [
-        "@safe-global/safe-apps-sdk",
         "@wagmi/core",
         "react",
         "react-dom",
+        "wagmi",
       ],
     },
     "next": {
@@ -489,6 +530,8 @@
     "@polka/url": ["@polka/url@1.0.0-next.29", "", {}, "sha512-wwQAWhWSuHaag8c4q/KN/vCoeOJYshAIvMQwD4GpSb3OiZklFfvAgmj0VCBBImRpuF/aFgIRzllXlVX93Jevww=="],
 
     "@prb/effect-evm": ["@prb/effect-evm@workspace:evm"],
+
+    "@prb/effect-evm-safe": ["@prb/effect-evm-safe@workspace:evm-safe"],
 
     "@prb/effect-next": ["@prb/effect-next@workspace:next"],
 

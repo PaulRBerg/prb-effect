@@ -1,8 +1,8 @@
 import { describe, expect, it } from "@effect/vitest";
+import { makePublicClientLayer } from "@prb/effect-evm/presets";
 import { Effect } from "effect";
 import type { Address } from "viem";
 import { mainnet } from "viem/chains";
-import { makePublicClientLayer } from "@/src/presets/index.js";
 import { isSafeMultisig } from "./detection.js";
 
 // Known Safe singleton hashes for verification

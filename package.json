@@ -34,6 +34,7 @@
   "workspaces": {
     "packages": [
       "evm",
+      "evm-safe",
       "next",
       "solana",
       "xstate"

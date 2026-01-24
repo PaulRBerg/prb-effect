@@ -4,6 +4,7 @@ export default defineConfig({
   test: {
     projects: [
       "./evm/vitest.config.ts",
+      "./evm-safe/vitest.config.ts",
       "./next/vitest.config.ts",
       "./solana/vitest.config.ts",
       "./xstate/vitest.config.ts",

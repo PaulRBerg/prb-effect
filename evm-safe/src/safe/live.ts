@@ -1,3 +1,4 @@
+import { TxManager } from "@prb/effect-evm/tx";
 import { Effect, Layer, Option, Ref } from "effect";
 import type { Hash, Hex } from "viem";
 import { isAddress, isHash, isHex } from "viem";
@@ -7,7 +8,6 @@ import {
   SAFE_SIGNATURE_POLL_INTERVAL,
   SAFE_SIGNATURE_TIMEOUT,
 } from "@/src/constants/index.js";
-import { TxManager } from "@/src/tx/index.js";
 import type { SafeAppsSDKInstance, SafeAppsSdkConfig } from "./adapter.js";
 import { loadSafeSdk } from "./adapter.js";
 import type { SafeAppsSdkUnavailableError } from "./errors.js";

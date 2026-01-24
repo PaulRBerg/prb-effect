@@ -5,7 +5,7 @@ import { SafeAppsSdkUnavailableError } from "./errors.js";
 /** Configuration for SDK initialization */
 export type SafeAppsSdkConfig = Opts;
 
-/** Load SDK dynamically - keeps the dependency optional at runtime */
+/** Load SDK dynamically to avoid SSR import issues. */
 export const loadSafeSdk = (config?: SafeAppsSdkConfig) =>
   Effect.tryPromise({
     catch: (cause) =>

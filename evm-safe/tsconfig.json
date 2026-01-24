@@ -1,0 +1,15 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ESNext", "DOM"],
+    "jsx": "react-jsx",
+    "paths": {
+      "@/src": ["./src"],
+      "@/src/*": ["./src/*"],
+      "@prb/effect-evm": ["../evm/src/index.ts"],
+      "@prb/effect-evm/*": ["../evm/src/*"]
+    }
+  },
+  "exclude": ["**/node_modules/", "dist/"],
+  "include": ["src/", "tests/", "vitest.*.ts", "../vitest.shared.ts"]
+}

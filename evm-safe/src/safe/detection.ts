@@ -7,11 +7,11 @@
  * @see https://github.com/safe-fndn/safe-smart-account/issues/714
  */
 
+import type { ClientNotFoundError } from "@prb/effect-evm/core";
+import { PublicClientService } from "@prb/effect-evm/core";
 import { Effect, Schema } from "effect";
 import type { Address, Hex } from "viem";
 import { keccak256 } from "viem";
-import type { ClientNotFoundError } from "@/src/core/index.js";
-import { PublicClientService } from "@/src/core/index.js";
 
 // -----------------------------------------------------------------------------
 // Known Safe bytecode hashes

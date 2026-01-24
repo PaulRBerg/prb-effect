@@ -1,11 +1,11 @@
-import type { Effect, Option } from "effect";
-import { Context } from "effect";
-import type { Hash, Hex } from "viem";
 import type {
   ClientNotFoundError,
   ReceiptTimeoutError,
   TxFailedError,
-} from "@/src/core/errors/index.js";
+} from "@prb/effect-evm/core/errors";
+import type { Effect, Option } from "effect";
+import { Context } from "effect";
+import type { Hash, Hex } from "viem";
 import type {
   OffchainSignatureTimeoutError,
   SafeMultisigInfoUnavailableError,
