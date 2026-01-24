@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
-import { GasLimitOverflowError, SafeSimulationFailedError } from "../errors.js";
+import { GasLimitOverflowError, SafeMultisigSimulationFailedError } from "../errors.js";
 import { evaluateSimulationResult } from "./evaluation/index.js";
 import type { LatestBlock, SimulationDecoded } from "./types/index.js";
 
@@ -19,7 +19,7 @@ describe("evaluateSimulationResult", () => {
     Effect.gen(function* () {
       const result: SimulationDecoded = { gas: 1n, success: false };
       const error = yield* evaluateSimulationResult(result, block).pipe(Effect.flip);
-      expect(error).toBeInstanceOf(SafeSimulationFailedError);
+      expect(error).toBeInstanceOf(SafeMultisigSimulationFailedError);
     })
   );
 

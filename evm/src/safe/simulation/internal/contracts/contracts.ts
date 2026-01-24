@@ -3,22 +3,22 @@
  */
 import { Effect } from "effect";
 import { getMultiSendAddress, getSimulateAccessorAddress } from "../../addresses.js";
-import { SafeContractsNotDeployedError } from "../../errors.js";
-import type { SafeContracts } from "../types/index.js";
+import { SafeMultisigContractsNotDeployedError } from "../../errors.js";
+import type { SafeMultisigContracts } from "../types/index.js";
 
 /**
  * Resolve the Safe helper contract addresses for the chain.
  */
-export function resolveSafeContracts(
+export function resolveSafeMultisigContracts(
   chainId: number
-): Effect.Effect<SafeContracts, SafeContractsNotDeployedError> {
+): Effect.Effect<SafeMultisigContracts, SafeMultisigContractsNotDeployedError> {
   return Effect.gen(function* () {
     const multiSendAddr = getMultiSendAddress(chainId);
     const simulateAccessorAddr = getSimulateAccessorAddress(chainId);
 
     if (!multiSendAddr) {
       return yield* Effect.fail(
-        new SafeContractsNotDeployedError({
+        new SafeMultisigContractsNotDeployedError({
           chainId,
           message: "MultiSend contract not deployed on this chain",
           missingContract: "multiSend",
@@ -28,7 +28,7 @@ export function resolveSafeContracts(
 
     if (!simulateAccessorAddr) {
       return yield* Effect.fail(
-        new SafeContractsNotDeployedError({
+        new SafeMultisigContractsNotDeployedError({
           chainId,
           message: "SimulateAccessor contract not deployed on this chain",
           missingContract: "simulateAccessor",

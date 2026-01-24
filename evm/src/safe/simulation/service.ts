@@ -13,20 +13,20 @@ import { PublicClientService } from "@/src/core/index.js";
 import type {
   GasLimitOverflowError,
   InvalidGasThresholdError,
-  SafeContractsNotDeployedError,
-  SafeSimulationFailedError,
+  SafeMultisigContractsNotDeployedError,
+  SafeMultisigSimulationFailedError,
   SimulationDecodeError,
   TxSizeTooLargeError,
 } from "./errors.js";
 import { buildSafeCalldata } from "./internal/calldata/index.js";
-import { resolveSafeContracts } from "./internal/contracts/index.js";
+import { resolveSafeMultisigContracts } from "./internal/contracts/index.js";
 import { evaluateSimulationResult } from "./internal/evaluation/index.js";
 import { fetchLatestBlock, simulateAndDecode } from "./internal/execution/index.js";
 import { enforceTxSizeLimit } from "./internal/limits/index.js";
 import { validateSimulationParams } from "./internal/validation/index.js";
-import type { SafeSimulateBatchParams, SafeSimulationResult } from "./types.js";
+import type { SafeMultisigSimulateBatchParams, SafeMultisigSimulationResult } from "./types.js";
 
-export type SafeSimulationServiceShape = {
+export type SafeMultisigSimulationServiceShape = {
   /**
    * Simulate a batch of transactions in Safe context.
    *
@@ -37,35 +37,35 @@ export type SafeSimulationServiceShape = {
    * @returns Gas estimate and success flag
    */
   readonly simulateBatch: (
-    params: SafeSimulateBatchParams
+    params: SafeMultisigSimulateBatchParams
   ) => Effect.Effect<
-    SafeSimulationResult,
+    SafeMultisigSimulationResult,
     | ClientNotFoundError
     | InvalidGasThresholdError
-    | SafeContractsNotDeployedError
+    | SafeMultisigContractsNotDeployedError
     | TxSizeTooLargeError
-    | SafeSimulationFailedError
+    | SafeMultisigSimulationFailedError
     | SimulationDecodeError
     | GasLimitOverflowError
   >;
 };
 
-export class SafeSimulationService extends Context.Tag("ew3/SafeSimulation")<
-  SafeSimulationService,
-  SafeSimulationServiceShape
+export class SafeMultisigSimulationService extends Context.Tag("ew3/SafeMultisigSimulation")<
+  SafeMultisigSimulationService,
+  SafeMultisigSimulationServiceShape
 >() {}
 
-export const SafeSimulationServiceLive = Layer.effect(
-  SafeSimulationService,
+export const SafeMultisigSimulationServiceLive = Layer.effect(
+  SafeMultisigSimulationService,
   Effect.gen(function* () {
     const publicClientService = yield* PublicClientService;
 
-    return SafeSimulationService.of({
-      simulateBatch: (params: SafeSimulateBatchParams) =>
+    return SafeMultisigSimulationService.of({
+      simulateBatch: (params: SafeMultisigSimulateBatchParams) =>
         Effect.gen(function* () {
           const { chainId, safeAddress, transactions, txSizeLimit, gasThresholdPercent } =
             yield* validateSimulationParams(params);
-          const contracts = yield* resolveSafeContracts(chainId);
+          const contracts = yield* resolveSafeMultisigContracts(chainId);
           const safeCalldata = buildSafeCalldata(contracts, transactions);
 
           yield* enforceTxSizeLimit(safeCalldata, txSizeLimit);

@@ -5,7 +5,7 @@ import { Effect } from "effect";
 import type { Address, Hex, PublicClient } from "viem";
 import { BaseError as CoreError } from "viem";
 import { decodeSimulationData } from "../../encoding.js";
-import { SafeSimulationFailedError, SimulationDecodeError } from "../../errors.js";
+import { SafeMultisigSimulationFailedError, SimulationDecodeError } from "../../errors.js";
 import type { LatestBlock, SimulationDecoded } from "../types/index.js";
 
 /**
@@ -61,11 +61,11 @@ export function simulateAndDecode(
   client: PublicClient,
   safeAddress: Address,
   safeCalldata: Hex
-): Effect.Effect<SimulationDecoded, SafeSimulationFailedError | SimulationDecodeError> {
+): Effect.Effect<SimulationDecoded, SafeMultisigSimulationFailedError | SimulationDecodeError> {
   return Effect.gen(function* () {
     const revertData = yield* Effect.tryPromise({
       catch: (error) =>
-        new SafeSimulationFailedError({
+        new SafeMultisigSimulationFailedError({
           cause: error,
           message: "Network error or unexpected behavior during simulation",
         }),
@@ -89,10 +89,10 @@ export function simulateAndDecode(
  */
 export function fetchLatestBlock(
   client: PublicClient
-): Effect.Effect<LatestBlock, SafeSimulationFailedError> {
+): Effect.Effect<LatestBlock, SafeMultisigSimulationFailedError> {
   return Effect.tryPromise({
     catch: (e) =>
-      new SafeSimulationFailedError({
+      new SafeMultisigSimulationFailedError({
         cause: e,
         message: `Failed to fetch block: ${e}`,
       }),

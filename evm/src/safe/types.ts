@@ -1,7 +1,7 @@
 import type { Address, Hash, Hex, TransactionReceipt } from "viem";
 
-/** Safe info returned from SDK */
-export type SafeInfo = {
+/** Safe multisig info returned from SDK */
+export type SafeMultisigInfo = {
   chainId: number;
   safeAddress: Address;
 };
@@ -14,14 +14,14 @@ export type SafeMultisigTx = {
 };
 
 /** Result from sendTxs */
-export type SafeTxSubmission = {
+export type SafeMultisigTxSubmission = {
   chainId: number;
   safeAddress: Address;
   safeTxHash: Hash;
 };
 
 /** Result from waitForTxReceipt */
-export type SafeTxResult = {
+export type SafeMultisigTxResult = {
   chainId: number;
   onchainHash: Hash;
   receipt: TransactionReceipt;

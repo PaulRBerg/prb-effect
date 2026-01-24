@@ -6,7 +6,7 @@ import type { Address, PublicClient } from "viem";
 /**
  * Resolved Safe contract addresses required for simulation.
  */
-export type SafeContracts = {
+export type SafeMultisigContracts = {
   readonly multiSendAddr: Address;
   readonly simulateAccessorAddr: Address;
 };

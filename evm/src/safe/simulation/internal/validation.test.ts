@@ -1,11 +1,11 @@
 import { describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
 import type { Address, Hex } from "viem";
-import { InvalidGasThresholdError, SafeSimulationFailedError } from "../errors.js";
-import type { SafeSimulateBatchParams } from "../types.js";
+import { InvalidGasThresholdError, SafeMultisigSimulationFailedError } from "../errors.js";
+import type { SafeMultisigSimulateBatchParams } from "../types.js";
 import { validateSimulationParams } from "./validation/index.js";
 
-const baseParams: SafeSimulateBatchParams = {
+const baseParams: SafeMultisigSimulateBatchParams = {
   chainId: 1,
   safeAddress: "0x0000000000000000000000000000000000000001" as Address,
   transactions: [
@@ -25,7 +25,7 @@ describe("validateSimulationParams", () => {
         transactions: [],
       }).pipe(Effect.flip);
 
-      expect(error).toBeInstanceOf(SafeSimulationFailedError);
+      expect(error).toBeInstanceOf(SafeMultisigSimulationFailedError);
     })
   );
 
@@ -36,7 +36,7 @@ describe("validateSimulationParams", () => {
         safeAddress: "0x0000000000000000000000000000000000000000" as Address,
       }).pipe(Effect.flip);
 
-      expect(error).toBeInstanceOf(SafeSimulationFailedError);
+      expect(error).toBeInstanceOf(SafeMultisigSimulationFailedError);
     })
   );
 

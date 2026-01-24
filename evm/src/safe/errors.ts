@@ -1,8 +1,8 @@
 import { Schema } from "effect";
 
 // SDK availability errors
-export class SafeSdkUnavailableError extends Schema.TaggedError<SafeSdkUnavailableError>()(
-  "SafeSdkUnavailableError",
+export class SafeAppsSdkUnavailableError extends Schema.TaggedError<SafeAppsSdkUnavailableError>()(
+  "SafeAppsSdkUnavailableError",
   { cause: Schema.optional(Schema.Unknown), message: Schema.String }
 ) {}
 
@@ -12,23 +12,23 @@ export class NotInSafeAppContextError extends Schema.TaggedError<NotInSafeAppCon
 ) {}
 
 // Safe operation errors
-export class SafeInfoUnavailableError extends Schema.TaggedError<SafeInfoUnavailableError>()(
-  "SafeInfoUnavailableError",
+export class SafeMultisigInfoUnavailableError extends Schema.TaggedError<SafeMultisigInfoUnavailableError>()(
+  "SafeMultisigInfoUnavailableError",
   { cause: Schema.optional(Schema.Unknown), message: Schema.String }
 ) {}
 
-export class SafeSettingsError extends Schema.TaggedError<SafeSettingsError>()(
-  "SafeSettingsError",
+export class SafeMultisigSettingsError extends Schema.TaggedError<SafeMultisigSettingsError>()(
+  "SafeMultisigSettingsError",
   { cause: Schema.optional(Schema.Unknown), message: Schema.String }
 ) {}
 
-export class SafeTxSubmissionError extends Schema.TaggedError<SafeTxSubmissionError>()(
-  "SafeTxSubmissionError",
+export class SafeMultisigTxSubmissionError extends Schema.TaggedError<SafeMultisigTxSubmissionError>()(
+  "SafeMultisigTxSubmissionError",
   { cause: Schema.optional(Schema.Unknown), message: Schema.String }
 ) {}
 
-export class SafeTxLookupError extends Schema.TaggedError<SafeTxLookupError>()(
-  "SafeTxLookupError",
+export class SafeMultisigTxLookupError extends Schema.TaggedError<SafeMultisigTxLookupError>()(
+  "SafeMultisigTxLookupError",
   {
     cause: Schema.optional(Schema.Unknown),
     message: Schema.String,
@@ -37,8 +37,8 @@ export class SafeTxLookupError extends Schema.TaggedError<SafeTxLookupError>()(
   }
 ) {}
 
-export class SafeTxExecutionTimeoutError extends Schema.TaggedError<SafeTxExecutionTimeoutError>()(
-  "SafeTxExecutionTimeoutError",
+export class SafeMultisigTxExecutionTimeoutError extends Schema.TaggedError<SafeMultisigTxExecutionTimeoutError>()(
+  "SafeMultisigTxExecutionTimeoutError",
   {
     lastStatus: Schema.optional(Schema.String),
     message: Schema.String,

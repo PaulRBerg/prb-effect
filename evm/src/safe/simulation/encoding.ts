@@ -8,7 +8,7 @@
 import type { Address, Hex } from "viem";
 import { decodeAbiParameters, encodeFunctionData, encodePacked } from "viem";
 import { safeAbis } from "./abis.js";
-import type { SafeSimulationTx } from "./types.js";
+import type { SafeMultisigSimulationTx } from "./types.js";
 
 /** Internal transaction format for Safe multiSend encoding */
 type InternalTx = {
@@ -50,7 +50,7 @@ export function encodeInternalTx(tx: InternalTx): string {
  * @param transactions - Array of transactions to encode
  * @returns Encoded calldata for multiSend function
  */
-export function encodeMultiSend(transactions: SafeSimulationTx[]): Hex {
+export function encodeMultiSend(transactions: SafeMultisigSimulationTx[]): Hex {
   const internals = transactions.map((tx) => ({
     data: tx.data,
     operation: tx.operation ?? 0,

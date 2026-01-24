@@ -17,8 +17,8 @@ export class GasLimitOverflowError extends Schema.TaggedError<GasLimitOverflowEr
 ) {}
 
 /** Safe simulation failed */
-export class SafeSimulationFailedError extends Schema.TaggedError<SafeSimulationFailedError>()(
-  "SafeSimulationFailedError",
+export class SafeMultisigSimulationFailedError extends Schema.TaggedError<SafeMultisigSimulationFailedError>()(
+  "SafeMultisigSimulationFailedError",
   {
     cause: Schema.optional(Schema.Unknown),
     message: Schema.String,
@@ -26,8 +26,8 @@ export class SafeSimulationFailedError extends Schema.TaggedError<SafeSimulation
 ) {}
 
 /** Safe contracts not deployed on this chain */
-export class SafeContractsNotDeployedError extends Schema.TaggedError<SafeContractsNotDeployedError>()(
-  "SafeContractsNotDeployedError",
+export class SafeMultisigContractsNotDeployedError extends Schema.TaggedError<SafeMultisigContractsNotDeployedError>()(
+  "SafeMultisigContractsNotDeployedError",
   {
     chainId: Schema.Number,
     message: Schema.String,

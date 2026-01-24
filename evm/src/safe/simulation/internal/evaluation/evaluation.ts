@@ -2,8 +2,8 @@
  * Final evaluation of simulation outcomes against policy thresholds.
  */
 import { Effect } from "effect";
-import { GasLimitOverflowError, SafeSimulationFailedError } from "../../errors.js";
-import type { SafeSimulationResult } from "../../types.js";
+import { GasLimitOverflowError, SafeMultisigSimulationFailedError } from "../../errors.js";
+import type { SafeMultisigSimulationResult } from "../../types.js";
 import type { LatestBlock, SimulationDecoded } from "../types/index.js";
 
 /**
@@ -13,7 +13,10 @@ export function evaluateSimulationResult(
   result: SimulationDecoded,
   block: LatestBlock,
   gasThresholdPercent?: number
-): Effect.Effect<SafeSimulationResult, GasLimitOverflowError | SafeSimulationFailedError> {
+): Effect.Effect<
+  SafeMultisigSimulationResult,
+  GasLimitOverflowError | SafeMultisigSimulationFailedError
+> {
   const threshold = (block.gasLimit * BigInt(gasThresholdPercent ?? 95)) / 100n;
 
   if (result.success && result.gas > threshold) {
@@ -30,7 +33,7 @@ export function evaluateSimulationResult(
 
   if (!result.success) {
     return Effect.fail(
-      new SafeSimulationFailedError({
+      new SafeMultisigSimulationFailedError({
         message: "Transaction simulation failed - the transaction would revert",
       })
     );

@@ -4,7 +4,7 @@ import type { Hash, Hex, TransactionReceipt } from "viem";
 import { MIN_TX_GAS } from "@/src/constants/index.js";
 import { TEST_ADDRESS, TEST_CHAIN_ID, TEST_TX_HASH } from "@/src/testing-kit/index.js";
 import { SafeAppsService } from "./service.js";
-import type { SafeInfo } from "./types.js";
+import type { SafeMultisigInfo } from "./types.js";
 
 // Test fixtures
 const TEST_SAFE_ADDRESS = TEST_ADDRESS;
@@ -33,7 +33,7 @@ const TEST_RECEIPT: TransactionReceipt = {
 
 // Mock SafeAppsService for testing without actual SDK
 const makeMockSafeAppsService = (config: {
-  getInfoResult?: SafeInfo;
+  getInfoResult?: SafeMultisigInfo;
   sendTxResult?: { safeTxHash: Hash };
   getTxResult?: { txHash: Option.Option<Hash>; status: string };
   signTypedDataResult?:
@@ -41,7 +41,7 @@ const makeMockSafeAppsService = (config: {
     | { _tag: "Onchain"; safeTxHash: Hash };
   offchainSignature?: Option.Option<Hex>;
 }) => {
-  const defaultInfo: SafeInfo = {
+  const defaultInfo: SafeMultisigInfo = {
     chainId: TEST_CHAIN_ID,
     safeAddress: TEST_SAFE_ADDRESS,
   };

@@ -18,7 +18,7 @@ After generating code, run these commands **in order**:
 1. **`na biome lint <files>`** — lint JS/TS/JSON (skip if none changed)
 2. **`na tsgo --noEmit`** — verify TypeScript types
 
-If any command fails, fix errors before continuing. Run `just biome-write` at the end.
+If any command fails, fix errors before continuing.
 
 ## Monorepo Structure
 

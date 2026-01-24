@@ -66,8 +66,8 @@ const KNOWN_SAFE_SINGLETON_HASHES: ReadonlySet<Hex> = new Set([
 // Errors
 // -----------------------------------------------------------------------------
 
-export class SafeDetectionError extends Schema.TaggedError<SafeDetectionError>()(
-  "SafeDetectionError",
+export class SafeMultisigDetectionError extends Schema.TaggedError<SafeMultisigDetectionError>()(
+  "SafeMultisigDetectionError",
   {
     address: Schema.String,
     cause: Schema.optional(Schema.Unknown),
@@ -143,7 +143,7 @@ export function isSafeMultisig(
   params: SafeDetectionParams
 ): Effect.Effect<
   SafeDetectionResult,
-  SafeDetectionError | ClientNotFoundError,
+  SafeMultisigDetectionError | ClientNotFoundError,
   PublicClientService
 > {
   return Effect.gen(function* () {
@@ -154,7 +154,7 @@ export function isSafeMultisig(
     // 1. Get proxy bytecode
     const proxyBytecode = yield* Effect.tryPromise({
       catch: (cause) =>
-        new SafeDetectionError({
+        new SafeMultisigDetectionError({
           address,
           cause,
           message: `Failed to get bytecode for ${address}`,
@@ -188,7 +188,7 @@ export function isSafeMultisig(
     // 4. Call masterCopy() to get singleton address
     const singletonAddress = yield* Effect.tryPromise({
       catch: (cause) =>
-        new SafeDetectionError({
+        new SafeMultisigDetectionError({
           address,
           cause,
           message: `Failed to call masterCopy() on ${address}`,
@@ -204,7 +204,7 @@ export function isSafeMultisig(
     // 5. Get singleton bytecode
     const singletonBytecode = yield* Effect.tryPromise({
       catch: (cause) =>
-        new SafeDetectionError({
+        new SafeMultisigDetectionError({
           address,
           cause,
           message: `Failed to get bytecode for singleton ${singletonAddress}`,

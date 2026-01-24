@@ -8,48 +8,48 @@ import type {
 } from "@/src/core/errors/index.js";
 import type {
   OffchainSignatureTimeoutError,
-  SafeInfoUnavailableError,
-  SafeSettingsError,
-  SafeTxExecutionTimeoutError,
-  SafeTxLookupError,
-  SafeTxSubmissionError,
+  SafeMultisigInfoUnavailableError,
+  SafeMultisigSettingsError,
+  SafeMultisigTxExecutionTimeoutError,
+  SafeMultisigTxLookupError,
+  SafeMultisigTxSubmissionError,
   SignTypedDataError,
 } from "./errors.js";
 import type {
   EIP712TypedData,
   OffchainSignaturePolicy,
   OffchainSignatureResult,
-  SafeInfo,
+  SafeMultisigInfo,
   SafeMultisigTx,
-  SafeTxResult,
-  SafeTxSubmission,
+  SafeMultisigTxResult,
+  SafeMultisigTxSubmission,
   SafeWaitPolicy,
   SignTypedDataResult,
 } from "./types.js";
 
 export type SafeAppsServiceShape = {
   /** Get Safe info (cached after first call) */
-  readonly getInfo: () => Effect.Effect<SafeInfo, SafeInfoUnavailableError>;
+  readonly getInfo: () => Effect.Effect<SafeMultisigInfo, SafeMultisigInfoUnavailableError>;
 
   /** Send txs to Safe for execution */
   readonly sendTxs: (
     txs: readonly SafeMultisigTx[],
     params?: { safeTxGas?: number }
-  ) => Effect.Effect<SafeTxSubmission, SafeTxSubmissionError>;
+  ) => Effect.Effect<SafeMultisigTxSubmission, SafeMultisigTxSubmissionError>;
 
   /** Get Safe tx details by safeTxHash */
   readonly getTx: (
     safeTxHash: Hash
-  ) => Effect.Effect<{ txHash: Option.Option<Hash>; status: string }, SafeTxLookupError>;
+  ) => Effect.Effect<{ txHash: Option.Option<Hash>; status: string }, SafeMultisigTxLookupError>;
 
   /** Wait for Safe tx to execute and return receipt */
   readonly waitForTxReceipt: (
     safeTxHash: Hash,
     policy?: SafeWaitPolicy
   ) => Effect.Effect<
-    SafeTxResult,
-    | SafeTxExecutionTimeoutError
-    | SafeTxLookupError
+    SafeMultisigTxResult,
+    | SafeMultisigTxExecutionTimeoutError
+    | SafeMultisigTxLookupError
     | TxFailedError
     | ReceiptTimeoutError
     | ClientNotFoundError
@@ -63,16 +63,19 @@ export type SafeAppsServiceShape = {
   /** Get off-chain signature (returns Option.none if not yet available) */
   readonly getOffchainSignature: (
     messageHash: Hex
-  ) => Effect.Effect<Option.Option<Hex>, SafeTxLookupError>;
+  ) => Effect.Effect<Option.Option<Hex>, SafeMultisigTxLookupError>;
 
   /** Poll for off-chain signature until available or timeout */
   readonly pollOffchainSignature: (
     messageHash: Hex,
     policy?: OffchainSignaturePolicy
-  ) => Effect.Effect<OffchainSignatureResult, OffchainSignatureTimeoutError | SafeTxLookupError>;
+  ) => Effect.Effect<
+    OffchainSignatureResult,
+    OffchainSignatureTimeoutError | SafeMultisigTxLookupError
+  >;
 
   /** Enable off-chain signing mode */
-  readonly enableOffchainSigning: () => Effect.Effect<void, SafeSettingsError>;
+  readonly enableOffchainSigning: () => Effect.Effect<void, SafeMultisigSettingsError>;
 };
 
 export class SafeAppsService extends Context.Tag("ew3/SafeApps")<

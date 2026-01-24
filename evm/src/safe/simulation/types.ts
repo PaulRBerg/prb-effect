@@ -7,7 +7,7 @@ import type { Address, Hex } from "viem";
 export type SafeOperation = 0 | 1; // 0 = Call, 1 = DelegateCall
 
 /** A single transaction in a Safe batch */
-export type SafeSimulationTx = {
+export type SafeMultisigSimulationTx = {
   data: Hex;
   operation?: SafeOperation;
   to: Address;
@@ -15,10 +15,10 @@ export type SafeSimulationTx = {
 };
 
 /** Parameters for simulating a Safe batch */
-export type SafeSimulateBatchParams = {
+export type SafeMultisigSimulateBatchParams = {
   chainId: number;
   safeAddress: Address;
-  transactions: SafeSimulationTx[];
+  transactions: SafeMultisigSimulationTx[];
   /** Optional transaction size limit in bytes (for ZK chains) */
   txSizeLimit?: number;
   /** Gas threshold as percentage of block gas limit (1-100, default 95) */
@@ -26,7 +26,7 @@ export type SafeSimulateBatchParams = {
 };
 
 /** Result of a successful Safe simulation */
-export type SafeSimulationResult = {
+export type SafeMultisigSimulationResult = {
   estimatedGas: bigint;
   success: boolean;
 };

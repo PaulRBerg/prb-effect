@@ -12,21 +12,21 @@ export { decodeSimulationData, encodeMultiSend } from "./encoding.js";
 export {
   GasLimitOverflowError,
   InvalidGasThresholdError,
-  SafeContractsNotDeployedError,
-  SafeSimulationFailedError,
+  SafeMultisigContractsNotDeployedError,
+  SafeMultisigSimulationFailedError,
   SimulationDecodeError,
   TxSizeTooLargeError,
 } from "./errors.js";
 // Service
 export {
-  SafeSimulationService,
-  SafeSimulationServiceLive,
-  type SafeSimulationServiceShape,
+  SafeMultisigSimulationService,
+  SafeMultisigSimulationServiceLive,
+  type SafeMultisigSimulationServiceShape,
 } from "./service.js";
 // Types
 export type {
+  SafeMultisigSimulateBatchParams,
+  SafeMultisigSimulationResult,
+  SafeMultisigSimulationTx,
   SafeOperation,
-  SafeSimulateBatchParams,
-  SafeSimulationResult,
-  SafeSimulationTx,
 } from "./types.js";

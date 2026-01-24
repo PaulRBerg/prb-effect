@@ -14,15 +14,15 @@ import { loadSafeSdk } from "./adapter.js";
 import {
   NotInSafeAppContextError,
   OffchainSignatureTimeoutError,
-  SafeInfoUnavailableError,
-  SafeSettingsError,
-  SafeTxExecutionTimeoutError,
-  SafeTxLookupError,
-  SafeTxSubmissionError,
+  SafeMultisigInfoUnavailableError,
+  SafeMultisigSettingsError,
+  SafeMultisigTxExecutionTimeoutError,
+  SafeMultisigTxLookupError,
+  SafeMultisigTxSubmissionError,
   SignTypedDataError,
 } from "./errors.js";
 import { SafeAppsService } from "./service.js";
-import type { EIP712TypedData, SafeInfo, SafeMultisigTx } from "./types.js";
+import type { EIP712TypedData, SafeMultisigInfo, SafeMultisigTx } from "./types.js";
 
 export type SafeAppsServiceConfig = SafeAppsSdkConfig;
 
@@ -32,11 +32,11 @@ export type SafeAppsServiceConfig = SafeAppsSdkConfig;
 const validateAddress = (
   value: string,
   context: string
-): Effect.Effect<Address, SafeTxLookupError> =>
+): Effect.Effect<Address, SafeMultisigTxLookupError> =>
   isAddress(value)
     ? Effect.succeed(value)
     : Effect.fail(
-        new SafeTxLookupError({
+        new SafeMultisigTxLookupError({
           message: `Invalid address from SDK in ${context}: ${value}`,
           retryable: false,
           safeTxHash: "",
@@ -46,11 +46,14 @@ const validateAddress = (
 /**
  * Validate that a string is a valid transaction hash, failing with context if not.
  */
-const validateHash = (value: string, context: string): Effect.Effect<Hash, SafeTxLookupError> =>
+const validateHash = (
+  value: string,
+  context: string
+): Effect.Effect<Hash, SafeMultisigTxLookupError> =>
   isHash(value)
     ? Effect.succeed(value)
     : Effect.fail(
-        new SafeTxLookupError({
+        new SafeMultisigTxLookupError({
           message: `Invalid hash from SDK in ${context}: ${value}`,
           retryable: false,
           safeTxHash: "",
@@ -60,11 +63,14 @@ const validateHash = (value: string, context: string): Effect.Effect<Hash, SafeT
 /**
  * Validate that a string is valid hex, failing with context if not.
  */
-const validateHex = (value: string, context: string): Effect.Effect<Hex, SafeTxLookupError> =>
+const validateHex = (
+  value: string,
+  context: string
+): Effect.Effect<Hex, SafeMultisigTxLookupError> =>
   isHex(value)
     ? Effect.succeed(value)
     : Effect.fail(
-        new SafeTxLookupError({
+        new SafeMultisigTxLookupError({
           message: `Invalid hex from SDK in ${context}: ${value}`,
           retryable: false,
           safeTxHash: "",
@@ -88,7 +94,7 @@ export const SafeAppsServiceLive = (config?: SafeAppsServiceConfig) =>
       const sdk = yield* loadSafeSdk(config);
 
       // Cache Safe info after first fetch
-      const infoRef = yield* Ref.make<SafeInfo | null>(null);
+      const infoRef = yield* Ref.make<SafeMultisigInfo | null>(null);
 
       // Get TxManager for receipt waiting
       const txManager = yield* TxManager;
@@ -104,7 +110,7 @@ export const SafeAppsServiceLive = (config?: SafeAppsServiceConfig) =>
 
           const info = yield* Effect.tryPromise({
             catch: (cause) =>
-              new SafeInfoUnavailableError({
+              new SafeMultisigInfoUnavailableError({
                 cause,
                 message: "Failed to get Safe info from SDK",
               }),
@@ -112,12 +118,12 @@ export const SafeAppsServiceLive = (config?: SafeAppsServiceConfig) =>
           });
 
           const safeAddress = yield* validateAddress(info.safeAddress, "getInfo").pipe(
-            Effect.catchTag("SafeTxLookupError", (e) =>
-              Effect.fail(new SafeInfoUnavailableError({ cause: e, message: e.message }))
+            Effect.catchTag("SafeMultisigTxLookupError", (e) =>
+              Effect.fail(new SafeMultisigInfoUnavailableError({ cause: e, message: e.message }))
             )
           );
 
-          const safeInfo: SafeInfo = {
+          const safeInfo: SafeMultisigInfo = {
             chainId: info.chainId,
             safeAddress,
           };
@@ -137,7 +143,7 @@ export const SafeAppsServiceLive = (config?: SafeAppsServiceConfig) =>
 
           const result = yield* Effect.tryPromise({
             catch: (cause) =>
-              new SafeTxSubmissionError({
+              new SafeMultisigTxSubmissionError({
                 cause,
                 message: "Failed to submit txs to Safe",
               }),
@@ -145,8 +151,8 @@ export const SafeAppsServiceLive = (config?: SafeAppsServiceConfig) =>
           });
 
           const safeTxHash = yield* validateHash(result.safeTxHash, "sendTxs").pipe(
-            Effect.catchTag("SafeTxLookupError", (e) =>
-              Effect.fail(new SafeTxSubmissionError({ cause: e, message: e.message }))
+            Effect.catchTag("SafeMultisigTxLookupError", (e) =>
+              Effect.fail(new SafeMultisigTxSubmissionError({ cause: e, message: e.message }))
             )
           );
 
@@ -159,9 +165,9 @@ export const SafeAppsServiceLive = (config?: SafeAppsServiceConfig) =>
           };
         })
           .pipe(
-            Effect.catchTag("SafeInfoUnavailableError", (error) =>
+            Effect.catchTag("SafeMultisigInfoUnavailableError", (error) =>
               Effect.fail(
-                new SafeTxSubmissionError({
+                new SafeMultisigTxSubmissionError({
                   cause: error,
                   message: "Failed to get Safe info after tx submission",
                 })
@@ -178,7 +184,7 @@ export const SafeAppsServiceLive = (config?: SafeAppsServiceConfig) =>
         Effect.gen(function* () {
           const tx = yield* Effect.tryPromise({
             catch: (cause) =>
-              new SafeTxLookupError({
+              new SafeMultisigTxLookupError({
                 cause,
                 message: `Failed to lookup Safe tx ${safeTxHash}`,
                 retryable: true,
@@ -236,7 +242,7 @@ export const SafeAppsServiceLive = (config?: SafeAppsServiceConfig) =>
               Effect.timeout(Duration.millis(executionTimeout)),
               Effect.catchTag("TimeoutException", () =>
                 Effect.fail(
-                  new SafeTxExecutionTimeoutError({
+                  new SafeMultisigTxExecutionTimeoutError({
                     lastStatus,
                     message: `Safe tx ${safeTxHash} not executed within ${executionTimeout}ms (last status: ${lastStatus})`,
                     safeTxHash,
@@ -248,7 +254,7 @@ export const SafeAppsServiceLive = (config?: SafeAppsServiceConfig) =>
 
             if (found === null) {
               return yield* Effect.fail(
-                new SafeTxExecutionTimeoutError({
+                new SafeMultisigTxExecutionTimeoutError({
                   lastStatus,
                   message: `Safe tx ${safeTxHash} not executed within timeout`,
                   safeTxHash,
@@ -265,7 +271,7 @@ export const SafeAppsServiceLive = (config?: SafeAppsServiceConfig) =>
             .pipe(
               Effect.catchTag("TxReplacedError", (error) =>
                 Effect.fail(
-                  new SafeTxLookupError({
+                  new SafeMultisigTxLookupError({
                     cause: error,
                     message: `Transaction was replaced: ${error.message}`,
                     retryable: false,
@@ -284,9 +290,9 @@ export const SafeAppsServiceLive = (config?: SafeAppsServiceConfig) =>
           };
         })
           .pipe(
-            Effect.catchTag("SafeInfoUnavailableError", (error) =>
+            Effect.catchTag("SafeMultisigInfoUnavailableError", (error) =>
               Effect.fail(
-                new SafeTxLookupError({
+                new SafeMultisigTxLookupError({
                   cause: error,
                   message: "Failed to get Safe info for receipt waiting",
                   retryable: true,
@@ -316,7 +322,7 @@ export const SafeAppsServiceLive = (config?: SafeAppsServiceConfig) =>
           // SDK returns { safeTxHash } for on-chain or { messageHash } for off-chain
           if ("messageHash" in result && result.messageHash) {
             const messageHash = yield* validateHex(result.messageHash, "signTypedData").pipe(
-              Effect.catchTag("SafeTxLookupError", (e) =>
+              Effect.catchTag("SafeMultisigTxLookupError", (e) =>
                 Effect.fail(new SignTypedDataError({ cause: e, message: e.message }))
               )
             );
@@ -326,7 +332,7 @@ export const SafeAppsServiceLive = (config?: SafeAppsServiceConfig) =>
           // Type assertion needed because TypeScript can't narrow SignMessageResponse properly
           const onchainResult = result as { safeTxHash: string };
           const safeTxHash = yield* validateHash(onchainResult.safeTxHash, "signTypedData").pipe(
-            Effect.catchTag("SafeTxLookupError", (e) =>
+            Effect.catchTag("SafeMultisigTxLookupError", (e) =>
               Effect.fail(new SignTypedDataError({ cause: e, message: e.message }))
             )
           );
@@ -337,7 +343,7 @@ export const SafeAppsServiceLive = (config?: SafeAppsServiceConfig) =>
         Effect.gen(function* () {
           const sig = yield* Effect.tryPromise({
             catch: (cause) =>
-              new SafeTxLookupError({
+              new SafeMultisigTxLookupError({
                 cause,
                 message: `Failed to get off-chain signature for ${messageHash}`,
                 retryable: true,
@@ -416,7 +422,7 @@ export const SafeAppsServiceLive = (config?: SafeAppsServiceConfig) =>
       const enableOffchainSigning = () =>
         Effect.tryPromise({
           catch: (cause) =>
-            new SafeSettingsError({
+            new SafeMultisigSettingsError({
               cause,
               message: "Failed to enable off-chain signing mode",
             }),

@@ -1,1 +1,1 @@
-export { resolveSafeContracts } from "./contracts.js";
+export { resolveSafeMultisigContracts } from "./contracts.js";

@@ -5,15 +5,15 @@ import type { Hex } from "viem";
 import { encodeFunctionData } from "viem";
 import { safeAbis } from "../../abis.js";
 import { encodeMultiSend } from "../../encoding.js";
-import type { SafeSimulateBatchParams } from "../../types.js";
-import type { SafeContracts } from "../types/index.js";
+import type { SafeMultisigSimulateBatchParams } from "../../types.js";
+import type { SafeMultisigContracts } from "../types/index.js";
 
 /**
  * Build the final simulateAndRevert calldata for Safe.
  */
 export function buildSafeCalldata(
-  contracts: SafeContracts,
-  transactions: SafeSimulateBatchParams["transactions"]
+  contracts: SafeMultisigContracts,
+  transactions: SafeMultisigSimulateBatchParams["transactions"]
 ): Hex {
   const multiSendCalldata = encodeMultiSend(transactions);
 

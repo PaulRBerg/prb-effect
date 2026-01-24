@@ -1,6 +1,7 @@
 /**
  * Safe contract addresses for gas simulation and multi-send operations.
  *
+ * @see https://ethereum.stackexchange.com/q/168410/24693
  * @see https://github.com/safe-global/safe-deployments/blob/main/src/assets/v1.4.1/multi_send_call_only.json
  * @see https://github.com/safe-global/safe-deployments/blob/main/src/assets/v1.4.1/simulate_tx_accessor.json
  */
@@ -37,8 +38,8 @@ import {
  * These are defined as constants for clarity and maintainability.
  */
 
-/** Chains where Safe MultiSend is available (sourced from old-ui) */
-const SAFE_MULTI_SEND_CHAIN_IDS = [
+/** Chains where Safe MultiSend is available */
+const MULTI_SEND_CHAIN_IDS = [
   abstract.id,
   arbitrum.id,
   avalanche.id,
@@ -72,12 +73,22 @@ const ZK_ROLLUP_CHAIN_IDS = [abstract.id, zksync.id] as const;
 const CUSTOM_DEPLOYMENT_CHAIN_IDS = [lightlinkPhoenix.id, xdc.id] as const;
 
 /**
+ * Contract addresses for Safe v1.4.1 deployments.
+ */
+
+/** Canonical MultiSendCallOnly address (most EVM chains) */
+const CANONICAL_MULTI_SEND_ADDRESS: Address = "0x9641d764fc13c8B624c04430C7356C1C7C8102e2";
+
+/** Canonical SimulateTxAccessor address (most EVM chains) */
+const CANONICAL_SIMULATE_ACCESSOR_ADDRESS: Address = "0x3d4BA2E0884aa488718476ca2FB8Efc291A46199";
+
+/**
  * Get the MultiSend contract address for a given chain.
  *
  * Returns undefined for chains where Safe is not deployed.
  */
 export function getMultiSendAddress(chainId: number): Address | undefined {
-  if (!SAFE_MULTI_SEND_CHAIN_IDS.includes(chainId as (typeof SAFE_MULTI_SEND_CHAIN_IDS)[number])) {
+  if (!MULTI_SEND_CHAIN_IDS.includes(chainId as (typeof MULTI_SEND_CHAIN_IDS)[number])) {
     return undefined;
   }
 
@@ -94,7 +105,7 @@ export function getMultiSendAddress(chainId: number): Address | undefined {
   }
 
   // Canonical deployment for all other chains
-  return "0x9641d764fc13c8B624c04430C7356C1C7C8102e2";
+  return CANONICAL_MULTI_SEND_ADDRESS;
 }
 
 /**
@@ -103,7 +114,7 @@ export function getMultiSendAddress(chainId: number): Address | undefined {
  * Returns undefined for chains where Safe is not deployed.
  */
 export function getSimulateAccessorAddress(chainId: number): Address | undefined {
-  if (!SAFE_MULTI_SEND_CHAIN_IDS.includes(chainId as (typeof SAFE_MULTI_SEND_CHAIN_IDS)[number])) {
+  if (!MULTI_SEND_CHAIN_IDS.includes(chainId as (typeof MULTI_SEND_CHAIN_IDS)[number])) {
     return undefined;
   }
 
@@ -120,5 +131,5 @@ export function getSimulateAccessorAddress(chainId: number): Address | undefined
   }
 
   // Canonical deployment for all other chains
-  return "0x3d4BA2E0884aa488718476ca2FB8Efc291A46199";
+  return CANONICAL_SIMULATE_ACCESSOR_ADDRESS;
 }

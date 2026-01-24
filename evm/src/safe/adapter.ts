@@ -1,5 +1,5 @@
 import { Effect } from "effect";
-import { SafeSdkUnavailableError } from "./errors.js";
+import { SafeAppsSdkUnavailableError } from "./errors.js";
 
 /** Configuration for SDK initialization */
 export type SafeAppsSdkConfig = {
@@ -11,7 +11,7 @@ export type SafeAppsSdkConfig = {
 export const loadSafeSdk = (config?: SafeAppsSdkConfig) =>
   Effect.tryPromise({
     catch: (cause) =>
-      new SafeSdkUnavailableError({
+      new SafeAppsSdkUnavailableError({
         cause,
         message:
           "Failed to load @safe-global/safe-apps-sdk. Ensure it is installed: bun add @safe-global/safe-apps-sdk",

@@ -2,18 +2,18 @@
 
 export type { SafeDetectionParams, SafeDetectionResult } from "./detection.js";
 // Detection
-export { isSafeMultisig, SafeDetectionError } from "./detection.js";
+export { isSafeMultisig, SafeMultisigDetectionError } from "./detection.js";
 
 // Errors
 export {
   NotInSafeAppContextError,
   OffchainSignatureTimeoutError,
-  SafeInfoUnavailableError,
-  SafeSdkUnavailableError,
-  SafeSettingsError,
-  SafeTxExecutionTimeoutError,
-  SafeTxLookupError,
-  SafeTxSubmissionError,
+  SafeAppsSdkUnavailableError,
+  SafeMultisigInfoUnavailableError,
+  SafeMultisigSettingsError,
+  SafeMultisigTxExecutionTimeoutError,
+  SafeMultisigTxLookupError,
+  SafeMultisigTxSubmissionError,
   SignTypedDataError,
 } from "./errors.js";
 export { type SafeAppsServiceConfig, SafeAppsServiceLive } from "./live.js";
@@ -25,10 +25,10 @@ export type {
   EIP712TypedData,
   OffchainSignaturePolicy,
   OffchainSignatureResult,
-  SafeInfo,
+  SafeMultisigInfo,
   SafeMultisigTx,
-  SafeTxResult,
-  SafeTxSubmission,
+  SafeMultisigTxResult,
+  SafeMultisigTxSubmission,
   SafeWaitPolicy,
   SignTypedDataResult,
 } from "./types.js";

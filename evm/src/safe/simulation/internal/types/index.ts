@@ -1,1 +1,1 @@
-export type { LatestBlock, SafeContracts, SimulationDecoded } from "./types.js";
+export type { LatestBlock, SafeMultisigContracts, SimulationDecoded } from "./types.js";
