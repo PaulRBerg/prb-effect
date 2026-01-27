@@ -3,7 +3,7 @@ import { Effect, Either, Exit, Layer } from "effect";
 import type { TransactionReceipt } from "viem";
 import { MIN_TX_GAS } from "@/src/constants/index.js";
 import { makeMockPublicClientLayer, TEST_CHAIN_ID, TEST_TX_HASH } from "@/src/testing-kit/index.js";
-import { TxManager, TxManagerLive, TxReplacement } from "@/src/tx/index.js";
+import { makeTxManagerLive, TxManager, TxManagerLive, TxReplacement } from "@/src/tx/index.js";
 
 const txReplacementLayer = Layer.succeed(
   TxReplacement,
@@ -247,6 +247,61 @@ describe("TxManager", () => {
     // Note: Testing background state updates in a scoped fork is complex
     // These tests verify that track() returns a proper SubscriptionRef
     // Integration tests should verify the full async behavior
+  });
+
+  describe("makeTxManagerLive", () => {
+    it.effect("applies custom layer policy as base for waitForReceipt", () =>
+      Effect.gen(function* () {
+        const manager = yield* TxManager;
+
+        // The custom layer policy sets a short timeout (100ms).
+        // The mock delays 200ms, so the receipt should timeout.
+        const exit = yield* manager.waitForReceipt(TEST_CHAIN_ID, TEST_TX_HASH).pipe(Effect.exit);
+
+        expect(Exit.isFailure(exit)).toBe(true);
+      }).pipe(
+        Effect.provide(
+          Layer.provide(
+            makeTxManagerLive({ receiptTimeout: 100 }),
+            Layer.mergeAll(
+              makeMockPublicClientLayer({
+                waitForTransactionReceipt: () =>
+                  new Promise<never>((_resolve, reject) => {
+                    setTimeout(() => reject(new Error("timeout waiting for transaction")), 200);
+                  }),
+              }),
+              txReplacementLayer
+            )
+          )
+        )
+      )
+    );
+
+    it.effect("per-call policy overrides layer policy", () =>
+      Effect.gen(function* () {
+        const manager = yield* TxManager;
+
+        // Layer policy has 100ms timeout, but per-call overrides to 5000ms.
+        // The mock resolves immediately, so it should succeed.
+        const receipt = yield* manager.waitForReceipt(TEST_CHAIN_ID, TEST_TX_HASH, {
+          receiptTimeout: 5000,
+        });
+
+        expect(receipt.transactionHash).toBe(TEST_TX_HASH);
+      }).pipe(
+        Effect.provide(
+          Layer.provide(
+            makeTxManagerLive({ receiptTimeout: 100 }),
+            Layer.mergeAll(
+              makeMockPublicClientLayer({
+                waitForTransactionReceipt: async () => TEST_RECEIPT,
+              }),
+              txReplacementLayer
+            )
+          )
+        )
+      )
+    );
   });
 
   describe("getConfirmations", () => {

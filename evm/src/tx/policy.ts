@@ -24,8 +24,6 @@ export type TxPolicy = {
   /** Replacement behavior (preferred) */
   replacement?: {
     strategy?: "speedup" | "cancel" | "none";
-    /** Consider tx stuck after N blocks */
-    stuckBlocks?: number;
     /** Consider tx stuck after N milliseconds */
     stuckMs?: number;
     /** Maximum automatic replacement attempts */

@@ -31,7 +31,7 @@ export const DEFAULT_RECEIPT_TIMEOUT = Duration.toMillis("2 minutes");
 export const DEFAULT_REQUEST_TIMEOUT = Duration.toMillis("10 seconds");
 
 /** Default time before a transaction is considered stuck. */
-export const DEFAULT_STUCK_TX_MS = Duration.toMillis("45 seconds");
+export const DEFAULT_STUCK_TX_MS = Duration.toMillis("60 minutes");
 
 /** Default timeout for waiting on a specific block. */
 export const DEFAULT_BLOCK_WAIT_TIMEOUT = Duration.toMillis("60 seconds");

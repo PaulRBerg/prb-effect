@@ -131,7 +131,6 @@ export const makeWriteAndTrack = (deps: WriteAndTrackDeps) =>
       const publicClient: PublicClient = yield* publicClientService.get(params.chainId);
       const replacementStrategy =
         policy.replacement?.strategy ?? policy.replacementStrategy ?? "none";
-      const stuckBlocks = policy.replacement?.stuckBlocks ?? 3;
       const stuckMs = policy.replacement?.stuckMs ?? DEFAULT_STUCK_TX_MS;
       const maxAttempts = policy.replacement?.maxAttempts ?? 1;
 
@@ -198,7 +197,7 @@ export const makeWriteAndTrack = (deps: WriteAndTrackDeps) =>
           )
         );
 
-      const autoReplaceIfStuck = (currentHash: Hash, blocksElapsed: number) => {
+      const autoReplaceIfStuck = (currentHash: Hash) => {
         if (replacementStrategy === "none") {
           return Effect.void;
         }
@@ -211,7 +210,7 @@ export const makeWriteAndTrack = (deps: WriteAndTrackDeps) =>
         }).pipe(
           Effect.flatMap(({ alreadyReplacing, attempts, now, startedAt }) => {
             const elapsed = startedAt > 0 ? now - startedAt : 0;
-            const stuck = blocksElapsed >= stuckBlocks || elapsed >= stuckMs;
+            const stuck = elapsed >= stuckMs;
             const allowed = attempts < maxAttempts && !alreadyReplacing;
             return stuck && allowed ? performAutoReplacement(currentHash, now) : Effect.void;
           })
@@ -224,8 +223,8 @@ export const makeWriteAndTrack = (deps: WriteAndTrackDeps) =>
           return;
         }
 
-        const blocksElapsed = yield* updatePendingState(currentHash);
-        yield* autoReplaceIfStuck(currentHash, blocksElapsed);
+        yield* updatePendingState(currentHash);
+        yield* autoReplaceIfStuck(currentHash);
       });
 
       const pendingFiber = yield* Stream.runForEach(
