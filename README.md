@@ -11,12 +11,13 @@ A Bun-powered monorepo for Effect-TS libraries.
 
 ## Packages
 
-| Package                          | Description                     |
-| -------------------------------- | ------------------------------- |
-| [`@prb/effect-next`](./next)     | Effect integration for Next.js  |
-| [`@prb/effect-evm`](./evm)       | Effect integration for EVM/viem |
-| [`@prb/effect-solana`](./solana) | Effect integration for Solana   |
-| [`@prb/effect-xstate`](./xstate) | xState v5 workflow utilities    |
+| Package                              | Description                      |
+| ------------------------------------ | -------------------------------- |
+| [`@prb/effect-evm`](./evm)           | Effect integration for EVM/viem  |
+| [`@prb/effect-evm-safe`](./evm-safe) | Effect integration for Safe Apps |
+| [`@prb/effect-next`](./next)         | Effect integration for Next.js   |
+| [`@prb/effect-solana`](./solana)     | Effect integration for Solana    |
+| [`@prb/effect-xstate`](./xstate)     | xState v5 workflow utilities     |
 
 ## Tech Stack
 
@@ -45,8 +46,9 @@ just tu              # run unit tests
 **Build packages:**
 
 ```bash
-just next::build
 just evm::build
+just evm-safe::build
+just next::build
 just solana::build
 just xstate::build
 ```
@@ -55,12 +57,13 @@ just xstate::build
 
 ```
 prb-effect/
-├── next/                # @prb/effect-next - Next.js integration
 ├── evm/                 # @prb/effect-evm - EVM/viem integration
+├── evm-safe/            # @prb/effect-evm-safe - Safe Apps integration
+├── next/                # @prb/effect-next - Next.js integration
 ├── solana/              # @prb/effect-solana - Solana integration
 ├── xstate/              # @prb/effect-xstate - xState v5 workflows
-├── package.json         # Root workspace with catalogs
-└── justfile             # Task automation
+├── justfile             # Task automation
+└── package.json         # Root workspace with catalogs
 ```
 
 ## License

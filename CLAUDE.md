@@ -24,12 +24,13 @@ If any command fails, fix errors before continuing.
 
 ```
 prb-effect/
-├── next/                # @prb/effect-next - Next.js integration
 ├── evm/                 # @prb/effect-evm - EVM/viem integration
+├── evm-safe/            # @prb/effect-evm-safe - Safe Apps integration
+├── next/                # @prb/effect-next - Next.js integration
 ├── solana/              # @prb/effect-solana - Solana integration
 ├── xstate/              # @prb/effect-xstate - xState v5 workflows
-├── package.json         # Root workspace with catalogs
-└── justfile             # Task automation
+├── justfile             # Task automation
+└── package.json         # Root workspace with catalogs
 ```
 
 ## Commands
@@ -37,8 +38,9 @@ prb-effect/
 ```bash
 just full-check          # Run all code checks
 just tu                  # Run unit tests
-just next::build         # Build @prb/effect-next
 just evm::build          # Build @prb/effect-evm
+just evm-safe::build     # Build @prb/effect-evm-safe
+just next::build         # Build @prb/effect-next
 just solana::build       # Build @prb/effect-solana
 just xstate::build       # Build @prb/effect-xstate
 ```
