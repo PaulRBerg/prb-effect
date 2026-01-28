@@ -40,7 +40,7 @@ export type OffchainSignatureResult = {
   signature: Hex;
 };
 
-/** Policy for Safe tx waiting (aligns with TxPolicy from src/tx/policy.ts) */
+/** Policy for Safe tx waiting (aligns with TxPolicy from @prb/effect-evm) */
 export type SafeWaitPolicy = {
   /** Timeout for Safe tx execution in ms (default: 300000 = 5 min) */
   executionTimeout?: number;

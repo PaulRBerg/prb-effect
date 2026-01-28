@@ -1,5 +1,8 @@
 # @prb/xstate
 
+> [!WARNING] This is experimental, beta software. It is provided "as is" without warranty of any kind, express or
+> implied.
+
 Effect-TS and xState v5 workflow utilities for React applications.
 
 ## Overview

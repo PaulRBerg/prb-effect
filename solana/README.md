@@ -3,6 +3,9 @@
 [![npm version](https://img.shields.io/npm/v/@prb/effect-solana.svg)](https://www.npmjs.com/package/@prb/effect-solana)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+> [!WARNING] This is experimental, beta software. It is provided "as is" without warranty of any kind, express or
+> implied.
+
 Effect-TS integration for the Solana blockchain ecosystem. Type-safe, composable abstractions built on
 [@solana/kit](https://github.com/solana-labs/solana-web3.js) v2.
 

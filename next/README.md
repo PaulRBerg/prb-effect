@@ -1,5 +1,8 @@
 # effect-next
 
+> [!WARNING] This is experimental, beta software. It is provided "as is" without warranty of any kind, express or
+> implied.
+
 Effect integration for Next.js - build type-safe, composable Next.js applications with Effect.
 
 ## Features
