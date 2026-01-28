@@ -43,6 +43,20 @@ describe("GasService (Live)", () => {
       getGasPrice: async () => 45000000000n,
     },
   });
+  const pendingBaseFeeMissingLayer = makeEffectEvmTestLayer({
+    publicClient: {
+      estimateGas: async () => MIN_TX_GAS,
+      estimateMaxPriorityFeePerGas: async () => 1500000000n, // 1.5 gwei baseline
+      getBlock: (params: unknown) => {
+        const p = params as { blockTag?: "latest" | "pending" } | undefined;
+        if (p?.blockTag === "pending") {
+          return Promise.resolve({ ...DEFAULT_BLOCK, baseFeePerGas: null });
+        }
+        return Promise.resolve(DEFAULT_BLOCK);
+      },
+      getGasPrice: async () => 45000000000n,
+    },
+  });
 
   describe("EIP-1559 estimation", () => {
     it.effect("uses estimateMaxPriorityFeePerGas as baseline", () =>
@@ -77,6 +91,20 @@ describe("GasService (Live)", () => {
         });
         expect(supports).toBe(true);
       }).pipe(Effect.provide(eip1559Layer))
+    );
+
+    it.effect("falls back to latest base fee when pending is missing", () =>
+      Effect.gen(function* () {
+        const service = yield* GasService;
+        const estimates = yield* service.getAllFeeEstimates({
+          chainId: mainnet.id,
+        });
+
+        const expectedPriority = 1500000000n + 1500000000n;
+        const baseFee = 30000000000n; // DEFAULT_BLOCK.baseFeePerGas
+        expect(estimates.standard.estimatedBaseFee).toBe(baseFee);
+        expect(estimates.standard.maxFeePerGas).toBe(baseFee * 2n + expectedPriority);
+      }).pipe(Effect.provide(pendingBaseFeeMissingLayer))
     );
   });
 

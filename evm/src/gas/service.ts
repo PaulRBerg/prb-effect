@@ -120,7 +120,21 @@ export const GasServiceLive = Layer.effect(
             try: () => client.getBlock({ blockTag: "pending" }),
           });
 
-          if (!block.baseFeePerGas) {
+          let baseFee = block.baseFeePerGas;
+          if (baseFee === null || baseFee === undefined) {
+            const latestBlock = yield* Effect.tryPromise({
+              catch: (cause) =>
+                new GasPriceUnavailableError({
+                  cause,
+                  chainId: params.chainId,
+                  message: `Failed to get latest block: ${String(cause)}`,
+                }),
+              try: () => client.getBlock({ blockTag: "latest" }),
+            });
+            baseFee = latestBlock.baseFeePerGas;
+          }
+
+          if (baseFee === null || baseFee === undefined) {
             return yield* Effect.fail(
               new GasPriceUnavailableError({
                 chainId: params.chainId,
@@ -129,7 +143,7 @@ export const GasServiceLive = Layer.effect(
             );
           }
 
-          return block.baseFeePerGas;
+          return baseFee;
         }).pipe(
           Effect.withSpan(SpanNames.GAS_GET_BASE_FEE, {
             attributes: {

@@ -1,4 +1,5 @@
 import { Effect } from "effect";
+import type { PublicClient } from "viem";
 import type { ClientNotFoundError } from "@/src/core/errors/index.js";
 import type { PublicClientServiceShape } from "@/src/core/index.js";
 import { GasPriceUnavailableError } from "@/src/gas/errors.js";
@@ -28,6 +29,60 @@ const SPEED_CONFIDENCE: Record<GasSpeed, number> = {
   slow: 70,
   standard: 85,
 };
+
+function isBaseFeeMissing(baseFee: bigint | null | undefined): baseFee is null | undefined {
+  return baseFee === null || baseFee === undefined;
+}
+
+function getLegacyFeeEstimates(
+  client: PublicClient,
+  chainId: number
+): Effect.Effect<Record<GasSpeed, FeeEstimate>, GasPriceUnavailableError> {
+  return Effect.gen(function* () {
+    const gasPrice = yield* Effect.tryPromise({
+      catch: (cause) =>
+        new GasPriceUnavailableError({
+          cause,
+          chainId,
+          message: `Failed to get gas price: ${String(cause)}`,
+        }),
+      try: () => client.getGasPrice(),
+    });
+
+    const estimates: Record<GasSpeed, FeeEstimate> = {
+      fast: {
+        confidence: SPEED_CONFIDENCE.fast,
+        estimatedBaseFee: 0n,
+        gasPrice: (gasPrice * 125n) / 100n, // 1.25x
+        maxFeePerGas: (gasPrice * 125n) / 100n,
+        maxPriorityFeePerGas: 0n,
+      },
+      instant: {
+        confidence: SPEED_CONFIDENCE.instant,
+        estimatedBaseFee: 0n,
+        gasPrice: (gasPrice * 150n) / 100n, // 1.5x
+        maxFeePerGas: (gasPrice * 150n) / 100n,
+        maxPriorityFeePerGas: 0n,
+      },
+      slow: {
+        confidence: SPEED_CONFIDENCE.slow,
+        estimatedBaseFee: 0n,
+        gasPrice: (gasPrice * 90n) / 100n, // 0.9x
+        maxFeePerGas: (gasPrice * 90n) / 100n,
+        maxPriorityFeePerGas: 0n,
+      },
+      standard: {
+        confidence: SPEED_CONFIDENCE.standard,
+        estimatedBaseFee: 0n,
+        gasPrice,
+        maxFeePerGas: gasPrice,
+        maxPriorityFeePerGas: 0n,
+      },
+    };
+
+    return estimates;
+  });
+}
 
 export const supportsEip1559Impl = (
   publicClientService: PublicClientServiceShape,
@@ -81,14 +136,22 @@ export const getAllFeeEstimatesImpl = (
         { concurrency: 2 }
       );
 
-      const baseFee = block.baseFeePerGas;
-      if (!baseFee) {
-        return yield* Effect.fail(
-          new GasPriceUnavailableError({
-            chainId,
-            message: "Base fee not available despite EIP-1559 support",
-          })
-        );
+      let baseFee = block.baseFeePerGas;
+      if (isBaseFeeMissing(baseFee)) {
+        const latestBlock = yield* Effect.tryPromise({
+          catch: (cause) =>
+            new GasPriceUnavailableError({
+              cause,
+              chainId,
+              message: `Failed to get latest block: ${String(cause)}`,
+            }),
+          try: () => client.getBlock({ blockTag: "latest" }),
+        });
+        baseFee = latestBlock.baseFeePerGas;
+      }
+
+      if (isBaseFeeMissing(baseFee)) {
+        return yield* getLegacyFeeEstimates(client, chainId);
       }
 
       // Build estimates for each speed tier
@@ -112,48 +175,5 @@ export const getAllFeeEstimatesImpl = (
       return estimates;
     }
 
-    // Legacy gas price estimation
-    const gasPrice = yield* Effect.tryPromise({
-      catch: (cause) =>
-        new GasPriceUnavailableError({
-          cause,
-          chainId,
-          message: `Failed to get gas price: ${String(cause)}`,
-        }),
-      try: () => client.getGasPrice(),
-    });
-
-    // Create estimates using gas price multipliers
-    const estimates: Record<GasSpeed, FeeEstimate> = {
-      fast: {
-        confidence: SPEED_CONFIDENCE.fast,
-        estimatedBaseFee: 0n,
-        gasPrice: (gasPrice * 125n) / 100n, // 1.25x
-        maxFeePerGas: (gasPrice * 125n) / 100n,
-        maxPriorityFeePerGas: 0n,
-      },
-      instant: {
-        confidence: SPEED_CONFIDENCE.instant,
-        estimatedBaseFee: 0n,
-        gasPrice: (gasPrice * 150n) / 100n, // 1.5x
-        maxFeePerGas: (gasPrice * 150n) / 100n,
-        maxPriorityFeePerGas: 0n,
-      },
-      slow: {
-        confidence: SPEED_CONFIDENCE.slow,
-        estimatedBaseFee: 0n,
-        gasPrice: (gasPrice * 90n) / 100n, // 0.9x
-        maxFeePerGas: (gasPrice * 90n) / 100n,
-        maxPriorityFeePerGas: 0n,
-      },
-      standard: {
-        confidence: SPEED_CONFIDENCE.standard,
-        estimatedBaseFee: 0n,
-        gasPrice,
-        maxFeePerGas: gasPrice,
-        maxPriorityFeePerGas: 0n,
-      },
-    };
-
-    return estimates;
+    return yield* getLegacyFeeEstimates(client, chainId);
   });
