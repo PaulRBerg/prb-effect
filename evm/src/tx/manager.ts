@@ -1,5 +1,5 @@
 import type { Scope, SubscriptionRef } from "effect";
-import { Clock, Context, Effect, Fiber, Layer, Ref, Stream } from "effect";
+import { Clock, Context, Duration, Effect, Fiber, Layer, Ref, Stream } from "effect";
 import type { Hash, TransactionReceipt } from "viem";
 import { WaitForTransactionReceiptTimeoutError } from "viem";
 import { DEFAULT_RECEIPT_TIMEOUT, DEFAULT_STUCK_TX_MS } from "@/src/constants/index.js";

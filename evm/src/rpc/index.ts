@@ -10,6 +10,7 @@ export {
 export * from "./dedup.js";
 export {
   defaultRetryableErrors,
+  isRetryableError,
   makeRetrySchedule,
   type RetryConfig,
   RetryConfigFromEnv,

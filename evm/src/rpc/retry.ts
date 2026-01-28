@@ -49,15 +49,26 @@ export const defaultRetryableErrors = [
 ];
 
 /**
- * Check if an error should be retried based on its message
+ * Check if an error should be retried based on its message.
+ * Handles Error instances, strings, and plain objects with a message property.
  */
-const isRetryableError = (error: unknown, retryablePatterns: string[]): boolean => {
+export const isRetryableError = (error: unknown, retryablePatterns: string[]): boolean => {
   if (error instanceof Error) {
     const message = error.message.toLowerCase();
     return retryablePatterns.some((pattern) => message.includes(pattern.toLowerCase()));
   }
   if (typeof error === "string") {
     const message = error.toLowerCase();
+    return retryablePatterns.some((pattern) => message.includes(pattern.toLowerCase()));
+  }
+  // Handle plain objects with message property (some RPC transports throw these)
+  if (
+    error !== null &&
+    typeof error === "object" &&
+    "message" in error &&
+    typeof error.message === "string"
+  ) {
+    const message = error.message.toLowerCase();
     return retryablePatterns.some((pattern) => message.includes(pattern.toLowerCase()));
   }
   return false;
