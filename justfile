@@ -37,6 +37,12 @@ default:
     echo '{{ GREEN }}✓ All packages built{{ NORMAL }}'
 alias b := build
 
+# Bump beta version for a package (e.g., just bump-version evm)
+[group("dev")]
+@bump-version app:
+    cd {{ app }} && npm version prerelease --preid=beta --no-git-tag-version
+alias bv := bump-version
+
 # Clean build artifacts
 @clean:
     echo "🧹 Deleting files..."
