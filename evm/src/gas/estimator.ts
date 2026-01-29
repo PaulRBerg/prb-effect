@@ -30,10 +30,18 @@ const SPEED_CONFIDENCE: Record<GasSpeed, number> = {
   standard: 85,
 };
 
+/**
+ * Type guard for missing base fee. Some chains (e.g., BNB Chain) report EIP-1559 support
+ * inconsistently - the latest block may have `baseFeePerGas` while pending blocks do not.
+ */
 function isBaseFeeMissing(baseFee: bigint | null | undefined): baseFee is null | undefined {
   return baseFee === null || baseFee === undefined;
 }
 
+/**
+ * Legacy fee estimation using `eth_gasPrice`. Used for chains without EIP-1559 support
+ * (e.g., BNB Chain) or as a fallback when base fee is unavailable.
+ */
 function getLegacyFeeEstimates(
   client: PublicClient,
   chainId: number
@@ -112,17 +120,27 @@ export const getAllFeeEstimatesImpl = (
 
     if (supportsEip1559) {
       // EIP-1559 fee estimation
-      const [block, maxPriorityFeePerGas] = yield* Effect.all(
-        [
+      // Try pending block first, fall back to latest for chains that don't support pending (L2s)
+      const getPendingOrLatestBlock = Effect.tryPromise({
+        catch: () => "pending-failed" as const,
+        try: () => client.getBlock({ blockTag: "pending" }),
+      }).pipe(
+        Effect.catchAll(() =>
           Effect.tryPromise({
             catch: (cause) =>
               new GasPriceUnavailableError({
                 cause,
                 chainId,
-                message: `Failed to get pending block: ${String(cause)}`,
+                message: `Failed to get block for fee estimation: ${String(cause)}`,
               }),
-            try: () => client.getBlock({ blockTag: "pending" }),
-          }),
+            try: () => client.getBlock({ blockTag: "latest" }),
+          })
+        )
+      );
+
+      const [block, maxPriorityFeePerGas] = yield* Effect.all(
+        [
+          getPendingOrLatestBlock,
           Effect.tryPromise({
             catch: (cause) =>
               new GasPriceUnavailableError({
@@ -150,6 +168,8 @@ export const getAllFeeEstimatesImpl = (
         baseFee = latestBlock.baseFeePerGas;
       }
 
+      // BNB Chain and similar networks may pass the EIP-1559 check but lack base fees
+      // in practice. Fall back to legacy estimation when this occurs.
       if (isBaseFeeMissing(baseFee)) {
         return yield* getLegacyFeeEstimates(client, chainId);
       }
