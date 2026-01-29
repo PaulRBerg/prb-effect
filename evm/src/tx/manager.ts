@@ -12,6 +12,7 @@ import {
   TxReplacedError,
 } from "@/src/core/index.js";
 import { SpanNames } from "@/src/telemetry/index.js";
+import { makeReceiptRetrySchedule } from "./internal/receipt-retry.js";
 import type { TxPolicy } from "./policy.js";
 import { defaultPolicy } from "./policy.js";
 import { TxReplacement } from "./replacement.js";
@@ -315,15 +316,8 @@ export function makeTxManagerLive(
                   return cause;
                 }
 
+                // Map viem timeout errors to ReceiptTimeoutError (not retried)
                 if (cause instanceof WaitForTransactionReceiptTimeoutError) {
-                  return new ReceiptTimeoutError({
-                    hash,
-                    message: cause.message,
-                    timeout,
-                  });
-                }
-
-                if (cause instanceof Error && cause.message.toLowerCase().includes("timeout")) {
                   return new ReceiptTimeoutError({
                     hash,
                     message: cause.message,
@@ -340,6 +334,7 @@ export function makeTxManagerLive(
               try: async () => {
                 let replacement: { newHash: Hash; reason: TxReplacementReason } | undefined;
 
+                // Pass timeout to viem to cancel underlying poll on timeout
                 const receipt = await client.waitForTransactionReceipt({
                   hash,
                   onReplaced: (info) => {
@@ -365,6 +360,16 @@ export function makeTxManagerLive(
                 return receipt;
               },
             }).pipe(
+              Effect.retry(makeReceiptRetrySchedule()),
+              Effect.timeoutFail({
+                duration: Duration.millis(timeout),
+                onTimeout: () =>
+                  new ReceiptTimeoutError({
+                    hash,
+                    message: `Receipt timeout exceeded (${timeout}ms)`,
+                    timeout,
+                  }),
+              }),
               Effect.withSpan(SpanNames.TX_WAIT, {
                 attributes: {
                   chainId,

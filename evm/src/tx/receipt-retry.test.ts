@@ -1,20 +1,21 @@
 import { describe, expect, it } from "@effect/vitest";
 import { Effect, Exit, Fiber, Schedule, TestClock } from "effect";
-import { TransactionFailedError } from "@/src/core/index.js";
+import { ReceiptTimeoutError, TxFailedError, TxReplacedError } from "@/src/core/index.js";
 import { makeBackoffSchedule } from "@/src/internal/index.js";
 import { isRetryableError } from "@/src/rpc/index.js";
 import { receiptRetryablePatterns } from "./internal/receipt-retry.js";
 
 /**
  * Tests for the receipt retry schedule logic.
- * Uses exported patterns from manager.ts to ensure test stays in sync with implementation.
+ * Uses exported patterns from internal/receipt-retry.ts to ensure test stays in sync with implementation.
  */
 describe("receipt retry schedule", () => {
   // Use same patterns as production, but with minimal delays for testing
   const makeTestRetrySchedule = () =>
     makeBackoffSchedule({ baseDelay: 1, jitter: false, maxRetries: 3 }).pipe(
-      Schedule.whileInput<TransactionFailedError>((error) => {
-        if (error._tag === "TransactionFailedError" && error.cause) {
+      Schedule.whileInput<TxFailedError | ReceiptTimeoutError | TxReplacedError>((error) => {
+        // Only retry TxFailedError with retryable cause - not timeouts or replacements
+        if (error._tag === "TxFailedError" && error.cause) {
           return isRetryableError(error.cause, receiptRetryablePatterns);
         }
         return false;
@@ -38,7 +39,7 @@ describe("receipt retry schedule", () => {
         attempts += 1;
         if (attempts < 3) {
           return yield* Effect.fail(
-            new TransactionFailedError({
+            new TxFailedError({
               cause: new Error("503 Service Unavailable"),
               hash: "0x123",
               message: "Failed to get receipt",
@@ -55,15 +56,67 @@ describe("receipt retry schedule", () => {
     })
   );
 
-  it.effect("retries on 'transaction not found' error", () =>
+  it.effect("retries on viem TransactionNotFoundError", () =>
+    Effect.gen(function* () {
+      let attempts = 0;
+      const program = Effect.gen(function* () {
+        attempts += 1;
+        if (attempts < 2) {
+          // Matches viem's actual error message (contains "with hash")
+          return yield* Effect.fail(
+            new TxFailedError({
+              cause: new Error('Transaction with hash "0x123" could not be found.'),
+              hash: "0x123",
+              message: "Failed to get receipt",
+            })
+          );
+        }
+        return "success";
+      }).pipe(Effect.retry(makeTestRetrySchedule()));
+
+      const result = yield* runWithTime(program);
+
+      expect(result).toBe("success");
+      expect(attempts).toBe(2);
+    })
+  );
+
+  it.effect("retries on viem TransactionReceiptNotFoundError", () =>
+    Effect.gen(function* () {
+      let attempts = 0;
+      const program = Effect.gen(function* () {
+        attempts += 1;
+        if (attempts < 2) {
+          // Matches viem's actual error message (contains "receipt with hash")
+          return yield* Effect.fail(
+            new TxFailedError({
+              cause: new Error(
+                "Transaction receipt with hash 0x123 could not be found. The Transaction may not be processed on a block yet."
+              ),
+              hash: "0x123",
+              message: "Failed to get receipt",
+            })
+          );
+        }
+        return "success";
+      }).pipe(Effect.retry(makeTestRetrySchedule()));
+
+      const result = yield* runWithTime(program);
+
+      expect(result).toBe("success");
+      expect(attempts).toBe(2);
+    })
+  );
+
+  it.effect("retries on 'transaction receipt could not be found' (alt phrasing)", () =>
     Effect.gen(function* () {
       let attempts = 0;
       const program = Effect.gen(function* () {
         attempts += 1;
         if (attempts < 2) {
           return yield* Effect.fail(
-            new TransactionFailedError({
-              cause: new Error("transaction not found in mempool"),
+            new TxFailedError({
+              cause: new Error("Transaction receipt could not be found."),
               hash: "0x123",
               message: "Failed to get receipt",
             })
@@ -86,7 +139,7 @@ describe("receipt retry schedule", () => {
         attempts += 1;
         if (attempts < 2) {
           return yield* Effect.fail(
-            new TransactionFailedError({
+            new TxFailedError({
               cause: new Error("rate limit exceeded"),
               hash: "0x123",
               message: "Failed to get receipt",
@@ -109,7 +162,7 @@ describe("receipt retry schedule", () => {
       const exit = yield* Effect.gen(function* () {
         attempts += 1;
         return yield* Effect.fail(
-          new TransactionFailedError({
+          new TxFailedError({
             cause: new Error("execution reverted"),
             hash: "0x123",
             message: "Failed to get receipt",
@@ -122,13 +175,13 @@ describe("receipt retry schedule", () => {
     })
   );
 
-  it.effect("does not retry generic 'not found' errors (pattern tightened)", () =>
+  it.effect("does not retry 'method not found' errors", () =>
     Effect.gen(function* () {
       let attempts = 0;
       const exit = yield* Effect.gen(function* () {
         attempts += 1;
         return yield* Effect.fail(
-          new TransactionFailedError({
+          new TxFailedError({
             cause: new Error("method not found"),
             hash: "0x123",
             message: "Failed to get receipt",
@@ -137,7 +190,26 @@ describe("receipt retry schedule", () => {
       }).pipe(Effect.retry(makeTestRetrySchedule()), Effect.exit);
 
       expect(Exit.isFailure(exit)).toBe(true);
-      expect(attempts).toBe(1); // No retries - "method not found" shouldn't match
+      expect(attempts).toBe(1); // No retries
+    })
+  );
+
+  it.effect("does not retry 'method could not be found' errors", () =>
+    Effect.gen(function* () {
+      let attempts = 0;
+      const exit = yield* Effect.gen(function* () {
+        attempts += 1;
+        return yield* Effect.fail(
+          new TxFailedError({
+            cause: new Error("method could not be found"),
+            hash: "0x123",
+            message: "Failed to get receipt",
+          })
+        );
+      }).pipe(Effect.retry(makeTestRetrySchedule()), Effect.exit);
+
+      expect(Exit.isFailure(exit)).toBe(true);
+      expect(attempts).toBe(1); // No retries - patterns are specific to transaction/receipt
     })
   );
 
@@ -147,7 +219,7 @@ describe("receipt retry schedule", () => {
       const exit = yield* Effect.gen(function* () {
         attempts += 1;
         return yield* Effect.fail(
-          new TransactionFailedError({
+          new TxFailedError({
             hash: "0x123",
             message: "Failed to get receipt",
           })
@@ -165,7 +237,7 @@ describe("receipt retry schedule", () => {
       const program = Effect.gen(function* () {
         attempts += 1;
         return yield* Effect.fail(
-          new TransactionFailedError({
+          new TxFailedError({
             cause: new Error("503 Service Unavailable"),
             hash: "0x123",
             message: "Failed to get receipt",
@@ -177,6 +249,45 @@ describe("receipt retry schedule", () => {
 
       expect(Exit.isFailure(exit)).toBe(true);
       expect(attempts).toBe(4); // Initial + 3 retries
+    })
+  );
+
+  it.effect("does not retry ReceiptTimeoutError", () =>
+    Effect.gen(function* () {
+      let attempts = 0;
+      const exit = yield* Effect.gen(function* () {
+        attempts += 1;
+        return yield* Effect.fail(
+          new ReceiptTimeoutError({
+            hash: "0x123",
+            message: "Timed out waiting for receipt",
+            timeout: 60_000,
+          })
+        );
+      }).pipe(Effect.retry(makeTestRetrySchedule()), Effect.exit);
+
+      expect(Exit.isFailure(exit)).toBe(true);
+      expect(attempts).toBe(1); // No retries - timeouts are terminal
+    })
+  );
+
+  it.effect("does not retry TxReplacedError", () =>
+    Effect.gen(function* () {
+      let attempts = 0;
+      const exit = yield* Effect.gen(function* () {
+        attempts += 1;
+        return yield* Effect.fail(
+          new TxReplacedError({
+            message: "Transaction was replaced",
+            newHash: "0x456",
+            oldHash: "0x123",
+            reason: "repriced",
+          })
+        );
+      }).pipe(Effect.retry(makeTestRetrySchedule()), Effect.exit);
+
+      expect(Exit.isFailure(exit)).toBe(true);
+      expect(attempts).toBe(1); // No retries - replacements are terminal
     })
   );
 });

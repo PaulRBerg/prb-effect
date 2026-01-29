@@ -21,7 +21,7 @@
     },
     "evm": {
       "name": "@prb/effect-evm",
-      "version": "1.0.0-beta.5",
+      "version": "1.0.0-beta.8",
       "devDependencies": {
         "@biomejs/biome": "catalog:dev",
         "@effect/platform": "catalog:effect",
@@ -85,7 +85,7 @@
       },
       "peerDependencies": {
         "@effect/platform": "catalog:peers",
-        "@prb/effect-evm": "^1.0.0-beta.5",
+        "@prb/effect-evm": "^1.0.0-beta.7",
         "@safe-global/safe-apps-sdk": "catalog:peers",
         "@wagmi/core": "catalog:peers",
         "effect": "catalog:peers",
