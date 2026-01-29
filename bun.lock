@@ -21,7 +21,7 @@
     },
     "evm": {
       "name": "@prb/effect-evm",
-      "version": "1.0.0-beta.8",
+      "version": "1.0.0-beta.9",
       "devDependencies": {
         "@biomejs/biome": "catalog:dev",
         "@effect/platform": "catalog:effect",
@@ -59,7 +59,7 @@
     },
     "evm-safe": {
       "name": "@prb/effect-evm-safe",
-      "version": "1.0.0-beta.2",
+      "version": "1.0.0-beta.3",
       "devDependencies": {
         "@biomejs/biome": "catalog:dev",
         "@effect/platform": "catalog:effect",
