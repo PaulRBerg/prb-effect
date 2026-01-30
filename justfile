@@ -38,7 +38,8 @@ alias b := build
 
 # Bump beta version for a package (e.g., just bump-version evm)
 @bump-version app:
-    cd {{ app }} && npm version prerelease --preid=beta --no-git-tag-version
+    cd {{ app }} && jq '.version |= (split("-beta.") | .[0] + "-beta." + ((.[1] | tonumber) + 1 | tostring))' package.json > tmp.json && mv tmp.json package.json
+    jq -r .version {{ app }}/package.json
 alias bv := bump-version
 
 # Clean build artifacts
