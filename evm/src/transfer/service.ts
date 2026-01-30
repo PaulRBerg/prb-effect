@@ -13,14 +13,12 @@ import {
   WalletClientService,
   WalletNotConnectedError,
 } from "@/src/core/index.js";
+import type { GasPriceUnavailableError } from "@/src/gas/index.js";
+import { GasService } from "@/src/gas/index.js";
+import { deriveFeeOverrides, deriveTxType } from "@/src/tx/index.js";
+import type { TxOverrides } from "@/src/types/index.js";
 
-export type TransferOverrides = {
-  readonly gas?: bigint;
-  readonly gasPrice?: bigint;
-  readonly maxFeePerGas?: bigint;
-  readonly maxPriorityFeePerGas?: bigint;
-  readonly nonce?: number;
-};
+export type TransferOverrides = TxOverrides;
 
 export type TransferServiceShape = {
   readonly send: (params: {
@@ -36,6 +34,7 @@ export type TransferServiceShape = {
     | WrongNetworkError
     | ClientNotFoundError
     | TxFailedError
+    | GasPriceUnavailableError
   >;
 
   readonly sendAndWait: (params: {
@@ -53,6 +52,7 @@ export type TransferServiceShape = {
     | ClientNotFoundError
     | TxFailedError
     | ReceiptTimeoutError
+    | GasPriceUnavailableError
   >;
 
   readonly estimateGas: (params: {
@@ -100,6 +100,7 @@ export const TransferServiceLive = Layer.effect(
   Effect.gen(function* () {
     const walletClientService = yield* WalletClientService;
     const publicClientService = yield* PublicClientService;
+    const gasService = yield* GasService;
 
     return TransferService.of({
       estimateGas: Effect.fn("TransferService.estimateGas")(function* (params) {
@@ -136,18 +137,28 @@ export const TransferServiceLive = Layer.effect(
           );
         }
 
-        // Determine if we should use legacy or EIP-1559 transaction type
-        const useLegacy = params.overrides?.gasPrice !== undefined;
+        // Get derived tx type and fees
+        const txType = yield* deriveTxType({
+          chainId: params.chainId,
+          userOverrides: params.overrides,
+        }).pipe(Effect.provideService(GasService, gasService));
+
+        const feeOverrides = yield* deriveFeeOverrides({
+          chainId: params.chainId,
+          userOverrides: params.overrides,
+        }).pipe(Effect.provideService(GasService, gasService));
+
+        const isLegacy = txType === "legacy";
 
         return yield* Effect.tryPromise({
           catch: (error) => classifyTransferError(error, params.to),
           try: () =>
-            useLegacy
+            isLegacy
               ? (walletClient as WalletClient).sendTransaction({
                   account,
                   chain: null,
                   gas: params.overrides?.gas,
-                  gasPrice: params.overrides?.gasPrice,
+                  gasPrice: feeOverrides.gasPrice,
                   nonce: params.overrides?.nonce,
                   to: params.to,
                   type: "legacy",
@@ -157,8 +168,8 @@ export const TransferServiceLive = Layer.effect(
                   account,
                   chain: null,
                   gas: params.overrides?.gas,
-                  maxFeePerGas: params.overrides?.maxFeePerGas,
-                  maxPriorityFeePerGas: params.overrides?.maxPriorityFeePerGas,
+                  maxFeePerGas: feeOverrides.maxFeePerGas,
+                  maxPriorityFeePerGas: feeOverrides.maxPriorityFeePerGas,
                   nonce: params.overrides?.nonce,
                   to: params.to,
                   type: "eip1559",
@@ -188,18 +199,28 @@ export const TransferServiceLive = Layer.effect(
           );
         }
 
-        // Determine if we should use legacy or EIP-1559 transaction type
-        const useLegacy = params.overrides?.gasPrice !== undefined;
+        // Get derived tx type and fees
+        const txType = yield* deriveTxType({
+          chainId: params.chainId,
+          userOverrides: params.overrides,
+        }).pipe(Effect.provideService(GasService, gasService));
+
+        const feeOverrides = yield* deriveFeeOverrides({
+          chainId: params.chainId,
+          userOverrides: params.overrides,
+        }).pipe(Effect.provideService(GasService, gasService));
+
+        const isLegacy = txType === "legacy";
 
         const hash = yield* Effect.tryPromise({
           catch: (error) => classifyTransferError(error, params.to),
           try: () =>
-            useLegacy
+            isLegacy
               ? (walletClient as WalletClient).sendTransaction({
                   account,
                   chain: null,
                   gas: params.overrides?.gas,
-                  gasPrice: params.overrides?.gasPrice,
+                  gasPrice: feeOverrides.gasPrice,
                   nonce: params.overrides?.nonce,
                   to: params.to,
                   type: "legacy",
@@ -209,8 +230,8 @@ export const TransferServiceLive = Layer.effect(
                   account,
                   chain: null,
                   gas: params.overrides?.gas,
-                  maxFeePerGas: params.overrides?.maxFeePerGas,
-                  maxPriorityFeePerGas: params.overrides?.maxPriorityFeePerGas,
+                  maxFeePerGas: feeOverrides.maxFeePerGas,
+                  maxPriorityFeePerGas: feeOverrides.maxPriorityFeePerGas,
                   nonce: params.overrides?.nonce,
                   to: params.to,
                   type: "eip1559",

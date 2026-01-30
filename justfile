@@ -72,6 +72,7 @@ alias ti := test-integration
 # ---------------------------------------------------------------------------- #
 
 # Run TypeScript check for all packages
+[group("checks")]
 @type-check:
     echo "🔍 Type checking effect-evm..."
     cd evm && na tsgo --noEmit

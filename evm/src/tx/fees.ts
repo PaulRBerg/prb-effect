@@ -36,6 +36,10 @@ export const deriveTxType = (params: {
       return userOverrides.type;
     }
 
+    if (params.policy?.txType) {
+      return params.policy.txType;
+    }
+
     if (userOverrides?.gasPrice !== undefined) {
       return "legacy";
     }

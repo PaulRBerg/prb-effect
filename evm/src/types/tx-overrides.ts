@@ -29,6 +29,6 @@ export type TxOverrides = {
   readonly gasPrice?: bigint | undefined;
   readonly maxFeePerGas?: bigint | undefined;
   readonly maxPriorityFeePerGas?: bigint | undefined;
-  readonly nonce?: number | bigint | undefined;
+  readonly nonce?: number | undefined;
   readonly type?: TransactionType | undefined;
 };

@@ -7,6 +7,8 @@ import {
 import type { GasSpeed } from "@/src/gas/index.js";
 
 export type TxPolicy = {
+  /** Force transaction type. Overrides chain detection. */
+  txType?: "legacy" | "eip1559";
   /** Max fee per gas in wei (optional cap) */
   maxFeePerGas?: bigint;
   /** Max priority fee per gas in wei */
