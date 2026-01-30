@@ -170,6 +170,29 @@ describe("GasService", () => {
         )
     );
 
+    it.effect("falls back to legacy estimation when estimateMaxPriorityFeePerGas fails", () =>
+      Effect.gen(function* () {
+        const gasService = yield* GasService;
+        const estimates = yield* gasService.getAllFeeEstimates({ chainId: TEST_CHAIN_ID });
+
+        // Should fall back to legacy estimation
+        expect(estimates.standard.estimatedBaseFee).toBe(0n);
+        expect(estimates.standard.gasPrice).toBeDefined();
+        expect(estimates.standard.maxPriorityFeePerGas).toBe(0n);
+      }).pipe(
+        Effect.provide(
+          makeGasLayer({
+            // But estimateMaxPriorityFeePerGas fails
+            estimateMaxPriorityFeePerGas: () => Promise.reject(new Error("Method not supported")),
+            // Chain reports EIP-1559 support (has baseFee)
+            getBlock: () => Promise.resolve(makeBlock(DEFAULT_BASE_FEE)),
+            // Falls back to legacy
+            getGasPrice: () => Promise.resolve(DEFAULT_GAS_PRICE),
+          })
+        )
+      )
+    );
+
     it.effect("returns legacy estimates for non-EIP-1559 chains", () =>
       Effect.gen(function* () {
         const gasService = yield* GasService;

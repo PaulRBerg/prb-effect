@@ -138,21 +138,20 @@ export const getAllFeeEstimatesImpl = (
         )
       );
 
-      const [block, maxPriorityFeePerGas] = yield* Effect.all(
+      const [block, maxPriorityFeeResult] = yield* Effect.all(
         [
           getPendingOrLatestBlock,
-          Effect.tryPromise({
-            catch: (cause) =>
-              new GasPriceUnavailableError({
-                cause,
-                chainId,
-                message: `Failed to estimate max priority fee: ${String(cause)}`,
-              }),
-            try: () => client.estimateMaxPriorityFeePerGas(),
-          }),
+          Effect.tryPromise(() => client.estimateMaxPriorityFeePerGas()).pipe(Effect.option),
         ],
         { concurrency: 2 }
       );
+
+      // Fall back to legacy estimation if priority fee estimation is unsupported
+      if (maxPriorityFeeResult._tag === "None") {
+        return yield* getLegacyFeeEstimates(client, chainId);
+      }
+
+      const maxPriorityFeePerGas = maxPriorityFeeResult.value;
 
       let baseFee = block.baseFeePerGas;
       if (isBaseFeeMissing(baseFee)) {
