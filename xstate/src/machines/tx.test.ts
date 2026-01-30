@@ -147,6 +147,7 @@ describe("machines/tx", () => {
       // Verify final context
       expect(snapshot.context.error).toBe(null);
       expect(snapshot.context.gasLimit).toBe(100000n);
+      expect(snapshot.context.hash).toBe("0x123");
       expect(snapshot.context.signResult).toEqual({ hash: "0x123" });
       expect(snapshot.context.result).toEqual({ hash: "0x123", receipt: { status: "success" } });
     });
@@ -211,6 +212,7 @@ describe("machines/tx", () => {
 
       // Verify final context
       expect(snapshot.context.error).toBe(null);
+      expect(snapshot.context.hash).toBe("0x123");
       expect(snapshot.context.result).toEqual({ hash: "0x123", receipt: { status: "success" } });
     });
 
