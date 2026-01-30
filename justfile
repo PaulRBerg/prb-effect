@@ -17,7 +17,6 @@ default:
     just --list
 
 # Build all packages (.tgz)
-[group("dev")]
 @build:
     cd evm && just build
     echo ""
@@ -38,7 +37,6 @@ default:
 alias b := build
 
 # Bump beta version for a package (e.g., just bump-version evm)
-[group("dev")]
 @bump-version app:
     cd {{ app }} && npm version prerelease --preid=beta --no-git-tag-version
 alias bv := bump-version
