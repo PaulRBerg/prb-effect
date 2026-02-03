@@ -1,5 +1,10 @@
 import { describe, expect, it } from "@effect/vitest";
 import { Effect, Exit, Fiber, Schedule, TestClock } from "effect";
+import {
+  TransactionNotFoundError,
+  TransactionReceiptNotFoundError,
+  WaitForTransactionReceiptTimeoutError,
+} from "viem";
 import { ReceiptTimeoutError, TxFailedError, TxReplacedError } from "@/src/core/index.js";
 import { makeBackoffSchedule } from "@/src/internal/index.js";
 import { isRetryableError } from "@/src/rpc/index.js";
@@ -62,10 +67,9 @@ describe("receipt retry schedule", () => {
       const program = Effect.gen(function* () {
         attempts += 1;
         if (attempts < 2) {
-          // Matches viem's actual error message (contains "with hash")
           return yield* Effect.fail(
             new TxFailedError({
-              cause: new Error('Transaction with hash "0x123" could not be found.'),
+              cause: new TransactionNotFoundError({ hash: "0x123" }),
               hash: "0x123",
               message: "Failed to get receipt",
             })
@@ -87,12 +91,9 @@ describe("receipt retry schedule", () => {
       const program = Effect.gen(function* () {
         attempts += 1;
         if (attempts < 2) {
-          // Matches viem's actual error message (contains "receipt with hash")
           return yield* Effect.fail(
             new TxFailedError({
-              cause: new Error(
-                "Transaction receipt with hash 0x123 could not be found. The Transaction may not be processed on a block yet."
-              ),
+              cause: new TransactionReceiptNotFoundError({ hash: "0x123" }),
               hash: "0x123",
               message: "Failed to get receipt",
             })
@@ -117,6 +118,30 @@ describe("receipt retry schedule", () => {
           return yield* Effect.fail(
             new TxFailedError({
               cause: new Error("Transaction receipt could not be found."),
+              hash: "0x123",
+              message: "Failed to get receipt",
+            })
+          );
+        }
+        return "success";
+      }).pipe(Effect.retry(makeTestRetrySchedule()));
+
+      const result = yield* runWithTime(program);
+
+      expect(result).toBe("success");
+      expect(attempts).toBe(2);
+    })
+  );
+
+  it.effect("retries on viem WaitForTransactionReceiptTimeoutError", () =>
+    Effect.gen(function* () {
+      let attempts = 0;
+      const program = Effect.gen(function* () {
+        attempts += 1;
+        if (attempts < 2) {
+          return yield* Effect.fail(
+            new TxFailedError({
+              cause: new WaitForTransactionReceiptTimeoutError({ hash: "0x123" }),
               hash: "0x123",
               message: "Failed to get receipt",
             })

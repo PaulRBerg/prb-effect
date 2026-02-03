@@ -1,4 +1,9 @@
 import { Schedule } from "effect";
+import {
+  TransactionNotFoundError,
+  TransactionReceiptNotFoundError,
+  WaitForTransactionReceiptTimeoutError,
+} from "viem";
 import type { ReceiptTimeoutError, TxFailedError, TxReplacedError } from "@/src/core/index.js";
 import { makeBackoffSchedule } from "@/src/internal/index.js";
 import { defaultRetryableErrors, isRetryableError } from "@/src/rpc/index.js";
@@ -16,6 +21,7 @@ import { defaultRetryableErrors, isRetryableError } from "@/src/rpc/index.js";
  */
 export const receiptRetryablePatterns = [
   ...defaultRetryableErrors,
+  "timed out", // viem's WaitForTransactionReceiptTimeoutError message
   "transaction with hash", // viem's TransactionNotFoundError
   "receipt with hash", // viem's TransactionReceiptNotFoundError
   "transaction not found", // Common RPC provider message
@@ -32,17 +38,27 @@ export const receiptRetryablePatterns = [
  * Uses existing backoff infrastructure with longer base delay for receipt polling.
  *
  * Timeout behavior:
- * - WaitForTransactionReceiptTimeoutError → ReceiptTimeoutError (terminal, not retried)
- *   This means the tx wasn't confirmed in time - retrying won't help.
- * - HTTP/transport timeouts (from defaultRetryableErrors) → retried
- *   These are transient network issues, not confirmation failures.
+ * - ReceiptTimeoutError is terminal (represents total budget exhaustion).
+ * - Transport/receipt polling timeouts (from defaultRetryableErrors) are retried while budget remains.
  */
+function isReceiptRetryable(cause: unknown): boolean {
+  if (
+    cause instanceof TransactionNotFoundError ||
+    cause instanceof TransactionReceiptNotFoundError ||
+    cause instanceof WaitForTransactionReceiptTimeoutError
+  ) {
+    return true;
+  }
+
+  return isRetryableError(cause, receiptRetryablePatterns);
+}
+
 export const makeReceiptRetrySchedule = () =>
   makeBackoffSchedule({ baseDelay: 1000, jitter: true, maxRetries: 3 }).pipe(
     Schedule.whileInput<TxFailedError | ReceiptTimeoutError | TxReplacedError>((error) => {
       // Only retry TxFailedError with retryable cause - not timeouts or replacements
       if (error._tag === "TxFailedError" && error.cause) {
-        return isRetryableError(error.cause, receiptRetryablePatterns);
+        return isReceiptRetryable(error.cause);
       }
       return false;
     })
