@@ -7,7 +7,7 @@ import {
   routemeshToChainConfigs,
   routemeshUrl,
   routemeshWithFallback,
-} from "@/src/rpc/index.js";
+} from "@/src/presets/index.js";
 
 describe("RouteMesh", () => {
   const TEST_API_KEY = "test-api-key-123";

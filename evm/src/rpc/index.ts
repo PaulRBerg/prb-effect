@@ -16,4 +16,3 @@ export {
   RetryConfigFromEnv,
   withRetry,
 } from "./retry.js";
-export * from "./routemesh.js";

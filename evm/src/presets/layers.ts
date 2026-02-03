@@ -53,8 +53,8 @@ import {
   MulticallBatcherLive,
   QueryClientLive,
 } from "@/src/query/index.js";
-import type { RequestDedup, RpcCache } from "@/src/rpc/internal/index.js";
-import { makeRpcCacheLive, RequestDedupLive } from "@/src/rpc/internal/index.js";
+import type { RequestDedup, RpcCache } from "@/src/rpc/index.js";
+import { makeRpcCacheLive, RequestDedupLive } from "@/src/rpc/index.js";
 import type { SignatureService } from "@/src/signature/index.js";
 import { SignatureServiceLive } from "@/src/signature/index.js";
 import type { SimulationService } from "@/src/simulation/index.js";
