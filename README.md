@@ -4,8 +4,9 @@
 [![Effect](https://img.shields.io/badge/Effect-v3-7C3AED)](https://effect.website)
 [![Biome](https://img.shields.io/badge/Linted_with-Biome-60a5fa?style=flat&logo=biome)](https://biomejs.dev)
 
-> [!WARNING] This is experimental, beta software. It is provided "as is" without warranty of any kind, express or
-> implied.
+> [!WARNING]
+>
+> This is experimental, beta software. It is provided "as is" without warranty of any kind, express or implied.
 
 A Bun-powered monorepo for Effect-TS libraries.
 

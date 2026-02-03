@@ -4,8 +4,9 @@
 [![Effect](https://img.shields.io/badge/Effect-v3-7C3AED)](https://effect.website)
 [![viem](https://img.shields.io/badge/viem-v2-1E1E1E)](https://viem.sh)
 
-> [!WARNING] This is experimental, beta software. It is provided "as is" without warranty of any kind, express or
-> implied.
+> [!WARNING]
+>
+> This is experimental, beta software. It is provided "as is" without warranty of any kind, express or implied.
 
 Type-safe, composable EVM abstractions for [Effect](https://effect.website), built on [viem](https://viem.sh).
 

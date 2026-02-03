@@ -3,8 +3,9 @@
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Effect](https://img.shields.io/badge/Effect-v3-7C3AED)](https://effect.website)
 
-> [!WARNING] This is experimental, beta software. It is provided "as is" without warranty of any kind, express or
-> implied.
+> [!WARNING]
+>
+> This is experimental, beta software. It is provided "as is" without warranty of any kind, express or implied.
 
 Safe Apps + Safe multisig utilities for Effect, built on top of `@prb/effect-evm`.
 
