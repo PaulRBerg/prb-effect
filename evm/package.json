@@ -58,10 +58,8 @@
   },
   "files": [
     "dist/**",
-    "README.md",
     "CHANGELOG.md",
-    "DOCS.md",
-    "CONTRIBUTING.md"
+    "DOCS.md"
   ],
   "keywords": [
     "effect",

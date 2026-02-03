@@ -21,7 +21,7 @@
     },
     "evm": {
       "name": "@prb/effect-evm",
-      "version": "1.0.0-beta.10",
+      "version": "1.0.0",
       "devDependencies": {
         "@biomejs/biome": "catalog:dev",
         "@effect/platform": "catalog:effect",
@@ -59,7 +59,7 @@
     },
     "evm-safe": {
       "name": "@prb/effect-evm-safe",
-      "version": "1.0.0-beta.5",
+      "version": "1.0.0",
       "devDependencies": {
         "@biomejs/biome": "catalog:dev",
         "@effect/platform": "catalog:effect",
@@ -85,7 +85,7 @@
       },
       "peerDependencies": {
         "@effect/platform": "catalog:peers",
-        "@prb/effect-evm": "^1.0.0-beta.7",
+        "@prb/effect-evm": "^1.0.0",
         "@safe-global/safe-apps-sdk": "catalog:peers",
         "@wagmi/core": "catalog:peers",
         "effect": "catalog:peers",
@@ -103,7 +103,7 @@
     },
     "next": {
       "name": "@prb/effect-next",
-      "version": "1.0.0-beta.2",
+      "version": "1.0.0",
       "devDependencies": {
         "@biomejs/biome": "catalog:dev",
         "@effect/opentelemetry": "^0.60.0",
@@ -193,7 +193,7 @@
     },
     "xstate": {
       "name": "@prb/effect-xstate",
-      "version": "1.0.0-beta.2",
+      "version": "1.0.0",
       "devDependencies": {
         "@biomejs/biome": "catalog:dev",
         "@effect/vitest": "catalog:dev",
