@@ -1,5 +1,5 @@
 import type { Scope, SubscriptionRef } from "effect";
-import { Clock, Context, Effect, Fiber, Layer, Ref, Stream } from "effect";
+import { Clock, Context, Duration, Effect, Fiber, Layer, Ref, Stream } from "effect";
 import type { Hash, TransactionReceipt } from "viem";
 import { WaitForTransactionReceiptTimeoutError } from "viem";
 import { DEFAULT_RECEIPT_TIMEOUT, DEFAULT_STUCK_TX_MS } from "@/src/constants/index.js";
@@ -12,6 +12,7 @@ import {
   TxReplacedError,
 } from "@/src/core/index.js";
 import { SpanNames } from "@/src/telemetry/index.js";
+import { makeReceiptRetrySchedule } from "./internal/receipt-retry.js";
 import type { TxPolicy } from "./policy.js";
 import { defaultPolicy } from "./policy.js";
 import { TxReplacement } from "./replacement.js";
@@ -308,63 +309,71 @@ export function makeTxManagerLive(
                   layerDefault.receiptTimeout ??
                   DEFAULT_RECEIPT_TIMEOUT);
             const pollingInterval = policy?.pollingInterval ?? layerDefault.pollingInterval;
+            const start = yield* Clock.currentTimeMillis;
+            const makeReceiptTimeoutError = () =>
+              new ReceiptTimeoutError({
+                hash,
+                message: `Receipt timeout exceeded (${timeout}ms)`,
+                timeout,
+              });
 
-            return yield* Effect.tryPromise({
-              catch: (cause) => {
-                if (cause instanceof TxReplacedError) {
-                  return cause;
-                }
+            const waitForReceiptAttempt = Effect.gen(function* () {
+              const now = yield* Clock.currentTimeMillis;
+              const remaining = timeout - (now - start);
 
-                if (cause instanceof WaitForTransactionReceiptTimeoutError) {
-                  return new ReceiptTimeoutError({
+              if (remaining <= 0) {
+                return yield* Effect.fail(makeReceiptTimeoutError());
+              }
+
+              return yield* Effect.tryPromise({
+                catch: (cause) => {
+                  if (cause instanceof TxReplacedError) {
+                    return cause;
+                  }
+
+                  return new TxFailedError({
+                    cause,
                     hash,
-                    message: cause.message,
-                    timeout,
+                    message: `Failed to get receipt for ${hash}`,
                   });
-                }
+                },
+                try: async () => {
+                  let replacement: { newHash: Hash; reason: TxReplacementReason } | undefined;
 
-                if (cause instanceof Error && cause.message.toLowerCase().includes("timeout")) {
-                  return new ReceiptTimeoutError({
+                  // Pass remaining budget to viem to cancel underlying poll on timeout
+                  const receipt = await client.waitForTransactionReceipt({
                     hash,
-                    message: cause.message,
-                    timeout,
+                    onReplaced: (info) => {
+                      replacement = {
+                        newHash: info.transaction.hash,
+                        reason: info.reason,
+                      };
+                    },
+                    pollingInterval,
+                    timeout: remaining,
                   });
-                }
 
-                return new TxFailedError({
-                  cause,
-                  hash,
-                  message: `Failed to get receipt for ${hash}`,
-                });
-              },
-              try: async () => {
-                let replacement: { newHash: Hash; reason: TxReplacementReason } | undefined;
+                  // Only throw if there's an actual replacement (different hash)
+                  if (replacement && replacement.newHash !== hash) {
+                    throw new TxReplacedError({
+                      message: `Transaction ${hash} was ${replacement.reason} with ${replacement.newHash}`,
+                      newHash: replacement.newHash,
+                      oldHash: hash,
+                      reason: replacement.reason,
+                    });
+                  }
 
-                const receipt = await client.waitForTransactionReceipt({
-                  hash,
-                  onReplaced: (info) => {
-                    replacement = {
-                      newHash: info.transaction.hash,
-                      reason: info.reason,
-                    };
-                  },
-                  pollingInterval,
-                  timeout,
-                });
+                  return receipt;
+                },
+              });
+            });
 
-                // Only throw if there's an actual replacement (different hash)
-                if (replacement && replacement.newHash !== hash) {
-                  throw new TxReplacedError({
-                    message: `Transaction ${hash} was ${replacement.reason} with ${replacement.newHash}`,
-                    newHash: replacement.newHash,
-                    oldHash: hash,
-                    reason: replacement.reason,
-                  });
-                }
-
-                return receipt;
-              },
-            }).pipe(
+            return yield* waitForReceiptAttempt.pipe(
+              Effect.retry(makeReceiptRetrySchedule()),
+              Effect.timeoutFail({
+                duration: Duration.millis(timeout),
+                onTimeout: makeReceiptTimeoutError,
+              }),
               Effect.withSpan(SpanNames.TX_WAIT, {
                 attributes: {
                   chainId,

@@ -10,9 +10,9 @@ export {
 export * from "./dedup.js";
 export {
   defaultRetryableErrors,
+  isRetryableError,
   makeRetrySchedule,
   type RetryConfig,
   RetryConfigFromEnv,
   withRetry,
 } from "./retry.js";
-export * from "./routemesh.js";

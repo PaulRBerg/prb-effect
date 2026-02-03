@@ -1,8 +1,8 @@
 import { Schema } from "effect";
 import type { Chain, Transport } from "viem";
 
-import type { ChainConfig } from "@/src/presets/index.js";
-import { makeFallbackTransport } from "@/src/presets/index.js";
+import type { ChainConfig } from "./layers.js";
+import { makeFallbackTransport } from "./transports.js";
 
 // === Constants ===
 
