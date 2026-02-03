@@ -12,7 +12,7 @@ Type-safe, composable EVM abstractions for [Effect](https://effect.website), bui
 ## 📦 Installation
 
 ```bash
-bun add effect-evm
+bun add @prb/effect-evm
 ```
 
 **Peer dependencies**

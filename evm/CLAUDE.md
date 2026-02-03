@@ -4,7 +4,6 @@
 
 - **Project overview**: @README.md
 - **Dependencies**: @package.json
-- **Commands**: @justfile and @../recipes.just
 
 ## Aliases
 

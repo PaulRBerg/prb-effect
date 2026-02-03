@@ -18,7 +18,7 @@ Peer dependencies
 
 - `effect@^3`
 - `@effect/platform@^0.93`
-- `@prb/effect-evm@^1.0.0-beta.5`
+- `@prb/effect-evm@^1.0.0`
 - `@safe-global/safe-apps-sdk@9.1.0`
 - `viem@^2.43`
 - Optional: `@wagmi/core@>=2.0.0` (for hooks using wagmi)

@@ -23,7 +23,7 @@ Effect integration for Next.js - build type-safe, composable Next.js application
 ## Installation
 
 ```bash
-bun add effect-next effect @effect/platform
+bun add @prb/effect-next effect @effect/platform
 ```
 
 ### Optional Dependencies
