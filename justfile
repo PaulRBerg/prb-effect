@@ -36,11 +36,15 @@ default:
     echo '{{ GREEN }}✓ All packages built{{ NORMAL }}'
 alias b := build
 
-# Bump beta version for a package (e.g., just bump-version evm)
-@bump-version app:
+# Bump beta version using jq (e.g., just bump-beta evm)
+@bump-beta app:
     cd {{ app }} && jq '.version |= (split("-beta.") | .[0] + "-beta." + ((.[1] | tonumber) + 1 | tostring))' package.json > tmp.json && mv tmp.json package.json
     jq -r .version {{ app }}/package.json
-alias bv := bump-version
+alias bv := bump-beta
+
+# Bump beta version using npm (e.g., just beta evm)
+@beta app:
+    cd {{ app }} && npm version prerelease --preid=beta --no-git-tag-version
 
 # Clean build artifacts
 @clean:
