@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@effect/vitest";
-import { Effect, Either, Exit, Layer } from "effect";
+import { Chunk, Effect, Either, Exit, Layer, Stream } from "effect";
 import type { TransactionReceipt } from "viem";
 import { MIN_TX_GAS } from "@/src/constants/index.js";
 import { makeMockPublicClientLayer, TEST_CHAIN_ID, TEST_TX_HASH } from "@/src/testing-kit/index.js";
@@ -29,6 +29,7 @@ const TEST_RECEIPT: TransactionReceipt = {
   transactionIndex: 0,
   type: "0x2",
 };
+const REPLACED_HASH = "0x9999999999999999999999999999999999999999999999999999999999999999";
 
 describe("TxManager", () => {
   describe("waitForReceipt", () => {
@@ -235,6 +236,75 @@ describe("TxManager", () => {
                   new Promise<never>(() => {
                     // Intentionally never resolves.
                   }),
+              }),
+              txReplacementLayer
+            )
+          )
+        ),
+        Effect.scoped
+      )
+    );
+
+    it.effect("tracks replacement when receipt reports onReplaced", () =>
+      Effect.gen(function* () {
+        const manager = yield* TxManager;
+
+        const ref = yield* manager.track(TEST_CHAIN_ID, TEST_TX_HASH);
+        const changes = yield* ref.changes.pipe(
+          Stream.filter((state) => state.status === "replaced" || state.status === "mined"),
+          Stream.take(2),
+          Stream.runCollect
+        );
+
+        const events = Chunk.toArray(changes);
+        expect(events[0]?.status).toBe("replaced");
+        expect(events[1]?.status).toBe("mined");
+
+        const replaced = events[0];
+        const mined = events[1];
+
+        if (replaced?.status === "replaced") {
+          expect(replaced.oldHash).toBe(TEST_TX_HASH);
+          expect(replaced.newHash).toBe(REPLACED_HASH);
+          expect(replaced.reason).toBe("replaced");
+        }
+
+        if (mined?.status === "mined") {
+          expect(mined.hash).toBe(REPLACED_HASH);
+          expect(mined.receipt.transactionHash).toBe(REPLACED_HASH);
+        }
+      }).pipe(
+        Effect.provide(
+          Layer.provide(
+            TxManagerLive,
+            Layer.mergeAll(
+              makeMockPublicClientLayer({
+                waitForTransactionReceipt: async (params: unknown) => {
+                  type ReplacementInfo = {
+                    reason: "cancelled" | "replaced" | "repriced";
+                    transaction: { hash: string };
+                    replacedTransaction: { hash: string };
+                  };
+                  type WaitForTransactionReceiptParams = {
+                    hash: string;
+                    onReplaced?: (info: ReplacementInfo) => void;
+                  };
+
+                  const { onReplaced, hash } = params as WaitForTransactionReceiptParams;
+
+                  onReplaced?.({
+                    reason: "replaced",
+                    replacedTransaction: { hash },
+                    transaction: { hash: REPLACED_HASH },
+                  });
+
+                  await new Promise((resolve) => setTimeout(resolve, 10));
+
+                  return {
+                    ...TEST_RECEIPT,
+                    transactionHash: REPLACED_HASH,
+                  } as TransactionReceipt;
+                },
               }),
               txReplacementLayer
             )
