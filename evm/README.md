@@ -10,6 +10,8 @@
 
 Type-safe, composable EVM abstractions for [Effect](https://effect.website), built on [viem](https://viem.sh).
 
+![Banner](./banner.png)
+
 ## 📦 Installation
 
 ```bash
