@@ -9,7 +9,8 @@ import {
   WalletNotConnectedError,
   WrongNetworkError,
 } from "@/src/core/index.js";
-import { effectEvmServices } from "@/src/presets/index.js";
+import { effectEvmServices, makeEffectEvmServices } from "@/src/presets/index.js";
+import type { TxPolicy } from "@/src/tx/index.js";
 import {
   makeWalletProviderRefLive,
   WalletLifecycleFromProviderRefLive,
@@ -23,6 +24,17 @@ export type WagmiWalletClientOptions = {
    * If omitted, wagmi will use the current connector/account (if present).
    */
   readonly account?: Address;
+  /**
+   * Custom transaction policy for receipt timeout and other tx settings.
+   *
+   * @example
+   * ```ts
+   * const layer = makeEffectEvmLayerFromWagmi(config, {
+   *   txPolicy: { receiptTimeout: Duration.toMillis("10 minutes") }
+   * });
+   * ```
+   */
+  readonly txPolicy?: TxPolicy;
 };
 
 export function makePublicClientLayerFromWagmi(config: Config): Layer.Layer<PublicClientService> {
@@ -117,7 +129,8 @@ export function makeEffectEvmLayerFromWagmi(
     makeWalletClientLayerFromWagmi(config, options)
   );
 
-  return Layer.provideMerge(effectEvmServices, clientLayers);
+  const services = options.txPolicy ? makeEffectEvmServices(options.txPolicy) : effectEvmServices;
+  return Layer.provideMerge(services, clientLayers);
 }
 
 /**
@@ -146,8 +159,6 @@ export function makeEffectEvmLayerFromWagmiWithWalletProviderRef(
     providerRefLayer
   );
 
-  return Layer.provideMerge(
-    Layer.mergeAll(effectEvmServices, walletLayers, providerRefLayer),
-    clientLayers
-  );
+  const services = options.txPolicy ? makeEffectEvmServices(options.txPolicy) : effectEvmServices;
+  return Layer.provideMerge(Layer.mergeAll(services, walletLayers, providerRefLayer), clientLayers);
 }

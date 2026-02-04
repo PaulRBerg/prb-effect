@@ -61,8 +61,8 @@ import type { SimulationService } from "@/src/simulation/index.js";
 import { SimulationServiceLive } from "@/src/simulation/index.js";
 import type { SubscriptionService } from "@/src/subscriptions/index.js";
 import { SubscriptionServiceLive } from "@/src/subscriptions/index.js";
-import type { TxManager, TxReplacement } from "@/src/tx/index.js";
-import { TxManagerLive, TxReplacementLive } from "@/src/tx/index.js";
+import type { TxManager, TxPolicy, TxReplacement } from "@/src/tx/index.js";
+import { makeTxManagerLive, TxManagerLive, TxReplacementLive } from "@/src/tx/index.js";
 import type { WalletLifecycle, WalletProvider, WalletService } from "@/src/wallet/index.js";
 import {
   makeWalletLifecycleLive,
@@ -550,30 +550,41 @@ const baseServices = Layer.mergeAll(
   RequestDedupLive
 );
 
-const txServices = Layer.provideMerge(
-  TxManagerLive,
-  Layer.provideMerge(TxReplacementLive, baseServices)
-);
+/**
+ * Create effect-evm services with an optional custom TxPolicy.
+ * Use this when you need to customize receipt timeout or other tx settings.
+ */
+export function makeEffectEvmServices(txPolicy?: TxPolicy) {
+  const txManagerLayer = txPolicy ? makeTxManagerLive(txPolicy) : TxManagerLive;
 
-const queryServices = Layer.provideMerge(
-  ContractQueryLive,
-  Layer.provideMerge(
-    MulticallBatcherLive,
-    Layer.provideMerge(QueryClientLive, Layer.provideMerge(ChainHeadLive, txServices))
-  )
-);
+  const txServices = Layer.provideMerge(
+    txManagerLayer,
+    Layer.provideMerge(TxReplacementLive, baseServices)
+  );
 
-export const effectEvmServices = Layer.provideMerge(
-  Layer.mergeAll(
-    BalanceServiceLive,
-    ContractPipelineLive,
-    Eip7702ServiceLive,
-    DeployServiceLive,
-    ReliableEventStreamLive,
-    SimulationServiceLive
-  ),
-  queryServices
-).pipe(Layer.provide(FetchHttpClient.layer));
+  const queryServices = Layer.provideMerge(
+    ContractQueryLive,
+    Layer.provideMerge(
+      MulticallBatcherLive,
+      Layer.provideMerge(QueryClientLive, Layer.provideMerge(ChainHeadLive, txServices))
+    )
+  );
+
+  return Layer.provideMerge(
+    Layer.mergeAll(
+      BalanceServiceLive,
+      ContractPipelineLive,
+      Eip7702ServiceLive,
+      DeployServiceLive,
+      ReliableEventStreamLive,
+      SimulationServiceLive
+    ),
+    queryServices
+  ).pipe(Layer.provide(FetchHttpClient.layer));
+}
+
+/** Default effect-evm services with standard TxPolicy. */
+export const effectEvmServices = makeEffectEvmServices();
 
 /**
  * Create a complete effect-evm layer from chain configurations and provider
