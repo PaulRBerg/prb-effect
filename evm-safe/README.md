@@ -9,6 +9,8 @@
 
 Safe Apps + Safe multisig utilities for Effect, built on top of `@prb/effect-evm`.
 
+![Banner](./banner.png)
+
 ## Installation
 
 ```bash
