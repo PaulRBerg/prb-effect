@@ -155,27 +155,29 @@ export const BlockServiceLive = Layer.effect(
       getBlocks: (params) =>
         Effect.gen(function* () {
           const client = yield* publicClientService.get(params.chainId);
-          const blocks: Block[] = [];
-
+          const blockNumbers: bigint[] = [];
           for (let i = params.fromBlock; i <= params.toBlock; i++) {
-            const block = yield* Effect.tryPromise({
-              catch: (cause) =>
-                new BlockNotFoundError({
-                  blockIdentifier: i.toString(),
-                  chainId: params.chainId,
-                  message: `Block ${i} not found: ${cause}`,
-                }),
-              try: () =>
-                client.getBlock({
-                  blockNumber: i,
-                  includeTransactions: params.includeTransactions ?? false,
-                }),
-            });
-
-            blocks.push(block);
+            blockNumbers.push(i);
           }
 
-          return blocks;
+          return yield* Effect.forEach(
+            blockNumbers,
+            (blockNumber) =>
+              Effect.tryPromise({
+                catch: (cause) =>
+                  new BlockNotFoundError({
+                    blockIdentifier: blockNumber.toString(),
+                    chainId: params.chainId,
+                    message: `Block ${blockNumber} not found: ${cause}`,
+                  }),
+                try: () =>
+                  client.getBlock({
+                    blockNumber,
+                    includeTransactions: params.includeTransactions ?? false,
+                  }),
+              }),
+            { concurrency: 10 }
+          );
         }).pipe(
           Effect.withSpan(SpanNames.BLOCK_GET_RANGE, {
             attributes: {

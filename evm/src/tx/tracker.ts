@@ -76,6 +76,19 @@ export const makeTxTracker = Effect.gen(function* () {
   };
 });
 
+/** Fetch a transaction by hash, failing if not found */
+const getOriginalTx = (publicClient: PublicClient, hash: Hash) =>
+  Effect.tryPromise({
+    catch: (cause) =>
+      new TxFailedError({ cause, hash, message: `Failed to get transaction ${hash}` }),
+    try: () => publicClient.getTransaction({ hash }),
+  }).pipe(
+    Effect.filterOrFail(
+      (tx): tx is Transaction => tx != null,
+      () => new TxFailedError({ hash, message: `Transaction ${hash} not found` })
+    )
+  );
+
 /**
  * Speed up a pending transaction by submitting a replacement with higher gas fees
  * @param chainId - Chain ID for the wallet client
@@ -100,27 +113,7 @@ export const speedupTx = (
     const publicClientService = yield* PublicClientService;
     const publicClient = yield* publicClientService.get(chainId);
 
-    // Get original transaction
-    const tx = yield* Effect.tryPromise({
-      catch: (cause) =>
-        new TxFailedError({
-          cause,
-          hash,
-          message: `Failed to get transaction ${hash}`,
-        }),
-      try: () => (publicClient as PublicClient).getTransaction({ hash }),
-    });
-
-    if (!tx) {
-      yield* Effect.fail(
-        new TxFailedError({
-          hash,
-          message: `Transaction ${hash} not found`,
-        })
-      );
-    }
-
-    const transaction = tx as Transaction;
+    const transaction = yield* getOriginalTx(publicClient as PublicClient, hash);
 
     // Create replacement transaction with same nonce but higher fees
     const newHash = yield* Effect.tryPromise({
@@ -171,27 +164,7 @@ export const cancelTx = (
     const publicClientService = yield* PublicClientService;
     const publicClient = yield* publicClientService.get(chainId);
 
-    // Get original transaction
-    const tx = yield* Effect.tryPromise({
-      catch: (cause) =>
-        new TxFailedError({
-          cause,
-          hash,
-          message: `Failed to get transaction ${hash}`,
-        }),
-      try: () => (publicClient as PublicClient).getTransaction({ hash }),
-    });
-
-    if (!tx) {
-      yield* Effect.fail(
-        new TxFailedError({
-          hash,
-          message: `Transaction ${hash} not found`,
-        })
-      );
-    }
-
-    const transaction = tx as Transaction;
+    const transaction = yield* getOriginalTx(publicClient as PublicClient, hash);
 
     // Create cancellation transaction: same nonce, zero value to self, higher fees
     const newHash = yield* Effect.tryPromise({

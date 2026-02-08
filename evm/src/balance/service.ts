@@ -341,18 +341,16 @@ export const BalanceServiceLive = Layer.effect(
 
           return Stream.async<bigint, unknown>((emit) => {
             const unwatch = client.watchBlockNumber({
-              onBlockNumber: async () => {
+              onBlockNumber: async (blockNumber) => {
                 try {
-                  const balanceEffect = contractReader.read({
+                  const result = await client.readContract({
                     abi: erc20Abi,
                     address: params.tokenAddress,
                     args: [params.address],
-                    chainId: params.chainId,
+                    blockNumber,
                     functionName: "balanceOf",
                   });
-
-                  const balance = (await Effect.runPromise(balanceEffect)) as bigint;
-                  emit.single(balance);
+                  emit.single(result as bigint);
                 } catch (error) {
                   emit.fail(error as unknown);
                 }

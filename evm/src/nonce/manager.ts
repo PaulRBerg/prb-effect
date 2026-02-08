@@ -9,6 +9,32 @@ type NonceState = {
 const makeKey = (chainId: number, address: Address): string =>
   `${chainId}:${address.toLowerCase()}`;
 
+/** Immutably add a nonce to the pending set for the given key */
+function addToPending(state: NonceState, key: string, nonce: bigint): NonceState {
+  const newPendingSet = new Set(state.pending.get(key));
+  newPendingSet.add(nonce);
+  const newPending = new Map(state.pending);
+  newPending.set(key, newPendingSet);
+  return { confirmed: state.confirmed, pending: newPending };
+}
+
+/** Immutably remove a nonce from the pending set for the given key */
+function removeFromPending(state: NonceState, key: string, nonce: bigint): NonceState {
+  const existing = state.pending.get(key);
+  if (!existing) {
+    return state;
+  }
+  const newPendingSet = new Set(existing);
+  newPendingSet.delete(nonce);
+  const newPending = new Map(state.pending);
+  if (newPendingSet.size === 0) {
+    newPending.delete(key);
+  } else {
+    newPending.set(key, newPendingSet);
+  }
+  return { confirmed: state.confirmed, pending: newPending };
+}
+
 export const makeNonceManager = (): Effect.Effect<
   {
     confirm: (chainId: number, address: Address, nonce: bigint) => Effect.Effect<void>;
@@ -29,13 +55,7 @@ export const makeNonceManager = (): Effect.Effect<
     });
 
     const reserve = (chainId: number, address: Address, nonce: bigint): Effect.Effect<void> =>
-      Ref.update(stateRef, (state) => {
-        const key = makeKey(chainId, address);
-        const pending = state.pending.get(key) ?? new Set();
-        pending.add(nonce);
-        state.pending.set(key, pending);
-        return state;
-      });
+      Ref.update(stateRef, (state) => addToPending(state, makeKey(chainId, address), nonce));
 
     const reserveNext = (
       chainId: number,
@@ -52,48 +72,31 @@ export const makeNonceManager = (): Effect.Effect<
           nextNonce += 1n;
         }
 
-        pending.add(nextNonce);
-        state.pending.set(key, pending);
-        return [nextNonce, state] as const;
+        return [nextNonce, addToPending(state, key, nextNonce)] as const;
       });
 
     const release = (chainId: number, address: Address, nonce: bigint): Effect.Effect<void> =>
-      Ref.update(stateRef, (state) => {
-        const key = makeKey(chainId, address);
-        const pending = state.pending.get(key);
-        if (pending) {
-          pending.delete(nonce);
-          if (pending.size === 0) {
-            state.pending.delete(key);
-          }
-        }
-        return state;
-      });
+      Ref.update(stateRef, (state) => removeFromPending(state, makeKey(chainId, address), nonce));
 
     const confirm = (chainId: number, address: Address, nonce: bigint): Effect.Effect<void> =>
       Ref.update(stateRef, (state) => {
         const key = makeKey(chainId, address);
-        // Remove from pending
-        const pending = state.pending.get(key);
-        if (pending) {
-          pending.delete(nonce);
-          if (pending.size === 0) {
-            state.pending.delete(key);
-          }
-        }
-        // Update confirmed
+        const withRemoved = removeFromPending(state, key, nonce);
         const current = state.confirmed.get(key) ?? 0n;
-        if (nonce >= current) {
-          state.confirmed.set(key, nonce + 1n);
+        if (nonce < current) {
+          return withRemoved;
         }
-        return state;
+        const newConfirmed = new Map(state.confirmed);
+        newConfirmed.set(key, nonce + 1n);
+        return { confirmed: newConfirmed, pending: withRemoved.pending };
       });
 
     const setConfirmed = (chainId: number, address: Address, nonce: bigint): Effect.Effect<void> =>
       Ref.update(stateRef, (state) => {
         const key = makeKey(chainId, address);
-        state.confirmed.set(key, nonce);
-        return state;
+        const newConfirmed = new Map(state.confirmed);
+        newConfirmed.set(key, nonce);
+        return { confirmed: newConfirmed, pending: state.pending };
       });
 
     const getConfirmed = (chainId: number, address: Address): Effect.Effect<bigint | undefined> =>
