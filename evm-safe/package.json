@@ -6,7 +6,7 @@
   "sideEffects": false,
   "type": "module",
   "types": "./dist/index.d.ts",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "scripts": {
     "build": "just build",
     "prepack": "bun install --frozen-lockfile && just build"
@@ -50,12 +50,14 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
     },
     "./internal/*": null,
     "./*": {
       "types": "./dist/*/index.d.ts",
-      "import": "./dist/*/index.js"
+      "import": "./dist/*/index.js",
+      "default": "./dist/*/index.js"
     }
   },
   "files": [
