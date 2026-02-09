@@ -6,6 +6,22 @@ The format is based on [Common Changelog](https://common-changelog.org/).
 
 [1.0.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-evm%401.0.0
 [1.0.1]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-evm%401.0.1
+[1.1.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-evm%401.1.0
+
+## [1.1.0] - 2026-02-09
+
+### Changed
+
+- Add `calldata` and `sender` fields to `ContractWriter` error context (`classifyContractError`, `classifyWriteError`,
+  `classifyGasEstimationError`)
+- Fetch blocks concurrently in `BlockService.getBlocks` with `Effect.forEach` (concurrency: 10)
+
+### Fixed
+
+- Fix state mutation in `NonceManager` by using immutable `Ref` updates
+- Fix `BalanceService.watchTokenBalance` to use `client.readContract` directly instead of running an Effect inside a
+  callback
+- Deduplicate transaction fetching in `TxTracker` via shared `getOriginalTx` helper
 
 ## [1.0.1] - 2026-02-04
 
