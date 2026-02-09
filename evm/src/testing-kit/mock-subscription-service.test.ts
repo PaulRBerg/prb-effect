@@ -2,8 +2,8 @@ import { describe, expect, it } from "@effect/vitest";
 import { Effect, Stream } from "effect";
 import type { Address, Block, Hash, Hex, Log } from "viem";
 import { mainnet } from "viem/chains";
-import { SubscriptionService } from "@/src/subscriptions/index.js";
-import { makeMockSubscriptionServiceLayer } from "@/src/testing-kit/index.js";
+import { SubscriptionService } from "#src/subscriptions/index.js";
+import { makeMockSubscriptionServiceLayer } from "#src/testing-kit/index.js";
 
 describe("testing-kit: makeMockSubscriptionServiceLayer", () => {
   describe("watchBlocks", () => {

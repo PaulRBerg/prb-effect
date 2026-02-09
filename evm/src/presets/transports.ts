@@ -1,6 +1,6 @@
 import type { Transport } from "viem";
 import { fallback, http } from "viem";
-import { DEFAULT_REQUEST_TIMEOUT, DEFAULT_RETRY_DELAY } from "@/src/constants/index.js";
+import { DEFAULT_REQUEST_TIMEOUT, DEFAULT_RETRY_DELAY } from "#src/constants/index.js";
 
 export type TransportConfig = {
   /** RPC URL */

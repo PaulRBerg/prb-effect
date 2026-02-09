@@ -1,8 +1,8 @@
 import { Effect } from "effect";
 import type { PublicClient } from "viem";
-import type { ClientNotFoundError } from "@/src/core/errors/index.js";
-import type { PublicClientServiceShape } from "@/src/core/index.js";
-import { GasPriceUnavailableError } from "@/src/gas/errors.js";
+import type { ClientNotFoundError } from "#src/core/errors/index.js";
+import type { PublicClientServiceShape } from "#src/core/index.js";
+import { GasPriceUnavailableError } from "#src/gas/errors.js";
 
 export type GasSpeed = "slow" | "standard" | "fast" | "instant";
 

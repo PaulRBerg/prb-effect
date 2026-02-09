@@ -1,9 +1,9 @@
 import { Context, Effect, Layer, Stream, SubscriptionRef } from "effect";
 import type { Address, Block, Hash, Hex, Log } from "viem";
-import { DEFAULT_MAX_DELAY, DEFAULT_SUBSCRIPTION_BASE_DELAY } from "@/src/constants/index.js";
-import type { ClientNotFoundError } from "@/src/core/index.js";
-import { PublicClientService } from "@/src/core/index.js";
-import { makeBackoffSchedule } from "@/src/internal/index.js";
+import { DEFAULT_MAX_DELAY, DEFAULT_SUBSCRIPTION_BASE_DELAY } from "#src/constants/index.js";
+import type { ClientNotFoundError } from "#src/core/index.js";
+import { PublicClientService } from "#src/core/index.js";
+import { makeBackoffSchedule } from "#src/internal/index.js";
 import { watchBlocks } from "./block-subscription.js";
 import type { SubscriptionDroppedError, SubscriptionNotSupportedError } from "./errors.js";
 import { watchLogs } from "./log-subscription.js";

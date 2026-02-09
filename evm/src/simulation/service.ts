@@ -2,7 +2,7 @@ import { HttpClient } from "@effect/platform";
 import { Context, Effect, Layer } from "effect";
 import type { Abi, Address, Hex } from "viem";
 import { formatEther } from "viem";
-import { formatPercent } from "@/src/internal/index.js";
+import { formatPercent } from "#src/internal/index.js";
 import type {
   SimulationError,
   SimulationResult,
@@ -10,9 +10,9 @@ import type {
   TenderlyApiError,
   TenderlyNotConfiguredError,
   TenderlyRateLimitError,
-} from "@/src/simulation/index.js";
-import { simulateBundleTenderly, simulateTenderly } from "@/src/simulation/index.js";
-import { SpanNames } from "@/src/telemetry/index.js";
+} from "#src/simulation/index.js";
+import { simulateBundleTenderly, simulateTenderly } from "#src/simulation/index.js";
+import { SpanNames } from "#src/telemetry/index.js";
 
 type TenderlyErrors =
   | SimulationError

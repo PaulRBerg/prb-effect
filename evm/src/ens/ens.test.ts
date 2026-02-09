@@ -1,8 +1,8 @@
 import { describe, expect, it } from "@effect/vitest";
 import { Effect, Exit, Layer } from "effect";
 import type { Address } from "viem";
-import { EnsResolver, EnsResolverLive } from "@/src/ens/index.js";
-import { makeMockPublicClientLayer, TEST_ADDRESS } from "@/src/testing-kit/index.js";
+import { EnsResolver, EnsResolverLive } from "#src/ens/index.js";
+import { makeMockPublicClientLayer, TEST_ADDRESS } from "#src/testing-kit/index.js";
 
 const TEST_ENS_NAME = "vitalik.eth";
 const TEST_ENS_AVATAR = "https://ipfs.io/ipfs/QmTest123";

@@ -1,6 +1,6 @@
 import { Context, Effect, Layer, Option, Stream } from "effect";
 import type { Address, Hex, TypedData } from "viem";
-import { parseHexInt } from "@/src/internal/index.js";
+import { parseHexInt } from "#src/internal/index.js";
 import type {
   SignMessageError,
   SignMessageParams,
@@ -9,14 +9,14 @@ import type {
   SignTypedDataError,
   SignTypedDataParams,
   WalletProvider,
-} from "@/src/wallet/index.js";
+} from "#src/wallet/index.js";
 import {
   AccountNotConnectedError,
   signMessage,
   signTransaction,
   signTypedData,
   WalletProviderRef,
-} from "@/src/wallet/index.js";
+} from "#src/wallet/index.js";
 
 export const UNKNOWN_CHAIN_ID = 0;
 

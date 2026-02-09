@@ -1,26 +1,26 @@
 import { describe, expect, it } from "@effect/vitest";
 import { Effect, Layer } from "effect";
-import { erc20Abi, erc20NoOutputAbi } from "@/src/abi/index.js";
-import type { ContractReaderShape, ContractWriterShape } from "@/src/contract/index.js";
-import { ContractReader, ContractWriter } from "@/src/contract/index.js";
+import { erc20Abi, erc20NoOutputAbi } from "#src/abi/index.js";
+import type { ContractReaderShape, ContractWriterShape } from "#src/contract/index.js";
+import { ContractReader, ContractWriter } from "#src/contract/index.js";
 import {
   ApprovalCheckError,
   ApprovalError,
   ContractReadError,
   SimulationFailedError,
-} from "@/src/core/index.js";
+} from "#src/core/index.js";
 import {
   Erc20AllowanceService,
   Erc20AllowanceServiceLive,
   Erc20NoOutputAllowanceService,
   Erc20NoOutputAllowanceServiceLive,
-} from "@/src/erc20/index.js";
+} from "#src/erc20/index.js";
 import {
   TEST_ADDRESS,
   TEST_ADDRESS_2,
   TEST_CHAIN_ID,
   TEST_TX_HASH,
-} from "@/src/testing-kit/index.js";
+} from "#src/testing-kit/index.js";
 
 type Call = Readonly<{ kind: "read" | "simulate" | "write"; params: unknown }>;
 

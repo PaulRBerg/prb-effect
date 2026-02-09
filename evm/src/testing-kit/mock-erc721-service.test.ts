@@ -2,8 +2,8 @@ import { describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
 import type { Address } from "viem";
 import { mainnet } from "viem/chains";
-import { Erc721Service } from "@/src/erc721/index.js";
-import { makeMockErc721ServiceLayer } from "@/src/testing-kit/index.js";
+import { Erc721Service } from "#src/erc721/index.js";
+import { makeMockErc721ServiceLayer } from "#src/testing-kit/index.js";
 
 describe("testing-kit: makeMockErc721ServiceLayer", () => {
   const testLayer = makeMockErc721ServiceLayer();

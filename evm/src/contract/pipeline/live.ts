@@ -1,10 +1,10 @@
 import { Effect, Layer } from "effect";
-import { ContractWriter } from "@/src/contract/index.js";
-import { PublicClientService } from "@/src/core/index.js";
-import { EventStream } from "@/src/events/index.js";
-import { GasService } from "@/src/gas/index.js";
-import { NonceService } from "@/src/nonce/index.js";
-import { TxManager, TxReplacement } from "@/src/tx/index.js";
+import { ContractWriter } from "#src/contract/index.js";
+import { PublicClientService } from "#src/core/index.js";
+import { EventStream } from "#src/events/index.js";
+import { GasService } from "#src/gas/index.js";
+import { NonceService } from "#src/nonce/index.js";
+import { TxManager, TxReplacement } from "#src/tx/index.js";
 import { ContractPipeline } from "./service.js";
 import { makeWriteAndTrack } from "./write-and-track.js";
 import { makeWriteAndWait } from "./write-and-wait.js";

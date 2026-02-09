@@ -5,10 +5,7 @@
     "lib": ["ESNext", "DOM"],
     "outDir": "./dist",
     "rootDir": "./src",
-    "paths": {
-      "@/src": ["./src"],
-      "@/src/*": ["./src/*"]
-    }
+    "customConditions": ["source"]
   },
   "exclude": ["**/node_modules/", "src/**/*.test.ts"],
   "include": [

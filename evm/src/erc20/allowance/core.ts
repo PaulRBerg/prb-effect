@@ -1,18 +1,18 @@
 import { Context, Effect, Layer } from "effect";
 import { erc20Abi, maxUint256 } from "viem";
-import { ContractReader, ContractWriter } from "@/src/contract/index.js";
+import { ContractReader, ContractWriter } from "#src/contract/index.js";
 import type {
   ClientNotFoundError,
   InsufficientFundsError,
   UserRejectedError,
-} from "@/src/core/index.js";
-import { ApprovalCheckError, ApprovalError } from "@/src/core/index.js";
+} from "#src/core/index.js";
+import { ApprovalCheckError, ApprovalError } from "#src/core/index.js";
 import type {
   ApproveParams,
   CheckAllowanceParams,
   EnsureAllowanceParams,
   Erc20AllowanceServiceShape,
-} from "@/src/erc20/allowance/index.js";
+} from "#src/erc20/allowance/index.js";
 
 export class Erc20AllowanceService extends Context.Tag("ew3/Erc20AllowanceService")<
   Erc20AllowanceService,

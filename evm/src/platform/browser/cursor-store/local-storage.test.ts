@@ -1,10 +1,10 @@
 import { describe, expect, it } from "@effect/vitest";
 import { Effect, Fiber, Layer, TestClock } from "effect";
-import type { StreamCursor } from "@/src/events/index.js";
-import { CursorStore } from "@/src/events/index.js";
-import { LocalStorageCursorStoreLive } from "@/src/platform/browser/cursor-store/index.js";
-import { BrowserStorage } from "@/src/platform/browser/storage/index.js";
-import { TEST_ADDRESS, TEST_CHAIN_ID } from "@/src/testing-kit/index.js";
+import type { StreamCursor } from "#src/events/index.js";
+import { CursorStore } from "#src/events/index.js";
+import { LocalStorageCursorStoreLive } from "#src/platform/browser/cursor-store/index.js";
+import { BrowserStorage } from "#src/platform/browser/storage/index.js";
+import { TEST_ADDRESS, TEST_CHAIN_ID } from "#src/testing-kit/index.js";
 
 /**
  * Mock localStorage implementation for testing.

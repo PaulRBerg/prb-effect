@@ -20,15 +20,15 @@ import type {
   UserRejectedError,
   WalletNotConnectedError,
   WrongNetworkError,
-} from "@/src/core/index.js";
+} from "#src/core/index.js";
 import {
   classifyContractError,
   classifyGasEstimationError,
   classifyWriteError,
   PublicClientService,
   WalletClientService,
-} from "@/src/core/index.js";
-import type { ContractFunctionName, SimulateResult, WriteParams } from "@/src/types/index.js";
+} from "#src/core/index.js";
+import type { ContractFunctionName, SimulateResult, WriteParams } from "#src/types/index.js";
 
 const txRequestOverridesFromWriteParams = <
   TAbi extends Abi,

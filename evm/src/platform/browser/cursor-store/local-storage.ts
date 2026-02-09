@@ -1,8 +1,8 @@
 import { Effect, Layer, Ref } from "effect";
-import { DEFAULT_CURSOR_FLUSH_DELAY } from "@/src/constants/index.js";
-import type { StreamCursor } from "@/src/events/index.js";
-import { CursorStore } from "@/src/events/index.js";
-import { BrowserStorage } from "@/src/platform/browser/storage/index.js";
+import { DEFAULT_CURSOR_FLUSH_DELAY } from "#src/constants/index.js";
+import type { StreamCursor } from "#src/events/index.js";
+import { CursorStore } from "#src/events/index.js";
+import { BrowserStorage } from "#src/platform/browser/storage/index.js";
 
 /**
  * Key format for cursor storage entries.

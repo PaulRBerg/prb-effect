@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
-import { SpanNames, withSpan } from "@/src/telemetry/index.js";
+import { SpanNames, withSpan } from "#src/telemetry/index.js";
 
 describe("tracer", () => {
   describe("withSpan", () => {

@@ -3,14 +3,14 @@ import { Chunk, Effect, Exit, Layer, Stream } from "effect";
 import { constVoid as noop } from "effect/Function";
 import type { Log, TransactionReceipt, WatchContractEventParameters } from "viem";
 import { erc20Abi } from "viem";
-import { MIN_TX_GAS } from "@/src/constants/index.js";
-import { EventStream, EventStreamLive } from "@/src/events/index.js";
+import { MIN_TX_GAS } from "#src/constants/index.js";
+import { EventStream, EventStreamLive } from "#src/events/index.js";
 import {
   makeMockPublicClientLayer,
   TEST_ADDRESS,
   TEST_CHAIN_ID,
   UNKNOWN_CHAIN_ID,
-} from "@/src/testing-kit/index.js";
+} from "#src/testing-kit/index.js";
 
 describe("EventStream", () => {
   describe("watch", () => {

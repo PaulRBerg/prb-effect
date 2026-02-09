@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@effect/vitest";
-import { defaultPolicy } from "@/src/tx/index.js";
+import { defaultPolicy } from "#src/tx/index.js";
 
 describe("TxPolicy", () => {
   it("defaultPolicy.pollingInterval equals 4000", () => {

@@ -6,8 +6,8 @@ import type {
   SignatureRecoveryError,
   SignatureServiceShape,
   SignatureVerificationError,
-} from "@/src/signature/index.js";
-import { SignatureService } from "@/src/signature/index.js";
+} from "#src/signature/index.js";
+import { SignatureService } from "#src/signature/index.js";
 import { makeMockServiceLayer } from "./helpers.js";
 
 const DEFAULT_ADDRESS = "0x1234567890123456789012345678901234567890" as Address;

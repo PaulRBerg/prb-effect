@@ -41,7 +41,6 @@
     "jsdom": "catalog:dev",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "tsc-alias": "catalog:dev",
     "typescript": "catalog:dev",
     "viem": "^2.43.1",
     "vitest": "catalog:dev",
@@ -97,6 +96,12 @@
     },
     "wagmi": {
       "optional": true
+    }
+  },
+  "imports": {
+    "#src/*": {
+      "source": "./src/*",
+      "default": "./dist/*"
     }
   },
   "publishConfig": {

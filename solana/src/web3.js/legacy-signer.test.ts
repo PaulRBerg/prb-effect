@@ -1,8 +1,8 @@
 import { describe, expect, it } from "@effect/vitest";
 import { PublicKey } from "@solana/web3.js";
 import { Effect } from "effect";
-import { SignerService } from "@/src/signer/index.js";
-import { expectTaggedFailure } from "@/src/testing-kit/index.js";
+import { SignerService } from "#src/signer/index.js";
+import { expectTaggedFailure } from "#src/testing-kit/index.js";
 import { createLegacyTransaction } from "./_fixtures.js";
 import { makeSignerServiceFromLegacyAdapter } from "./legacy-signer.js";
 import { fromWeb3Transaction } from "./transaction-bridge.js";

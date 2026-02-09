@@ -8,7 +8,7 @@ import {
   encodeErc7579ExecuteCalldata,
   encodeErc7579SimpleMode,
   erc7579AccountAbi,
-} from "@/src/eip7702/index.js";
+} from "#src/eip7702/index.js";
 
 describe("EIP-7702 / ERC-7579 helpers", () => {
   describe("encodeErc7579SimpleMode", () => {

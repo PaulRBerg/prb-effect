@@ -6,10 +6,7 @@
     "jsx": "react-jsx",
     "outDir": "./dist",
     "rootDir": "./src",
-    "paths": {
-      "@/src": ["./src"],
-      "@/src/*": ["./src/*"]
-    }
+    "customConditions": ["source"]
   },
   "exclude": ["**/node_modules/", "src/**/*.test.ts", "src/**/*.test.tsx"],
   "include": [

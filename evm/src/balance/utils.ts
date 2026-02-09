@@ -1,6 +1,6 @@
 import { Option } from "effect";
 import type { Hex } from "viem";
-import { parseHexByte } from "@/src/internal/index.js";
+import { parseHexByte } from "#src/internal/index.js";
 
 /**
  * Decode a bytes32 string (used by some ERC-20 tokens for name/symbol).

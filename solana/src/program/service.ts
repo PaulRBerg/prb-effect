@@ -16,8 +16,8 @@ import type { TransactionInstruction } from "@solana/web3.js";
 import { PublicKey } from "@solana/web3.js";
 import BN from "bn.js";
 import { Context, Effect, Layer } from "effect";
-import { RpcService } from "@/src/rpc/index.js";
-import { SpanNames } from "@/src/telemetry/index.js";
+import { RpcService } from "#src/rpc/index.js";
+import { SpanNames } from "#src/telemetry/index.js";
 import type { AccountsMap, BuildInstructionParams, CreateProgramParams } from "./types.js";
 import { InstructionBuildError, InstructionNotFoundError, ProgramCreationError } from "./types.js";
 

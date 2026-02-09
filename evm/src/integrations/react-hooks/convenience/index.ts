@@ -11,12 +11,12 @@ import type {
   WriteAndTrackError,
   WriteAndTrackParams,
   WriteAndTrackResult,
-} from "@/src/contract/index.js";
-import { ContractPipeline } from "@/src/contract/index.js";
-import { ContractQuery } from "@/src/query/index.js";
-import type { TxState } from "@/src/tx/index.js";
-import { initialTxState } from "@/src/tx/index.js";
-import type { ContractFunctionName, ReadParams } from "@/src/types/index.js";
+} from "#src/contract/index.js";
+import { ContractPipeline } from "#src/contract/index.js";
+import { ContractQuery } from "#src/query/index.js";
+import type { TxState } from "#src/tx/index.js";
+import { initialTxState } from "#src/tx/index.js";
+import type { ContractFunctionName, ReadParams } from "#src/types/index.js";
 
 import { fromCause, fromUnknown } from "../internal/error.js";
 import { makeScopedRun } from "../internal/scoped-run.js";

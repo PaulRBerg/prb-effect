@@ -5,10 +5,10 @@ import type {
   ClientNotFoundError,
   TxFailedError,
   WalletNotConnectedError,
-} from "@/src/core/index.js";
-import type { GasPriceUnavailableError } from "@/src/gas/index.js";
-import type { TxPolicy, TxState } from "@/src/tx/index.js";
-import type { ContractFunctionName } from "@/src/types/index.js";
+} from "#src/core/index.js";
+import type { GasPriceUnavailableError } from "#src/gas/index.js";
+import type { TxPolicy, TxState } from "#src/tx/index.js";
+import type { ContractFunctionName } from "#src/types/index.js";
 import type { WriteAndTrackError, WriteAndTrackParams, WriteAndTrackResult } from "./types.js";
 
 export type ContractPipelineShape = {

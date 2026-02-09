@@ -2,8 +2,8 @@ import { describe, expect, it } from "@effect/vitest";
 import { Chunk, Effect, Layer, Stream } from "effect";
 import type { GetLogsParameters } from "viem";
 import { erc20Abi } from "viem";
-import { EventBackfill, EventBackfillLive } from "@/src/events/index.js";
-import { makeMockPublicClientLayer, TEST_ADDRESS, TEST_CHAIN_ID } from "@/src/testing-kit/index.js";
+import { EventBackfill, EventBackfillLive } from "#src/events/index.js";
+import { makeMockPublicClientLayer, TEST_ADDRESS, TEST_CHAIN_ID } from "#src/testing-kit/index.js";
 
 describe("EventBackfill", () => {
   describe("fetch", () => {

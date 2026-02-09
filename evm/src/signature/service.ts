@@ -16,7 +16,7 @@ import {
   verifyMessage,
   verifyTypedData,
 } from "viem";
-import { SpanNames } from "@/src/telemetry/index.js";
+import { SpanNames } from "#src/telemetry/index.js";
 import {
   InvalidSignatureError,
   SignatureRecoveryError,

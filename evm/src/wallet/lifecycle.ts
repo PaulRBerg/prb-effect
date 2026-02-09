@@ -1,15 +1,15 @@
 import { Context, Effect, Layer, Option } from "effect";
 import type { Address } from "viem";
-import type { UserRejectedError } from "@/src/core/index.js";
-import { classifyWalletError } from "@/src/core/index.js";
-import { parseHexInt } from "@/src/internal/index.js";
-import { SpanNames } from "@/src/telemetry/index.js";
+import type { UserRejectedError } from "#src/core/index.js";
+import { classifyWalletError } from "#src/core/index.js";
+import { parseHexInt } from "#src/internal/index.js";
+import { SpanNames } from "#src/telemetry/index.js";
 import type {
   AddChainParams,
   ChainSwitchError,
   WalletProvider,
   WatchAssetParams,
-} from "@/src/wallet/index.js";
+} from "#src/wallet/index.js";
 import {
   AccountNotConnectedError,
   AddChainError,
@@ -17,7 +17,7 @@ import {
   WalletConnectionError,
   WalletProviderRef,
   WatchAssetError,
-} from "@/src/wallet/index.js";
+} from "#src/wallet/index.js";
 
 const UNKNOWN_CHAIN_ID = 0;
 

@@ -1,7 +1,7 @@
 import { Effect, Layer } from "effect";
-import { SignatureError, WalletNotConnectedError } from "@/src/core/errors/index.js";
-import { SignerService } from "@/src/signer/index.js";
-import { SpanNames } from "@/src/telemetry/index.js";
+import { SignatureError, WalletNotConnectedError } from "#src/core/errors/index.js";
+import { SignerService } from "#src/signer/index.js";
+import { SpanNames } from "#src/telemetry/index.js";
 import { fromWeb3Transaction, toWeb3Transaction } from "./transaction-bridge.js";
 import type { LegacyWalletAdapter } from "./types.js";
 import { publicKeyToAddress } from "./types.js";

@@ -1,14 +1,14 @@
 import { describe, expect, it } from "@effect/vitest";
 import { Effect, Layer } from "effect";
 import { mainnet, polygon } from "viem/chains";
-import { BrowserStorage } from "@/src/platform/browser/storage/index.js";
-import type { PersistedTx } from "@/src/platform/browser/tx-store/index.js";
+import { BrowserStorage } from "#src/platform/browser/storage/index.js";
+import type { PersistedTx } from "#src/platform/browser/tx-store/index.js";
 import {
   InMemoryTxStoreLive,
   makeLocalStorageTxStoreLive,
   TxStore,
-} from "@/src/platform/browser/tx-store/index.js";
-import { TEST_TX_HASH } from "@/src/testing-kit/index.js";
+} from "#src/platform/browser/tx-store/index.js";
+import { TEST_TX_HASH } from "#src/testing-kit/index.js";
 
 /**
  * Mock localStorage implementation for testing.

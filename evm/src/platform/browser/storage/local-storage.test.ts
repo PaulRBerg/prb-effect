@@ -5,7 +5,7 @@ import {
   StorageDecodeError,
   StorageQuotaExceededError,
   StorageUnavailableError,
-} from "@/src/platform/browser/storage/index.js";
+} from "#src/platform/browser/storage/index.js";
 
 /**
  * Mock localStorage implementation for testing.

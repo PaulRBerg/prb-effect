@@ -10,7 +10,7 @@ export default mergeConfig(
   configShared,
   defineConfig({
     resolve: {
-      alias: { "@/src": srcDir },
+      alias: { "#src": srcDir },
     },
     test: {
       include: ["src/**/*.test.ts"],

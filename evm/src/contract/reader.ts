@@ -1,12 +1,12 @@
 import { Context, Effect, Layer } from "effect";
 import type { Abi } from "viem";
-import type { ClientNotFoundError } from "@/src/core/index.js";
+import type { ClientNotFoundError } from "#src/core/index.js";
 import {
   ContractReadError,
   classifyContractError,
   MulticallError,
   PublicClientService,
-} from "@/src/core/index.js";
+} from "#src/core/index.js";
 import type {
   ContractFunctionName,
   ContractFunctionReturnType,
@@ -14,7 +14,7 @@ import type {
   MulticallCall,
   MulticallResult,
   ReadParams,
-} from "@/src/types/index.js";
+} from "#src/types/index.js";
 
 /**
  * Service for reading from smart contracts

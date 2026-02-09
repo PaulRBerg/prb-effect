@@ -1,12 +1,12 @@
 import type { Stream } from "effect";
 import { Context, Effect, Layer, Option } from "effect";
 import type { Abi, Address, TransactionReceipt } from "viem";
-import type { ClientNotFoundError, EventDecodeError } from "@/src/core/index.js";
-import { EventWatchError, PublicClientService } from "@/src/core/index.js";
-import type { DecodedEvent } from "@/src/events/index.js";
-import { decodeReceiptLogs, tryDecodeLog } from "@/src/events/index.js";
-import { fromWatchCallback } from "@/src/internal/index.js";
-import type { ContractEventName } from "@/src/types/index.js";
+import type { ClientNotFoundError, EventDecodeError } from "#src/core/index.js";
+import { EventWatchError, PublicClientService } from "#src/core/index.js";
+import type { DecodedEvent } from "#src/events/index.js";
+import { decodeReceiptLogs, tryDecodeLog } from "#src/events/index.js";
+import { fromWatchCallback } from "#src/internal/index.js";
+import type { ContractEventName } from "#src/types/index.js";
 
 export type WatchParams<TAbi extends Abi, TEventName extends ContractEventName<TAbi>> = {
   chainId: number;

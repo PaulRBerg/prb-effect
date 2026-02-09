@@ -2,8 +2,8 @@ import { Context, Effect, Layer } from "effect";
 import type { Address } from "viem";
 import { mainnet } from "viem/chains";
 import { normalize } from "viem/ens";
-import type { ClientNotFoundError } from "@/src/core/index.js";
-import { PublicClientService } from "@/src/core/index.js";
+import type { ClientNotFoundError } from "#src/core/index.js";
+import { PublicClientService } from "#src/core/index.js";
 import {
   EnsAvatarNotFoundError,
   EnsNameNotFoundError,
@@ -11,8 +11,8 @@ import {
   EnsResolverNotConfiguredError,
   EnsReverseNameNotFoundError,
   EnsTextNotFoundError,
-} from "@/src/ens/errors.js";
-import { SpanNames } from "@/src/telemetry/index.js";
+} from "#src/ens/errors.js";
+import { SpanNames } from "#src/telemetry/index.js";
 
 type AssetGatewayUrls = {
   arweave?: string;

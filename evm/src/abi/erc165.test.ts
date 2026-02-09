@@ -6,14 +6,14 @@ import {
   erc165Abi,
   isErc721,
   supportsInterface,
-} from "@/src/abi/index.js";
-import { ContractReaderLive } from "@/src/contract/index.js";
+} from "#src/abi/index.js";
+import { ContractReaderLive } from "#src/contract/index.js";
 import {
   makeMockPublicClientLayer,
   TEST_ADDRESS,
   TEST_CHAIN_ID,
   UNKNOWN_CHAIN_ID,
-} from "@/src/testing-kit/index.js";
+} from "#src/testing-kit/index.js";
 
 describe("ERC-165 ABI", () => {
   it("exports erc165Abi with supportsInterface function", () => {

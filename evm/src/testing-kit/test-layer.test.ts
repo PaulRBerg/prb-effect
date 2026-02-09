@@ -2,13 +2,13 @@ import { describe, expect, it } from "@effect/vitest";
 import { Effect, Exit } from "effect";
 import type { Address, Hash } from "viem";
 import { erc20Abi } from "viem";
-import { BalanceService } from "@/src/balance/index.js";
-import { BlockService } from "@/src/block/index.js";
-import { ContractReader } from "@/src/contract/index.js";
-import { EnsResolver } from "@/src/ens/index.js";
-import { GasService } from "@/src/gas/index.js";
-import { NonceService } from "@/src/nonce/index.js";
-import { SignatureService } from "@/src/signature/index.js";
+import { BalanceService } from "#src/balance/index.js";
+import { BlockService } from "#src/block/index.js";
+import { ContractReader } from "#src/contract/index.js";
+import { EnsResolver } from "#src/ens/index.js";
+import { GasService } from "#src/gas/index.js";
+import { NonceService } from "#src/nonce/index.js";
+import { SignatureService } from "#src/signature/index.js";
 import {
   makeEffectEvmTestLayer,
   makeMockPublicClientLayer,
@@ -16,7 +16,7 @@ import {
   TEST_ADDRESS,
   TEST_CHAIN_ID,
   UNKNOWN_CHAIN_ID,
-} from "@/src/testing-kit/index.js";
+} from "#src/testing-kit/index.js";
 
 describe("Testing Kit", () => {
   describe("makeMockPublicClientLayer", () => {

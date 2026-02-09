@@ -2,7 +2,7 @@ import { describe, expect, it } from "@effect/vitest";
 import type { Context } from "effect";
 import { Chunk, Effect, Layer, Stream } from "effect";
 import type { Abi, Address, Hash } from "viem";
-import type { DecodedEvent } from "@/src/events/index.js";
+import type { DecodedEvent } from "#src/events/index.js";
 import {
   CursorStore,
   CursorStream,
@@ -11,8 +11,8 @@ import {
   EventStream,
   InMemoryCursorStoreLive,
   makeCursorKey,
-} from "@/src/events/index.js";
-import { TEST_ADDRESS, TEST_CHAIN_ID } from "@/src/testing-kit/index.js";
+} from "#src/events/index.js";
+import { TEST_ADDRESS, TEST_CHAIN_ID } from "#src/testing-kit/index.js";
 
 describe("CursorStore", () => {
   it.effect("stores and retrieves cursor", () =>

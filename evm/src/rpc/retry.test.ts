@@ -5,7 +5,7 @@ import {
   makeRetrySchedule,
   RetryConfigFromEnv,
   withRetry,
-} from "@/src/rpc/index.js";
+} from "#src/rpc/index.js";
 
 describe("retry", () => {
   const runWithTime = <A, E, R>(

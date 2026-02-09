@@ -10,21 +10,21 @@ import type {
   TxReplacedError,
   UserRejectedError,
   WrongNetworkError,
-} from "@/src/core/index.js";
+} from "#src/core/index.js";
 import {
   PublicClientService,
   WalletClientService,
   WalletNotConnectedError,
-} from "@/src/core/index.js";
+} from "#src/core/index.js";
 import {
   BytecodeMismatchError,
   DeploymentError,
   DeploymentRevertedError,
-} from "@/src/deploy/index.js";
-import type { GasPriceUnavailableError } from "@/src/gas/index.js";
-import { GasService } from "@/src/gas/index.js";
-import type { TxPolicy, TxState } from "@/src/tx/index.js";
-import { defaultPolicy, deriveFeeOverrides, makeTxTracker, TxManager } from "@/src/tx/index.js";
+} from "#src/deploy/index.js";
+import type { GasPriceUnavailableError } from "#src/gas/index.js";
+import { GasService } from "#src/gas/index.js";
+import type { TxPolicy, TxState } from "#src/tx/index.js";
+import { defaultPolicy, deriveFeeOverrides, makeTxTracker, TxManager } from "#src/tx/index.js";
 
 type DeployArgs<TAbi extends Abi> = ContractConstructorArgs<TAbi>;
 type DeployArgsField<TAbi extends Abi> =

@@ -2,8 +2,8 @@ import { describe, expect, it } from "@effect/vitest";
 import { Cause, Effect, Exit } from "effect";
 import type { Address } from "viem";
 import { mainnet } from "viem/chains";
-import { makeMockWalletProvider } from "@/src/testing-kit/index.js";
-import { signMessage, signTransaction, signTypedData } from "@/src/wallet/index.js";
+import { makeMockWalletProvider } from "#src/testing-kit/index.js";
+import { signMessage, signTransaction, signTypedData } from "#src/wallet/index.js";
 
 describe("signMessage", () => {
   it.effect("uses provided account parameter", () =>

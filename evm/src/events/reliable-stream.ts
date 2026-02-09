@@ -1,11 +1,11 @@
 import { Context, Effect, Fiber, Layer, Ref, Schedule, Stream } from "effect";
 import type { Abi, Address, Hash } from "viem";
-import { DEFAULT_POLLING_INTERVAL } from "@/src/constants/index.js";
-import type { ClientNotFoundError, EventWatchError } from "@/src/core/index.js";
-import { PublicClientService } from "@/src/core/index.js";
-import type { DecodedEvent } from "@/src/events/index.js";
-import { EventStream } from "@/src/events/index.js";
-import type { ContractEventName } from "@/src/types/index.js";
+import { DEFAULT_POLLING_INTERVAL } from "#src/constants/index.js";
+import type { ClientNotFoundError, EventWatchError } from "#src/core/index.js";
+import { PublicClientService } from "#src/core/index.js";
+import type { DecodedEvent } from "#src/events/index.js";
+import { EventStream } from "#src/events/index.js";
+import type { ContractEventName } from "#src/types/index.js";
 
 export type ReliableWatchParams<TAbi extends Abi, TEventName extends ContractEventName<TAbi>> = {
   chainId: number;

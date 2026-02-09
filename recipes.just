@@ -33,7 +33,6 @@ alias b := build
 @tsc-build:
     echo "🔨 Building the {{ PACKAGE_NAME }} package..."
     na tsc -p tsconfig.build.json
-    na tsc-alias -p tsconfig.build.json
     echo "✅ Package built successfully"
 
 # ---------------------------------------------------------------------------- #

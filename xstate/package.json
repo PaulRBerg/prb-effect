@@ -35,7 +35,6 @@
     "@xstate/react": "^6.0.0",
     "effect": "catalog:effect",
     "react": "catalog:",
-    "tsc-alias": "catalog:dev",
     "typescript": "catalog:dev",
     "vitest": "catalog:dev",
     "xstate": "^5.25.0"
@@ -78,6 +77,12 @@
     },
     "@xstate/react": {
       "optional": true
+    }
+  },
+  "imports": {
+    "#src/*": {
+      "source": "./src/*",
+      "default": "./dist/*"
     }
   },
   "publishConfig": {

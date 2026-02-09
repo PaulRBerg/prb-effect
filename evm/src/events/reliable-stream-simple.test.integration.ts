@@ -1,14 +1,14 @@
 import { describe, expect, it } from "@effect/vitest";
 import { Effect, Exit, Layer, Stream } from "effect";
 import { erc20Abi } from "viem";
-import type { EventWatchError } from "@/src/core/index.js";
-import type { DecodedEvent } from "@/src/events/index.js";
-import { EventStream, ReliableEventStream, ReliableEventStreamLive } from "@/src/events/index.js";
+import type { EventWatchError } from "#src/core/index.js";
+import type { DecodedEvent } from "#src/events/index.js";
+import { EventStream, ReliableEventStream, ReliableEventStreamLive } from "#src/events/index.js";
 import {
   makeMockPublicClientLayer,
   TEST_ADDRESS,
   UNKNOWN_CHAIN_ID,
-} from "@/src/testing-kit/index.js";
+} from "#src/testing-kit/index.js";
 
 describe("ReliableEventStream - Simple", () => {
   it.effect("ClientNotFoundError when chainId invalid", () =>

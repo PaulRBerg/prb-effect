@@ -1,8 +1,8 @@
 import type { Address } from "@solana/addresses";
 import type { Transaction, TransactionWithLifetime } from "@solana/transactions";
 import { Context, Effect, Layer } from "effect";
-import { SignatureError, WalletNotConnectedError } from "@/src/core/errors/index.js";
-import { SpanNames } from "@/src/telemetry/index.js";
+import { SignatureError, WalletNotConnectedError } from "#src/core/errors/index.js";
+import { SpanNames } from "#src/telemetry/index.js";
 
 export type SignerServiceShape = {
   /**

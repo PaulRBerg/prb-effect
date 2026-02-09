@@ -1,11 +1,11 @@
 import type { Stream } from "effect";
 import { Context, Effect, Layer } from "effect";
 import type { Block, Hash } from "viem";
-import { DEFAULT_BLOCK_WAIT_TIMEOUT } from "@/src/constants/index.js";
-import type { ClientNotFoundError } from "@/src/core/index.js";
-import { PublicClientService, TransportError } from "@/src/core/index.js";
-import { fromWatchCallback } from "@/src/internal/index.js";
-import { SpanNames } from "@/src/telemetry/index.js";
+import { DEFAULT_BLOCK_WAIT_TIMEOUT } from "#src/constants/index.js";
+import type { ClientNotFoundError } from "#src/core/index.js";
+import { PublicClientService, TransportError } from "#src/core/index.js";
+import { fromWatchCallback } from "#src/internal/index.js";
+import { SpanNames } from "#src/telemetry/index.js";
 import { BlockNotFoundError, BlockTimeoutError } from "./errors.js";
 
 export type BlockServiceShape = {

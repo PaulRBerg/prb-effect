@@ -1,7 +1,7 @@
 import { Context, Effect, Layer } from "effect";
 import type { Address, Hash, TransactionReceipt, WalletClient } from "viem";
-import { MIN_TX_GAS } from "@/src/constants/index.js";
-import type { ClientNotFoundError, WrongNetworkError } from "@/src/core/index.js";
+import { MIN_TX_GAS } from "#src/constants/index.js";
+import type { ClientNotFoundError, WrongNetworkError } from "#src/core/index.js";
 import {
   InsufficientFundsError,
   isInsufficientFunds,
@@ -12,11 +12,11 @@ import {
   UserRejectedError,
   WalletClientService,
   WalletNotConnectedError,
-} from "@/src/core/index.js";
-import type { GasPriceUnavailableError } from "@/src/gas/index.js";
-import { GasService } from "@/src/gas/index.js";
-import { deriveFeeOverrides, deriveTxType } from "@/src/tx/index.js";
-import type { TxOverrides } from "@/src/types/index.js";
+} from "#src/core/index.js";
+import type { GasPriceUnavailableError } from "#src/gas/index.js";
+import { GasService } from "#src/gas/index.js";
+import { deriveFeeOverrides, deriveTxType } from "#src/tx/index.js";
+import type { TxOverrides } from "#src/types/index.js";
 
 export type TransferOverrides = TxOverrides;
 

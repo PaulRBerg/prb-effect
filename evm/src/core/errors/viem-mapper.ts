@@ -13,12 +13,12 @@ import {
   ContractWriteError,
   GasEstimationError,
   SimulationFailedError,
-} from "@/src/core/errors/contract.js";
+} from "#src/core/errors/contract.js";
 import {
   InsufficientFundsError,
   isLikelyUserRejectedError,
   UserRejectedError,
-} from "@/src/core/errors/transaction.js";
+} from "#src/core/errors/transaction.js";
 import {
   AddChainError,
   ChainSwitchError,
@@ -27,7 +27,7 @@ import {
   SignTypedDataError,
   WalletConnectionError,
   WatchAssetError,
-} from "@/src/wallet/index.js";
+} from "#src/wallet/index.js";
 
 const REVERT_REASON_RE = /reverted with reason: (.+?)(?:\n|$)/;
 const REVERT_REASON_STRING_RE = /reverted with reason string '(.+?)'/;

@@ -1,8 +1,8 @@
 import { Effect } from "effect";
-import type { ClientNotFoundError } from "@/src/core/index.js";
-import type { GasPriceUnavailableError } from "@/src/gas/index.js";
-import { GasService } from "@/src/gas/index.js";
-import type { FeeOverrides, TxOverrides } from "@/src/types/index.js";
+import type { ClientNotFoundError } from "#src/core/index.js";
+import type { GasPriceUnavailableError } from "#src/gas/index.js";
+import { GasService } from "#src/gas/index.js";
+import type { FeeOverrides, TxOverrides } from "#src/types/index.js";
 import type { TxPolicy } from "./policy.js";
 
 const cap = (value: bigint, max: bigint | undefined): bigint =>

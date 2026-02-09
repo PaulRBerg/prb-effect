@@ -1,7 +1,7 @@
 import { Context, Effect, Layer, Request, RequestResolver } from "effect";
-import type { ContractReaderShape } from "@/src/contract/index.js";
-import { ContractReader } from "@/src/contract/index.js";
-import type { MulticallCall } from "@/src/types/index.js";
+import type { ContractReaderShape } from "#src/contract/index.js";
+import { ContractReader } from "#src/contract/index.js";
+import type { MulticallCall } from "#src/types/index.js";
 
 export type MulticallBatchOptions = {
   readonly blockNumber?: bigint | undefined;

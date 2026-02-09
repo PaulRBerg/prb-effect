@@ -1,7 +1,7 @@
 import type { Layer } from "effect";
 import { Effect } from "effect";
 import type { Address, Hash, TransactionReceipt } from "viem";
-import { MIN_TX_GAS } from "@/src/constants/index.js";
+import { MIN_TX_GAS } from "#src/constants/index.js";
 import type {
   ClientNotFoundError,
   InsufficientFundsError,
@@ -10,9 +10,9 @@ import type {
   UserRejectedError,
   WalletNotConnectedError,
   WrongNetworkError,
-} from "@/src/core/index.js";
-import type { TransferOverrides } from "@/src/transfer/index.js";
-import { TransferService } from "@/src/transfer/index.js";
+} from "#src/core/index.js";
+import type { TransferOverrides } from "#src/transfer/index.js";
+import { TransferService } from "#src/transfer/index.js";
 import { TEST_TX_HASH } from "./_fixtures/addresses.js";
 import { TEST_RECEIPT } from "./_fixtures/receipts.js";
 import { makeMockServiceLayer, withChainIdCheck } from "./helpers.js";

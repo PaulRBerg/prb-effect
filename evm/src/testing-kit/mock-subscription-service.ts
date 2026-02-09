@@ -1,12 +1,12 @@
 import type { Layer } from "effect";
 import { Effect, Stream, SubscriptionRef } from "effect";
 import type { Address, Block, Hash, Hex, Log } from "viem";
-import { ClientNotFoundError } from "@/src/core/index.js";
+import { ClientNotFoundError } from "#src/core/index.js";
 import type {
   SubscriptionConnectionState,
   SubscriptionRetryConfig,
-} from "@/src/subscriptions/index.js";
-import { SubscriptionService } from "@/src/subscriptions/index.js";
+} from "#src/subscriptions/index.js";
+import { SubscriptionService } from "#src/subscriptions/index.js";
 import { makeMockServiceLayer, withChainIdCheck } from "./helpers.js";
 
 /**

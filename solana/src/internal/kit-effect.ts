@@ -1,7 +1,7 @@
 import type { Rpc, SolanaRpcApi } from "@solana/kit";
 import { Effect } from "effect";
-import { RpcError } from "@/src/core/errors/rpc.js";
-import type { RpcServiceShape } from "@/src/rpc/service.js";
+import { RpcError } from "#src/core/errors/rpc.js";
+import type { RpcServiceShape } from "#src/rpc/service.js";
 
 /**
  * Get the RPC client and run an operation with it.

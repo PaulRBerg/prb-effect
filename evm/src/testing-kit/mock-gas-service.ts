@@ -1,10 +1,10 @@
 import type { Layer } from "effect";
 import { Effect } from "effect";
 import type { Address, Hex } from "viem";
-import { MIN_TX_GAS } from "@/src/constants/index.js";
-import type { ClientNotFoundError } from "@/src/core/index.js";
-import type { FeeEstimate, GasPriceUnavailableError, GasSpeed } from "@/src/gas/index.js";
-import { GasService } from "@/src/gas/index.js";
+import { MIN_TX_GAS } from "#src/constants/index.js";
+import type { ClientNotFoundError } from "#src/core/index.js";
+import type { FeeEstimate, GasPriceUnavailableError, GasSpeed } from "#src/gas/index.js";
+import { GasService } from "#src/gas/index.js";
 import { makeMockServiceLayer, withChainIdCheck } from "./helpers.js";
 
 const DEFAULT_FEE_ESTIMATE: FeeEstimate = {

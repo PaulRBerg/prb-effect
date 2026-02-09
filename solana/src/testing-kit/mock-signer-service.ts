@@ -1,9 +1,9 @@
 import type { Address } from "@solana/addresses";
 import type { Transaction, TransactionWithLifetime } from "@solana/transactions";
 import { Effect, Layer } from "effect";
-import type { SignatureError } from "@/src/core/errors/index.js";
-import { WalletNotConnectedError } from "@/src/core/errors/index.js";
-import { SignerService } from "@/src/signer/index.js";
+import type { SignatureError } from "#src/core/errors/index.js";
+import { WalletNotConnectedError } from "#src/core/errors/index.js";
+import { SignerService } from "#src/signer/index.js";
 import { TEST_WALLET } from "./_fixtures/addresses.js";
 
 /**

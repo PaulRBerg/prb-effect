@@ -1,9 +1,9 @@
 import { Context, Effect, Layer, Stream } from "effect";
 import type { Block } from "viem";
-import type { ClientNotFoundError, TransportError } from "@/src/core/index.js";
-import { PublicClientService, TransportError as TransportErrorClass } from "@/src/core/index.js";
-import { SubscriptionService } from "@/src/subscriptions/index.js";
-import { SpanNames } from "@/src/telemetry/index.js";
+import type { ClientNotFoundError, TransportError } from "#src/core/index.js";
+import { PublicClientService, TransportError as TransportErrorClass } from "#src/core/index.js";
+import { SubscriptionService } from "#src/subscriptions/index.js";
+import { SpanNames } from "#src/telemetry/index.js";
 
 export type ChainHeadShape = {
   readonly current: (

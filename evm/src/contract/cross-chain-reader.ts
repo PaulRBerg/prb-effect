@@ -1,14 +1,14 @@
 import { Context, Effect, Layer } from "effect";
 import type { Abi, Address, ContractFunctionArgs } from "viem";
-import type { ClientNotFoundError, ContractReadError, MulticallError } from "@/src/core/index.js";
-import { SpanNames } from "@/src/telemetry/index.js";
+import type { ClientNotFoundError, ContractReadError, MulticallError } from "#src/core/index.js";
+import { SpanNames } from "#src/telemetry/index.js";
 import type {
   ContractFunctionName,
   ContractFunctionReturnType,
   MulticallCall,
   MulticallResult,
   ReadParams,
-} from "@/src/types/index.js";
+} from "#src/types/index.js";
 import { ContractReader } from "./reader.js";
 
 type ArgsField<TArgs> = {

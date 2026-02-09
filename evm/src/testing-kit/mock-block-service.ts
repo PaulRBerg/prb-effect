@@ -1,9 +1,9 @@
 import type { Layer } from "effect";
 import { Effect, Stream } from "effect";
 import type { Block, Hash } from "viem";
-import type { BlockNotFoundError, BlockTimeoutError } from "@/src/block/index.js";
-import { BlockService } from "@/src/block/index.js";
-import type { ClientNotFoundError, TransportError } from "@/src/core/index.js";
+import type { BlockNotFoundError, BlockTimeoutError } from "#src/block/index.js";
+import { BlockService } from "#src/block/index.js";
+import type { ClientNotFoundError, TransportError } from "#src/core/index.js";
 import { makeMockServiceLayer, withChainIdCheck } from "./helpers.js";
 
 const DEFAULT_HASH = "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef" as Hash;

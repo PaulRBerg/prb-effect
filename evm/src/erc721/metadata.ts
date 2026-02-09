@@ -1,5 +1,5 @@
 import { Effect } from "effect";
-import { Erc721MetadataFetchError } from "@/src/erc721/errors.js";
+import { Erc721MetadataFetchError } from "#src/erc721/errors.js";
 
 export type NftMetadata = {
   animation_url?: string;

@@ -4,7 +4,7 @@ import {
   makeChainTransports,
   makeFallbackTransport,
   makeHttpTransport,
-} from "@/src/presets/index.js";
+} from "#src/presets/index.js";
 
 describe("transports", () => {
   describe("makeHttpTransport", () => {

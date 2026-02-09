@@ -9,7 +9,7 @@ import type {
   UserRejectedError,
   WalletNotConnectedError,
   WrongNetworkError,
-} from "@/src/core/index.js";
+} from "#src/core/index.js";
 
 export type CheckAllowanceParams = {
   readonly chainId: number;

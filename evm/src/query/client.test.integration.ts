@@ -1,8 +1,8 @@
 import { describe, expect, it } from "@effect/vitest";
 import { Deferred, Effect, Fiber, Layer, Ref, Stream, SubscriptionRef } from "effect";
-import { ChainHead, QueryClient, QueryClientLive } from "@/src/query/index.js";
-import { makeRpcCacheLive, RequestDedupLive, RpcCache } from "@/src/rpc/index.js";
-import { TEST_CHAIN_ID } from "@/src/testing-kit/index.js";
+import { ChainHead, QueryClient, QueryClientLive } from "#src/query/index.js";
+import { makeRpcCacheLive, RequestDedupLive, RpcCache } from "#src/rpc/index.js";
+import { TEST_CHAIN_ID } from "#src/testing-kit/index.js";
 
 describe("QueryClient", () => {
   it.effect("caches repeated queries", () =>

@@ -1,9 +1,9 @@
 import { describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
-import { MIN_TX_GAS } from "@/src/constants/index.js";
-import { TEST_TX_HASH } from "@/src/testing-kit/index.js";
-import type { TxState } from "@/src/tx/index.js";
-import { initialTxState, makeTxTracker } from "@/src/tx/index.js";
+import { MIN_TX_GAS } from "#src/constants/index.js";
+import { TEST_TX_HASH } from "#src/testing-kit/index.js";
+import type { TxState } from "#src/tx/index.js";
+import { initialTxState, makeTxTracker } from "#src/tx/index.js";
 
 describe("makeTxTracker", () => {
   it.effect("creates tracker with initial idle state", () =>

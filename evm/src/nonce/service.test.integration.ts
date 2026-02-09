@@ -2,9 +2,9 @@ import { describe, expect, it } from "@effect/vitest";
 import { Cause, Effect, Exit, Fiber } from "effect";
 import type { Address } from "viem";
 import { mainnet } from "viem/chains";
-import { ClientNotFoundError } from "@/src/core/index.js";
-import { NonceService } from "@/src/nonce/index.js";
-import { makeEffectEvmTestLayer } from "@/src/testing-kit/index.js";
+import { ClientNotFoundError } from "#src/core/index.js";
+import { NonceService } from "#src/nonce/index.js";
+import { makeEffectEvmTestLayer } from "#src/testing-kit/index.js";
 
 describe("NonceService (Live)", () => {
   const testAddress = "0x1234567890123456789012345678901234567890" as Address;

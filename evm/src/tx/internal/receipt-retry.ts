@@ -4,9 +4,9 @@ import {
   TransactionReceiptNotFoundError,
   WaitForTransactionReceiptTimeoutError,
 } from "viem";
-import type { ReceiptTimeoutError, TxFailedError, TxReplacedError } from "@/src/core/index.js";
-import { makeBackoffSchedule } from "@/src/internal/index.js";
-import { defaultRetryableErrors, isRetryableError } from "@/src/rpc/index.js";
+import type { ReceiptTimeoutError, TxFailedError, TxReplacedError } from "#src/core/index.js";
+import { makeBackoffSchedule } from "#src/internal/index.js";
+import { defaultRetryableErrors, isRetryableError } from "#src/rpc/index.js";
 
 /**
  * Error patterns that should trigger retry during receipt polling.

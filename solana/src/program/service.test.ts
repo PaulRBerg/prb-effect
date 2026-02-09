@@ -2,7 +2,7 @@ import type { Idl } from "@coral-xyz/anchor";
 import { describe, expect, it } from "@effect/vitest";
 import type { Address } from "@solana/addresses";
 import { Effect, Exit, Layer } from "effect";
-import { makeMockRpcServiceLayer } from "@/src/testing-kit/index.js";
+import { makeMockRpcServiceLayer } from "#src/testing-kit/index.js";
 import {
   InstructionNotFoundError,
   ProgramCreationError,

@@ -1,10 +1,10 @@
 import { describe, expect, it } from "@effect/vitest";
 import { Effect, Layer } from "effect";
 import type { Block, Hash } from "viem";
-import type { GasService } from "@/src/gas/index.js";
-import { GasServiceLive } from "@/src/gas/index.js";
-import type { MockPublicClientConfig } from "@/src/testing-kit/index.js";
-import { makeMockPublicClientLayer, TEST_CHAIN_ID } from "@/src/testing-kit/index.js";
+import type { GasService } from "#src/gas/index.js";
+import { GasServiceLive } from "#src/gas/index.js";
+import type { MockPublicClientConfig } from "#src/testing-kit/index.js";
+import { makeMockPublicClientLayer, TEST_CHAIN_ID } from "#src/testing-kit/index.js";
 import { deriveFeeOverrides, deriveTxType } from "./fees.js";
 
 const DEFAULT_HASH = "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef" as Hash;

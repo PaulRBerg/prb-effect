@@ -1,11 +1,11 @@
 import type { Scope, SubscriptionRef } from "effect";
 import { Clock, Context, Effect, Layer, Stream } from "effect";
 import type { Hash } from "viem";
-import type { ClientNotFoundError } from "@/src/core/index.js";
-import type { PersistedTx, TxStoreShape } from "@/src/platform/browser/tx-store/index.js";
-import { makeTxId, TxStore } from "@/src/platform/browser/tx-store/index.js";
-import type { TxRequestMeta, TxState } from "@/src/tx/index.js";
-import { TxManager } from "@/src/tx/index.js";
+import type { ClientNotFoundError } from "#src/core/index.js";
+import type { PersistedTx, TxStoreShape } from "#src/platform/browser/tx-store/index.js";
+import { makeTxId, TxStore } from "#src/platform/browser/tx-store/index.js";
+import type { TxRequestMeta, TxState } from "#src/tx/index.js";
+import { TxManager } from "#src/tx/index.js";
 
 /**
  * Optional metadata for persisting a transaction.

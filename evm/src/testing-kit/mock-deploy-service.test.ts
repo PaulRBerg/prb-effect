@@ -2,9 +2,9 @@ import { describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
 import type { Address, Hex } from "viem";
 import { mainnet } from "viem/chains";
-import { MIN_TX_GAS } from "@/src/constants/index.js";
-import { DeployService } from "@/src/deploy/index.js";
-import { makeMockDeployServiceLayer } from "@/src/testing-kit/index.js";
+import { MIN_TX_GAS } from "#src/constants/index.js";
+import { DeployService } from "#src/deploy/index.js";
+import { makeMockDeployServiceLayer } from "#src/testing-kit/index.js";
 
 const MOCK_ABI = [
   {

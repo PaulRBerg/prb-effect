@@ -7,7 +7,7 @@
 import type { Context } from "effect";
 import { Cause, Effect, Either, Exit, Layer, Option } from "effect";
 import { expect } from "vitest";
-import { ClientNotFoundError, WalletNotConnectedError } from "@/src/core/index.js";
+import { ClientNotFoundError, WalletNotConnectedError } from "#src/core/index.js";
 
 /**
  * Assert an Exit is a failure with a specific tagged error

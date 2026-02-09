@@ -9,9 +9,9 @@ import type {
   TransactionReceipt,
   WatchContractEventParameters,
 } from "viem";
-import { MIN_TX_GAS } from "@/src/constants/index.js";
-import type { PublicClientServiceShape } from "@/src/core/index.js";
-import { PublicClientService } from "@/src/core/index.js";
+import { MIN_TX_GAS } from "#src/constants/index.js";
+import type { PublicClientServiceShape } from "#src/core/index.js";
+import { PublicClientService } from "#src/core/index.js";
 import { makeChainIdGetter } from "./helpers.js";
 
 /**

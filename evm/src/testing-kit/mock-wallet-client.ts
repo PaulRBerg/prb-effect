@@ -1,8 +1,8 @@
 import type { Effect } from "effect";
 import { Layer } from "effect";
 import type { Address, Hash, Hex, TypedData } from "viem";
-import type { WalletClientServiceShape } from "@/src/core/index.js";
-import { WalletClientService } from "@/src/core/index.js";
+import type { WalletClientServiceShape } from "#src/core/index.js";
+import { WalletClientService } from "#src/core/index.js";
 import { makeWalletChainIdGetter } from "./helpers.js";
 
 /**

@@ -2,9 +2,9 @@ import { describe, expect, it } from "@effect/vitest";
 import { Cause, Effect, Exit } from "effect";
 import type { Address } from "viem";
 import { polygon } from "viem/chains";
-import { makeMockWalletProvider } from "@/src/testing-kit/index.js";
-import type { AddChainParams, WatchAssetParams } from "@/src/wallet/index.js";
-import { makeWalletLifecycleLive, WalletLifecycle } from "@/src/wallet/index.js";
+import { makeMockWalletProvider } from "#src/testing-kit/index.js";
+import type { AddChainParams, WatchAssetParams } from "#src/wallet/index.js";
+import { makeWalletLifecycleLive, WalletLifecycle } from "#src/wallet/index.js";
 
 describe("WalletLifecycle", () => {
   describe("connect", () => {

@@ -1,23 +1,23 @@
 import { Context, Effect, Layer } from "effect";
 import type { Address, Hash, Hex } from "viem";
-import type { ClientNotFoundError, WrongNetworkError } from "@/src/core/errors/index.js";
+import type { ClientNotFoundError, WrongNetworkError } from "#src/core/errors/index.js";
 import {
   ContractReadError,
   ContractWriteError,
   WalletNotConnectedError,
-} from "@/src/core/errors/index.js";
-import { PublicClientService, WalletClientService } from "@/src/core/index.js";
+} from "#src/core/errors/index.js";
+import { PublicClientService, WalletClientService } from "#src/core/index.js";
 import {
   Erc721MetadataFetchError,
   Erc721NoTokenURIError,
   Erc721OwnerNotFoundError,
   Erc721TransferError,
-} from "@/src/erc721/errors.js";
-import { readErc721, resolveAccount, writeErc721 } from "@/src/erc721/helpers.js";
-import type { NftMetadata } from "@/src/erc721/metadata.js";
-import { fetchNftMetadata } from "@/src/erc721/metadata.js";
-import { withWalletClient } from "@/src/internal/index.js";
-import { SpanNames } from "@/src/telemetry/index.js";
+} from "#src/erc721/errors.js";
+import { readErc721, resolveAccount, writeErc721 } from "#src/erc721/helpers.js";
+import type { NftMetadata } from "#src/erc721/metadata.js";
+import { fetchNftMetadata } from "#src/erc721/metadata.js";
+import { withWalletClient } from "#src/internal/index.js";
+import { SpanNames } from "#src/telemetry/index.js";
 
 export type Erc721ServiceShape = {
   readonly ownerOf: (params: {

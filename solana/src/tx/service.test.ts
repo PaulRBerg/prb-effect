@@ -3,14 +3,14 @@ import type { Instruction } from "@solana/kit";
 import type { Transaction, TransactionWithLifetime } from "@solana/transactions";
 import bs58 from "bs58";
 import { Effect } from "effect";
-import { COMPUTE_BUDGET_PROGRAM_ADDRESS, SYSTEM_PROGRAM_ADDRESS } from "@/src/constants/index.js";
+import { COMPUTE_BUDGET_PROGRAM_ADDRESS, SYSTEM_PROGRAM_ADDRESS } from "#src/constants/index.js";
 import {
   makeEffectSolanaTestLayer,
   makeMockRpc,
   TEST_SIGNATURE,
   TEST_WALLET,
-} from "@/src/testing-kit/index.js";
-import { TransactionService } from "@/src/tx/index.js";
+} from "#src/testing-kit/index.js";
+import { TransactionService } from "#src/tx/index.js";
 
 const TEST_SIGNATURE_2 =
   "6VERv8NMvzbJMEkV8xnrLkEaWRtSz9CosKDYjCJjBRnbJLgp8uirBgmQpjKhoR4tjF3ZpRzrFmBV6UjKdiSZkQUW";

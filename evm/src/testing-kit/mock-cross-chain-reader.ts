@@ -5,16 +5,16 @@ import type {
   CrossChainReader,
   CrossChainReaderShape,
   ReadSameParams,
-} from "@/src/contract/index.js";
-import { CrossChainReader as CrossChainReaderTag } from "@/src/contract/index.js";
-import type { ClientNotFoundError, ContractReadError, MulticallError } from "@/src/core/index.js";
-import { ClientNotFoundError as ClientNotFoundErrorClass } from "@/src/core/index.js";
+} from "#src/contract/index.js";
+import { CrossChainReader as CrossChainReaderTag } from "#src/contract/index.js";
+import type { ClientNotFoundError, ContractReadError, MulticallError } from "#src/core/index.js";
+import { ClientNotFoundError as ClientNotFoundErrorClass } from "#src/core/index.js";
 import type {
   Abi,
   ContractFunctionName,
   ContractFunctionReturnType,
   MulticallResult,
-} from "@/src/types/index.js";
+} from "#src/types/index.js";
 
 /**
  * Configuration for the mock CrossChainReader

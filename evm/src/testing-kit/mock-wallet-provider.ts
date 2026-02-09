@@ -1,4 +1,4 @@
-import type { WalletProvider } from "@/src/wallet/index.js";
+import type { WalletProvider } from "#src/wallet/index.js";
 
 export type MockWalletProviderConfig = {
   request?: (args: {

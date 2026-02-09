@@ -3,12 +3,12 @@ import type { PublicClient, WalletClient } from "viem";
 import type {
   PublicClientServiceShape,
   WalletClientServiceShape,
-} from "@/src/core/clients/index.js";
+} from "#src/core/clients/index.js";
 import type {
   ClientNotFoundError,
   WalletNotConnectedError,
   WrongNetworkError,
-} from "@/src/core/errors/index.js";
+} from "#src/core/errors/index.js";
 
 /**
  * Get a public client for the specified chain and run an operation with it.

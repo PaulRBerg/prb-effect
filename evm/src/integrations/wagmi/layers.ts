@@ -8,14 +8,14 @@ import {
   WalletClientService,
   WalletNotConnectedError,
   WrongNetworkError,
-} from "@/src/core/index.js";
-import { effectEvmServices, makeEffectEvmServices } from "@/src/presets/index.js";
-import type { TxPolicy } from "@/src/tx/index.js";
+} from "#src/core/index.js";
+import { effectEvmServices, makeEffectEvmServices } from "#src/presets/index.js";
+import type { TxPolicy } from "#src/tx/index.js";
 import {
   makeWalletProviderRefLive,
   WalletLifecycleFromProviderRefLive,
   WalletServiceFromProviderRefLive,
-} from "@/src/wallet/index.js";
+} from "#src/wallet/index.js";
 
 export type WagmiWalletClientOptions = {
   /**

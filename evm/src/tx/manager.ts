@@ -2,16 +2,16 @@ import type { Scope, SubscriptionRef } from "effect";
 import { Clock, Context, Duration, Effect, Fiber, Layer, Ref, Stream } from "effect";
 import type { Hash, TransactionReceipt } from "viem";
 import { WaitForTransactionReceiptTimeoutError } from "viem";
-import { DEFAULT_RECEIPT_TIMEOUT, DEFAULT_STUCK_TX_MS } from "@/src/constants/index.js";
-import type { ClientNotFoundError, TxReplacementReason } from "@/src/core/index.js";
+import { DEFAULT_RECEIPT_TIMEOUT, DEFAULT_STUCK_TX_MS } from "#src/constants/index.js";
+import type { ClientNotFoundError, TxReplacementReason } from "#src/core/index.js";
 import {
   PublicClientService,
   ReceiptTimeoutError,
   TransportError,
   TxFailedError,
   TxReplacedError,
-} from "@/src/core/index.js";
-import { SpanNames } from "@/src/telemetry/index.js";
+} from "#src/core/index.js";
+import { SpanNames } from "#src/telemetry/index.js";
 import { makeReceiptRetrySchedule } from "./internal/receipt-retry.js";
 import type { TxPolicy } from "./policy.js";
 import { defaultPolicy } from "./policy.js";

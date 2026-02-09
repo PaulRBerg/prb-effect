@@ -1,8 +1,8 @@
 import { Array as Arr, Effect, Option } from "effect";
 import type { Abi, Address, Hash, Log, TransactionReceipt } from "viem";
 import { decodeEventLog } from "viem";
-import { EventDecodeError } from "@/src/core/index.js";
-import type { ContractEventArgs, ContractEventName } from "@/src/types/index.js";
+import { EventDecodeError } from "#src/core/index.js";
+import type { ContractEventArgs, ContractEventName } from "#src/types/index.js";
 
 export type DecodedEvent<TAbi extends Abi = Abi, TEventName extends string = string> = {
   eventName: TEventName;

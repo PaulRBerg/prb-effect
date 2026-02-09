@@ -2,15 +2,15 @@ import { describe, expect, it } from "@effect/vitest";
 import { Chunk, Effect, Exit, Fiber, Layer, Ref, Stream, TestClock } from "effect";
 import type { Address, Hash, Log } from "viem";
 import { erc20Abi } from "viem";
-import type { EventWatchError } from "@/src/core/index.js";
-import type { DecodedEvent } from "@/src/events/index.js";
-import { EventStream, ReliableEventStream, ReliableEventStreamLive } from "@/src/events/index.js";
+import type { EventWatchError } from "#src/core/index.js";
+import type { DecodedEvent } from "#src/events/index.js";
+import { EventStream, ReliableEventStream, ReliableEventStreamLive } from "#src/events/index.js";
 import {
   makeMockPublicClientLayer,
   TEST_ADDRESS,
   TEST_CHAIN_ID,
   UNKNOWN_CHAIN_ID,
-} from "@/src/testing-kit/index.js";
+} from "#src/testing-kit/index.js";
 
 const unwrapNullable = <T>(value: T | null | undefined, name: string): NonNullable<T> => {
   if (value === null) {

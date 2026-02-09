@@ -1,12 +1,12 @@
 import { describe, expect, it } from "@effect/vitest";
 import { Effect, Layer } from "effect";
 import { stringToHex } from "viem";
-import { erc20Abi, erc20Abi_bytes32 } from "@/src/abi/index.js";
-import type { ContractReaderShape } from "@/src/contract/index.js";
-import { ContractReader } from "@/src/contract/index.js";
-import { readErc20Metadata } from "@/src/erc20/index.js";
-import { TEST_ADDRESS, TEST_CHAIN_ID } from "@/src/testing-kit/index.js";
-import type { MulticallResult } from "@/src/types/index.js";
+import { erc20Abi, erc20Abi_bytes32 } from "#src/abi/index.js";
+import type { ContractReaderShape } from "#src/contract/index.js";
+import { ContractReader } from "#src/contract/index.js";
+import { readErc20Metadata } from "#src/erc20/index.js";
+import { TEST_ADDRESS, TEST_CHAIN_ID } from "#src/testing-kit/index.js";
+import type { MulticallResult } from "#src/types/index.js";
 
 type MulticallCall = Readonly<{
   abi: unknown;

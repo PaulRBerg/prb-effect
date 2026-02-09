@@ -1,8 +1,8 @@
 import { Effect } from "effect";
 import type { Block } from "viem";
-import type { PublicClientServiceShape } from "@/src/core/index.js";
-import { fromWatchCallback } from "@/src/internal/index.js";
-import { SpanNames } from "@/src/telemetry/index.js";
+import type { PublicClientServiceShape } from "#src/core/index.js";
+import { fromWatchCallback } from "#src/internal/index.js";
+import { SpanNames } from "#src/telemetry/index.js";
 import { SubscriptionDroppedError } from "./errors.js";
 
 export function watchBlocks(

@@ -1,6 +1,6 @@
 import { Effect } from "effect";
 import type { Address, BlockTag, GetValue, Hash } from "viem";
-import { ContractReader, ContractWriter } from "@/src/contract/index.js";
+import { ContractReader, ContractWriter } from "#src/contract/index.js";
 import type {
   Abi,
   ContractFunctionArgs,
@@ -11,7 +11,7 @@ import type {
   TxOverrides,
   WriteFunctionName,
   WriteParams,
-} from "@/src/types/index.js";
+} from "#src/types/index.js";
 
 type ReadArgs<
   TAbi extends Abi,

@@ -7,7 +7,7 @@ import {
   InvalidSignatureError,
   SignatureService,
   SignatureServiceLive,
-} from "@/src/signature/index.js";
+} from "#src/signature/index.js";
 
 describe("SignatureService", () => {
   const testLayer = SignatureServiceLive;

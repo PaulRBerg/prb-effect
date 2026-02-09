@@ -1,10 +1,10 @@
 import { Effect } from "effect";
 import type { Address, Hex } from "viem";
-import { erc20Abi, erc20Abi_bytes32 } from "@/src/abi/index.js";
-import { decodeBytes32String } from "@/src/balance/index.js";
-import { ContractReader } from "@/src/contract/index.js";
-import type { ClientNotFoundError, MulticallError } from "@/src/core/index.js";
-import type { MulticallResult } from "@/src/types/index.js";
+import { erc20Abi, erc20Abi_bytes32 } from "#src/abi/index.js";
+import { decodeBytes32String } from "#src/balance/index.js";
+import { ContractReader } from "#src/contract/index.js";
+import type { ClientNotFoundError, MulticallError } from "#src/core/index.js";
+import type { MulticallResult } from "#src/types/index.js";
 
 export type Erc20Metadata = {
   address: Address;

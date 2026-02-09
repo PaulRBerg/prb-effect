@@ -1,9 +1,9 @@
 import type { Address, Instruction } from "@solana/kit";
 import type { Layer } from "effect";
 import { Effect } from "effect";
-import type { AccountNotFoundError, RpcError } from "@/src/core/errors/index.js";
-import type { ATAParams, MintAccount, TokenAccount } from "@/src/token/index.js";
-import { TokenService } from "@/src/token/index.js";
+import type { AccountNotFoundError, RpcError } from "#src/core/errors/index.js";
+import type { ATAParams, MintAccount, TokenAccount } from "#src/token/index.js";
+import { TokenService } from "#src/token/index.js";
 import { TEST_ADDRESS_2 } from "./_fixtures/addresses.js";
 import { makeMockServiceLayer } from "./helpers.js";
 

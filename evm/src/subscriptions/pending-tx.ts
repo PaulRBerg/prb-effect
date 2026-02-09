@@ -1,8 +1,8 @@
 import { Effect } from "effect";
 import type { Hash } from "viem";
-import type { PublicClientServiceShape } from "@/src/core/index.js";
-import { fromWatchCallback } from "@/src/internal/index.js";
-import { SpanNames } from "@/src/telemetry/index.js";
+import type { PublicClientServiceShape } from "#src/core/index.js";
+import { fromWatchCallback } from "#src/internal/index.js";
+import { SpanNames } from "#src/telemetry/index.js";
 import { SubscriptionDroppedError, SubscriptionNotSupportedError } from "./errors.js";
 
 export function watchPendingTxs(

@@ -1,1 +1,1 @@
-export * from "@/src/integrations/wagmi/index.js";
+export * from "#src/integrations/wagmi/index.js";

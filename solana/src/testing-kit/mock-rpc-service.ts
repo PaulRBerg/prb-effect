@@ -2,9 +2,9 @@ import type { Rpc, RpcSubscriptions, SolanaRpcApi, SolanaRpcSubscriptionsApi } f
 import { createSolanaRpc } from "@solana/kit";
 import type { Layer } from "effect";
 import { Effect } from "effect";
-import { ConnectionNotFoundError } from "@/src/core/errors/index.js";
-import { RpcService } from "@/src/rpc/index.js";
-import type { Cluster } from "@/src/types/index.js";
+import { ConnectionNotFoundError } from "#src/core/errors/index.js";
+import { RpcService } from "#src/rpc/index.js";
+import type { Cluster } from "#src/types/index.js";
 import { TEST_CLUSTER } from "./_fixtures/addresses.js";
 import { makeMockServiceLayer } from "./helpers.js";
 

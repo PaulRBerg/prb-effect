@@ -10,14 +10,14 @@ import type {
   TransactionSendError,
   TransactionTimeoutError,
   WalletNotConnectedError,
-} from "@/src/core/errors/index.js";
+} from "#src/core/errors/index.js";
 import type {
   ConfirmOpts,
   TransactionBatchItem,
   TransactionBatchOpts,
   TransactionReceipt,
-} from "@/src/tx/index.js";
-import { TransactionService } from "@/src/tx/index.js";
+} from "#src/tx/index.js";
+import { TransactionService } from "#src/tx/index.js";
 import { TEST_SIGNATURE } from "./_fixtures/addresses.js";
 import { makeMockServiceLayer } from "./helpers.js";
 

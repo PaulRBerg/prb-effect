@@ -1,13 +1,13 @@
 import { Layer } from "effect";
-import type { BalanceService } from "@/src/balance/index.js";
-import type { PdaService } from "@/src/pda/index.js";
-import type { SolanaClusterConfig } from "@/src/presets/index.js";
-import { effectSolanaServices, makeRpcLayer } from "@/src/presets/index.js";
-import type { ProgramWriter } from "@/src/program/index.js";
-import type { RpcService } from "@/src/rpc/index.js";
-import type { SignerService } from "@/src/signer/index.js";
-import type { TokenService } from "@/src/token/index.js";
-import type { TransactionService } from "@/src/tx/index.js";
+import type { BalanceService } from "#src/balance/index.js";
+import type { PdaService } from "#src/pda/index.js";
+import type { SolanaClusterConfig } from "#src/presets/index.js";
+import { effectSolanaServices, makeRpcLayer } from "#src/presets/index.js";
+import type { ProgramWriter } from "#src/program/index.js";
+import type { RpcService } from "#src/rpc/index.js";
+import type { SignerService } from "#src/signer/index.js";
+import type { TokenService } from "#src/token/index.js";
+import type { TransactionService } from "#src/tx/index.js";
 import { makeSignerServiceFromLegacyAdapter } from "./legacy-signer.js";
 import type { LegacyWalletAdapter } from "./types.js";
 

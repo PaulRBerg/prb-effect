@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@effect/vitest";
-import { erc20NoOutputAbi } from "@/src/abi/index.js";
+import { erc20NoOutputAbi } from "#src/abi/index.js";
 
 describe("erc20NoOutputAbi", () => {
   it("exports a minimal ABI for approve() with no outputs", () => {

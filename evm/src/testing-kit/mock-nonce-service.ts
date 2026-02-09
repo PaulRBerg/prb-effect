@@ -1,8 +1,8 @@
 import type { Layer } from "effect";
 import { Effect } from "effect";
 import type { Address } from "viem";
-import type { ClientNotFoundError, TransportError } from "@/src/core/index.js";
-import { NonceService } from "@/src/nonce/index.js";
+import type { ClientNotFoundError, TransportError } from "#src/core/index.js";
+import { NonceService } from "#src/nonce/index.js";
 import { makeMockServiceLayer, withChainIdCheck } from "./helpers.js";
 
 /**

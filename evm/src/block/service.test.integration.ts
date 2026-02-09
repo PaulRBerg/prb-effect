@@ -2,9 +2,9 @@ import { describe, expect, it } from "@effect/vitest";
 import { Cause, Effect, Exit, Fiber, TestClock } from "effect";
 import type { Block, Hash } from "viem";
 import { mainnet } from "viem/chains";
-import { BlockNotFoundError, BlockService, BlockTimeoutError } from "@/src/block/index.js";
-import { ClientNotFoundError, TransportError } from "@/src/core/index.js";
-import { makeEffectEvmTestLayer } from "@/src/testing-kit/index.js";
+import { BlockNotFoundError, BlockService, BlockTimeoutError } from "#src/block/index.js";
+import { ClientNotFoundError, TransportError } from "#src/core/index.js";
+import { makeEffectEvmTestLayer } from "#src/testing-kit/index.js";
 
 const DEFAULT_HASH = "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef" as Hash;
 

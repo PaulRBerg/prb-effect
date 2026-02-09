@@ -1,8 +1,8 @@
 import type { Rpc, RpcSubscriptions, SolanaRpcApi, SolanaRpcSubscriptionsApi } from "@solana/kit";
 import { createSolanaRpc, createSolanaRpcSubscriptions } from "@solana/kit";
 import { Context, Effect, Layer } from "effect";
-import { ConnectionNotFoundError } from "@/src/core/errors/index.js";
-import type { Cluster, ClusterConfig } from "@/src/types/index.js";
+import { ConnectionNotFoundError } from "#src/core/errors/index.js";
+import type { Cluster, ClusterConfig } from "#src/types/index.js";
 
 /**
  * Shape of the RPC service for type inference.

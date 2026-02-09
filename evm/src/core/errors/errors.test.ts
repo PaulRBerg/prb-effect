@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
 import { mainnet } from "viem/chains";
-import { DEFAULT_MAX_DELAY } from "@/src/constants/index.js";
+import { DEFAULT_MAX_DELAY } from "#src/constants/index.js";
 import {
   ClientNotFoundError,
   ContractReadError,
@@ -15,7 +15,7 @@ import {
   TransportError,
   TxFailedError,
   WalletNotConnectedError,
-} from "@/src/core/index.js";
+} from "#src/core/index.js";
 
 describe("ClientNotFoundError", () => {
   it("has correct _tag", () => {

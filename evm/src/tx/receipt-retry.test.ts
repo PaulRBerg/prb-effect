@@ -5,9 +5,9 @@ import {
   TransactionReceiptNotFoundError,
   WaitForTransactionReceiptTimeoutError,
 } from "viem";
-import { ReceiptTimeoutError, TxFailedError, TxReplacedError } from "@/src/core/index.js";
-import { makeBackoffSchedule } from "@/src/internal/index.js";
-import { isRetryableError } from "@/src/rpc/index.js";
+import { ReceiptTimeoutError, TxFailedError, TxReplacedError } from "#src/core/index.js";
+import { makeBackoffSchedule } from "#src/internal/index.js";
+import { isRetryableError } from "#src/rpc/index.js";
 import { receiptRetryablePatterns } from "./internal/receipt-retry.js";
 
 /**

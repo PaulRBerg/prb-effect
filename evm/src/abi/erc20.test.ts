@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
-import { erc20Abi, erc20Abi_bytes32 } from "@/src/abi/index.js";
-import { ApprovalCheckError, ApprovalError } from "@/src/core/index.js";
+import { erc20Abi, erc20Abi_bytes32 } from "#src/abi/index.js";
+import { ApprovalCheckError, ApprovalError } from "#src/core/index.js";
 
 describe("ERC-20 ABI Exports", () => {
   it("exports erc20Abi from viem", () => {

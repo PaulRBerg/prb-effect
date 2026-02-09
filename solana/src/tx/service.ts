@@ -19,18 +19,18 @@ import {
   getSetComputeUnitPriceInstruction,
 } from "@solana-program/compute-budget";
 import { Context, Duration, Effect, Layer, Schedule } from "effect";
-import type { WalletNotConnectedError } from "@/src/core/errors/index.js";
+import type { WalletNotConnectedError } from "#src/core/errors/index.js";
 import {
   SignatureError,
   SimulationFailedError,
   TransactionFailedError,
   TransactionSendError,
   TransactionTimeoutError,
-} from "@/src/core/errors/index.js";
-import type { RpcServiceShape } from "@/src/rpc/index.js";
-import { RpcService } from "@/src/rpc/index.js";
-import { SignerService } from "@/src/signer/index.js";
-import { SpanNames } from "@/src/telemetry/index.js";
+} from "#src/core/errors/index.js";
+import type { RpcServiceShape } from "#src/rpc/index.js";
+import { RpcService } from "#src/rpc/index.js";
+import { SignerService } from "#src/signer/index.js";
+import { SpanNames } from "#src/telemetry/index.js";
 import type {
   ComputeBudgetConfig,
   ConfirmOpts,

@@ -1,10 +1,10 @@
 import type { Layer } from "effect";
 import { Effect } from "effect";
 import type { Abi, Address, Hex } from "viem";
-import { MIN_TX_GAS } from "@/src/constants/index.js";
-import { formatPercent } from "@/src/internal/index.js";
-import type { SimulationResult, SimulationServiceShape } from "@/src/simulation/index.js";
-import { SimulationService } from "@/src/simulation/index.js";
+import { MIN_TX_GAS } from "#src/constants/index.js";
+import { formatPercent } from "#src/internal/index.js";
+import type { SimulationResult, SimulationServiceShape } from "#src/simulation/index.js";
+import { SimulationService } from "#src/simulation/index.js";
 import { makeMockServiceLayer, withChainIdCheck } from "./helpers.js";
 
 /**

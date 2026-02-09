@@ -1,12 +1,12 @@
 import { Context, Effect, Layer, Stream } from "effect";
 import type { Address, Hex } from "viem";
-import { erc20Abi, erc20Abi_bytes32 } from "@/src/abi/index.js";
-import type { ContractReaderShape } from "@/src/contract/index.js";
-import { ContractReader } from "@/src/contract/index.js";
-import type { ClientNotFoundError, ContractReadError, MulticallError } from "@/src/core/index.js";
-import { PublicClientService, TransportError } from "@/src/core/index.js";
-import { SpanNames } from "@/src/telemetry/index.js";
-import type { MulticallResult } from "@/src/types/index.js";
+import { erc20Abi, erc20Abi_bytes32 } from "#src/abi/index.js";
+import type { ContractReaderShape } from "#src/contract/index.js";
+import { ContractReader } from "#src/contract/index.js";
+import type { ClientNotFoundError, ContractReadError, MulticallError } from "#src/core/index.js";
+import { PublicClientService, TransportError } from "#src/core/index.js";
+import { SpanNames } from "#src/telemetry/index.js";
+import type { MulticallResult } from "#src/types/index.js";
 import { decodeBytes32String } from "./utils.js";
 
 export type TokenBalance = {

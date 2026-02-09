@@ -1,13 +1,13 @@
 import { describe, expect, it } from "@effect/vitest";
 import { Effect, Exit, Layer } from "effect";
 import { erc20Abi } from "viem";
-import { ContractReader, ContractReaderLive } from "@/src/contract/index.js";
+import { ContractReader, ContractReaderLive } from "#src/contract/index.js";
 import {
   makeMockPublicClientLayer,
   TEST_ADDRESS,
   TEST_CHAIN_ID,
   UNKNOWN_CHAIN_ID,
-} from "@/src/testing-kit/index.js";
+} from "#src/testing-kit/index.js";
 
 describe("ContractReader", () => {
   describe("read", () => {

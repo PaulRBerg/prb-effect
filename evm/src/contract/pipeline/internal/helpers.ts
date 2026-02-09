@@ -1,6 +1,6 @@
 import { Option } from "effect";
-import { DEFAULT_GAS_LIMIT_MULTIPLIER } from "@/src/constants/index.js";
-import { multiplyBigintByDecimal } from "@/src/internal/index.js";
+import { DEFAULT_GAS_LIMIT_MULTIPLIER } from "#src/constants/index.js";
+import { multiplyBigintByDecimal } from "#src/internal/index.js";
 
 /**
  * Convert nonce to bigint regardless of input type

@@ -9,10 +9,10 @@ import {
   getTransferInstruction,
 } from "@solana-program/token";
 import { Context, Effect, Layer } from "effect";
-import { TOKEN_PROGRAM_ADDRESS } from "@/src/constants/index.js";
-import { AccountNotFoundError, RpcError } from "@/src/core/errors/index.js";
-import { RpcService } from "@/src/rpc/index.js";
-import { SpanNames } from "@/src/telemetry/index.js";
+import { TOKEN_PROGRAM_ADDRESS } from "#src/constants/index.js";
+import { AccountNotFoundError, RpcError } from "#src/core/errors/index.js";
+import { RpcService } from "#src/rpc/index.js";
+import { SpanNames } from "#src/telemetry/index.js";
 
 export type MintAccount = Account<Mint>;
 export type TokenAccount = Account<TokenAccountData>;

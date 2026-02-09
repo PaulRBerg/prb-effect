@@ -6,8 +6,8 @@ import {
   logError,
   logEventReceived,
   logTxLifecycle,
-} from "@/src/telemetry/index.js";
-import { TEST_ADDRESS, TEST_CHAIN_ID, TEST_TX_HASH } from "@/src/testing-kit/index.js";
+} from "#src/telemetry/index.js";
+import { TEST_ADDRESS, TEST_CHAIN_ID, TEST_TX_HASH } from "#src/testing-kit/index.js";
 
 describe("logger", () => {
   describe("logContractRead", () => {

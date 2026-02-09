@@ -1,7 +1,7 @@
 import { Effect } from "effect";
 import type { Hash, TransactionReceipt } from "viem";
-import type { ClientNotFoundError, ReceiptTimeoutError, TxFailedError } from "@/src/core/index.js";
-import type { TxManagerShape, TxPolicy } from "@/src/tx/index.js";
+import type { ClientNotFoundError, ReceiptTimeoutError, TxFailedError } from "#src/core/index.js";
+import type { TxManagerShape, TxPolicy } from "#src/tx/index.js";
 
 export type OnReplacedCallback = (
   oldHash: Hash,

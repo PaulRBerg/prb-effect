@@ -3,8 +3,8 @@ import { Cause, Chunk, Effect, Exit, Fiber, Stream, TestClock } from "effect";
 import { constVoid as noop } from "effect/Function";
 import type { Block } from "viem";
 import { mainnet } from "viem/chains";
-import { SubscriptionDroppedError, SubscriptionService } from "@/src/subscriptions/index.js";
-import { makeEffectEvmTestLayer } from "@/src/testing-kit/index.js";
+import { SubscriptionDroppedError, SubscriptionService } from "#src/subscriptions/index.js";
+import { makeEffectEvmTestLayer } from "#src/testing-kit/index.js";
 
 describe("SubscriptionService (Live)", () => {
   it.effect("fails Stream with SubscriptionDroppedError on watcher error", () => {

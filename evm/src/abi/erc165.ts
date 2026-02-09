@@ -1,8 +1,8 @@
 import { Effect } from "effect";
 import type { Address, Hex } from "viem";
-import { ERC721_INTERFACE_ID } from "@/src/abi/index.js";
-import { ContractReader } from "@/src/contract/index.js";
-import type { ClientNotFoundError, ContractReadError } from "@/src/core/index.js";
+import { ERC721_INTERFACE_ID } from "#src/abi/index.js";
+import { ContractReader } from "#src/contract/index.js";
+import type { ClientNotFoundError, ContractReadError } from "#src/core/index.js";
 
 /** ERC-165 ABI for supportsInterface check */
 export const erc165Abi = [

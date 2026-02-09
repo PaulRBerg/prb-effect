@@ -1,10 +1,10 @@
 import { Array as Arr, Context, Effect, Layer, Stream } from "effect";
 import type { Abi, AbiEvent, Address } from "viem";
-import type { ClientNotFoundError } from "@/src/core/index.js";
-import { PublicClientService } from "@/src/core/index.js";
-import type { DecodedEvent } from "@/src/events/index.js";
-import { tryDecodeLog } from "@/src/events/index.js";
-import type { ContractEventName } from "@/src/types/index.js";
+import type { ClientNotFoundError } from "#src/core/index.js";
+import { PublicClientService } from "#src/core/index.js";
+import type { DecodedEvent } from "#src/events/index.js";
+import { tryDecodeLog } from "#src/events/index.js";
+import type { ContractEventName } from "#src/types/index.js";
 
 export type BackfillParams<TAbi extends Abi, TEventName extends ContractEventName<TAbi>> = {
   chainId: number;

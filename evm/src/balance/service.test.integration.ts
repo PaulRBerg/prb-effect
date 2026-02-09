@@ -2,9 +2,9 @@ import { describe, expect, it } from "@effect/vitest";
 import { Cause, Effect, Exit } from "effect";
 import type { Address, Hex } from "viem";
 import { mainnet } from "viem/chains";
-import { BalanceService, decodeBytes32String } from "@/src/balance/index.js";
-import { ClientNotFoundError, TransportError } from "@/src/core/index.js";
-import { makeEffectEvmTestLayer } from "@/src/testing-kit/index.js";
+import { BalanceService, decodeBytes32String } from "#src/balance/index.js";
+import { ClientNotFoundError, TransportError } from "#src/core/index.js";
+import { makeEffectEvmTestLayer } from "#src/testing-kit/index.js";
 
 describe("BalanceService (Live)", () => {
   const testAddress = "0x1234567890123456789012345678901234567890" as Address;

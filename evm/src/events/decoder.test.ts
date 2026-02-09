@@ -2,14 +2,14 @@ import { describe, expect, it } from "@effect/vitest";
 import { Effect, Option } from "effect";
 import type { Hex, Log, TransactionReceipt } from "viem";
 import { encodeEventTopics, erc20Abi } from "viem";
-import { EventDecodeError } from "@/src/core/index.js";
+import { EventDecodeError } from "#src/core/index.js";
 import {
   decodeLogOrFail,
   decodeReceiptLogs,
   decodeReceiptLogsByName,
   tryDecodeLog,
-} from "@/src/events/index.js";
-import { TEST_ADDRESS, TEST_ADDRESS_2, TEST_TX_HASH } from "@/src/testing-kit/index.js";
+} from "#src/events/index.js";
+import { TEST_ADDRESS, TEST_ADDRESS_2, TEST_TX_HASH } from "#src/testing-kit/index.js";
 
 describe("tryDecodeLog", () => {
   it("returns Some(DecodedEvent) for valid Transfer event log", () => {

@@ -8,7 +8,7 @@
 
 import { useActor } from "@xstate/react";
 import type { AnyActorLogic, InspectionEvent, Observer } from "xstate";
-import type { EligibilityStatus, FacilitatorMachineContext } from "@/src/machines/index.js";
+import type { EligibilityStatus, FacilitatorMachineContext } from "#src/machines/index.js";
 
 // =============================================================================
 // Types

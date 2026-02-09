@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@effect/vitest";
 import { Effect, Exit, Layer } from "effect";
 import { erc20Abi } from "viem";
-import { ContractWriter, ContractWriterLive } from "@/src/contract/index.js";
+import { ContractWriter, ContractWriterLive } from "#src/contract/index.js";
 import {
   makeMockPublicClientLayer,
   makeMockWalletClientLayer,
@@ -10,7 +10,7 @@ import {
   TEST_CHAIN_ID,
   TEST_TX_HASH,
   UNKNOWN_CHAIN_ID,
-} from "@/src/testing-kit/index.js";
+} from "#src/testing-kit/index.js";
 
 describe("ContractWriter", () => {
   describe("simulate", () => {

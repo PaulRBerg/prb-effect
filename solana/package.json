@@ -47,7 +47,6 @@
     "effect": "catalog:effect",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "tsc-alias": "catalog:dev",
     "typescript": "catalog:dev",
     "vitest": "catalog:dev"
   },
@@ -100,6 +99,12 @@
     },
     "react-dom": {
       "optional": true
+    }
+  },
+  "imports": {
+    "#src/*": {
+      "source": "./src/*",
+      "default": "./dist/*"
     }
   },
   "publishConfig": {

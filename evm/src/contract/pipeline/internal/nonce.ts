@@ -1,8 +1,8 @@
 import type { Scope } from "effect";
 import { Effect, Ref } from "effect";
 import type { Address } from "viem";
-import type { ClientNotFoundError, TransportError } from "@/src/core/index.js";
-import type { NonceServiceShape } from "@/src/nonce/index.js";
+import type { ClientNotFoundError, TransportError } from "#src/core/index.js";
+import type { NonceServiceShape } from "#src/nonce/index.js";
 import { nonceToBigInt } from "./helpers.js";
 
 export type NonceReservationResult = {

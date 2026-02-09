@@ -1,8 +1,8 @@
 import type { Address, Lamports } from "@solana/kit";
 import { Context, Duration, Effect, Layer, Schedule, Stream } from "effect";
-import { RpcError } from "@/src/core/errors/index.js";
-import { RpcService } from "@/src/rpc/index.js";
-import { SpanNames } from "@/src/telemetry/index.js";
+import { RpcError } from "#src/core/errors/index.js";
+import { RpcService } from "#src/rpc/index.js";
+import { SpanNames } from "#src/telemetry/index.js";
 
 /**
  * Shape of the Balance service for type inference.

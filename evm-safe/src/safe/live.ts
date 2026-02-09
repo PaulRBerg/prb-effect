@@ -7,7 +7,7 @@ import {
   SAFE_POLL_INTERVAL,
   SAFE_SIGNATURE_POLL_INTERVAL,
   SAFE_SIGNATURE_TIMEOUT,
-} from "@/src/constants/index.js";
+} from "#src/constants/index.js";
 import type { SafeAppsSDKInstance, SafeAppsSdkConfig } from "./adapter.js";
 import { loadSafeSdk } from "./adapter.js";
 import type { SafeAppsSdkUnavailableError } from "./errors.js";

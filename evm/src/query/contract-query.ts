@@ -1,12 +1,12 @@
 import type { Stream } from "effect";
 import { Context, Effect, Layer } from "effect";
 import type { Abi, ContractFunctionName } from "viem";
-import type { ClientNotFoundError, ContractReadError, MulticallError } from "@/src/core/index.js";
-import { ContractReadError as ContractReadErrorClass } from "@/src/core/index.js";
-import { ChainHead } from "@/src/query/chain-head.js";
-import { QueryClient } from "@/src/query/client.js";
-import { MulticallBatcher } from "@/src/query/multicall-batcher.js";
-import type { ContractFunctionReturnType, MulticallCall, ReadParams } from "@/src/types/index.js";
+import type { ClientNotFoundError, ContractReadError, MulticallError } from "#src/core/index.js";
+import { ContractReadError as ContractReadErrorClass } from "#src/core/index.js";
+import { ChainHead } from "#src/query/chain-head.js";
+import { QueryClient } from "#src/query/client.js";
+import { MulticallBatcher } from "#src/query/multicall-batcher.js";
+import type { ContractFunctionReturnType, MulticallCall, ReadParams } from "#src/types/index.js";
 
 export type ContractQueryReadOptions = {
   readonly ttl?: number | undefined;

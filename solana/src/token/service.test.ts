@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@effect/vitest";
 import { AccountState, getMintEncoder, getTokenEncoder } from "@solana-program/token";
 import { Effect } from "effect";
-import { TOKEN_2022_PROGRAM_ADDRESS, TOKEN_PROGRAM_ADDRESS } from "@/src/constants/index.js";
+import { TOKEN_2022_PROGRAM_ADDRESS, TOKEN_PROGRAM_ADDRESS } from "#src/constants/index.js";
 import {
   expectTaggedFailure,
   makeEffectSolanaTestLayer,
@@ -9,8 +9,8 @@ import {
   TEST_ADDRESS,
   TEST_MINT,
   TEST_WALLET,
-} from "@/src/testing-kit/index.js";
-import { TokenService } from "@/src/token/index.js";
+} from "#src/testing-kit/index.js";
+import { TokenService } from "#src/token/index.js";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Solana RPC types use branded types that can't be constructed from literals
 const makeRpcWithAccounts = (accounts: Record<string, Uint8Array | null>) =>

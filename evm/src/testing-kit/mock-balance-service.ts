@@ -1,14 +1,14 @@
 import type { Layer } from "effect";
 import { Effect, Stream } from "effect";
 import type { Address } from "viem";
-import type { TokenBalance } from "@/src/balance/index.js";
-import { BalanceService } from "@/src/balance/index.js";
+import type { TokenBalance } from "#src/balance/index.js";
+import { BalanceService } from "#src/balance/index.js";
 import type {
   ClientNotFoundError,
   ContractReadError,
   MulticallError,
   TransportError,
-} from "@/src/core/index.js";
+} from "#src/core/index.js";
 import { makeMockServiceLayer, withChainIdCheck } from "./helpers.js";
 
 /**

@@ -9,7 +9,7 @@ import {
   SignTxError,
   SignTypedDataError,
   WalletConnectionError,
-} from "@/src/wallet/index.js";
+} from "#src/wallet/index.js";
 
 describe("SignMessageError", () => {
   it("has correct _tag", () => {

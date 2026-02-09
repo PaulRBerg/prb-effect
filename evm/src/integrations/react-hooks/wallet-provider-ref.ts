@@ -3,8 +3,8 @@
 import * as Effect from "effect/Effect";
 import { constVoid as noop } from "effect/Function";
 import * as React from "react";
-import type { WalletProvider } from "@/src/wallet/index.js";
-import { WalletProviderRef } from "@/src/wallet/index.js";
+import type { WalletProvider } from "#src/wallet/index.js";
+import { WalletProviderRef } from "#src/wallet/index.js";
 import { useEffectEvmRuntime } from "./provider.js";
 
 export type WalletProviderRefActions = {

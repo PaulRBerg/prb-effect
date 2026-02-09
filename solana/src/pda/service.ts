@@ -1,7 +1,7 @@
 import type { Address, ProgramDerivedAddressBump } from "@solana/addresses";
 import { getAddressEncoder, getProgramDerivedAddress } from "@solana/addresses";
 import { Context, Effect, Layer } from "effect";
-import { SpanNames } from "@/src/telemetry/index.js";
+import { SpanNames } from "#src/telemetry/index.js";
 import { PdaDerivationError } from "./types.js";
 
 export type PdaSeed = Uint8Array | Address;

@@ -3,8 +3,8 @@ import {
   DEFAULT_GAS_LIMIT_MULTIPLIER,
   DEFAULT_POLLING_INTERVAL,
   DEFAULT_RECEIPT_TIMEOUT,
-} from "@/src/constants/index.js";
-import type { GasSpeed } from "@/src/gas/index.js";
+} from "#src/constants/index.js";
+import type { GasSpeed } from "#src/gas/index.js";
 
 export type TxPolicy = {
   /** Force transaction type. Overrides chain detection. */

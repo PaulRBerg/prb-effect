@@ -2,68 +2,68 @@ import { FetchHttpClient } from "@effect/platform";
 import { Effect, Layer, Option } from "effect";
 import type { Chain, PublicClient, Transport, WalletClient } from "viem";
 import { createPublicClient, createWalletClient, custom, fallback, webSocket } from "viem";
-import type { BalanceService } from "@/src/balance/index.js";
-import { BalanceServiceLive } from "@/src/balance/index.js";
-import type { BlockService } from "@/src/block/index.js";
-import { BlockServiceLive } from "@/src/block/index.js";
-import type { ContractPipeline, ContractReader, ContractWriter } from "@/src/contract/index.js";
+import type { BalanceService } from "#src/balance/index.js";
+import { BalanceServiceLive } from "#src/balance/index.js";
+import type { BlockService } from "#src/block/index.js";
+import { BlockServiceLive } from "#src/block/index.js";
+import type { ContractPipeline, ContractReader, ContractWriter } from "#src/contract/index.js";
 import {
   ContractPipelineLive,
   ContractReaderLive,
   ContractWriterLive,
-} from "@/src/contract/index.js";
+} from "#src/contract/index.js";
 import {
   ClientNotFoundError,
   PublicClientService,
   WalletClientService,
   WalletNotConnectedError,
   WrongNetworkError,
-} from "@/src/core/index.js";
-import type { DeployService } from "@/src/deploy/index.js";
-import { DeployServiceLive } from "@/src/deploy/index.js";
-import type { Eip7702Service } from "@/src/eip7702/index.js";
-import { Eip7702ServiceLive } from "@/src/eip7702/index.js";
-import type { EnsResolver } from "@/src/ens/index.js";
-import { EnsResolverLive } from "@/src/ens/index.js";
-import type { Erc721Service } from "@/src/erc721/index.js";
-import { Erc721ServiceLive } from "@/src/erc721/index.js";
+} from "#src/core/index.js";
+import type { DeployService } from "#src/deploy/index.js";
+import { DeployServiceLive } from "#src/deploy/index.js";
+import type { Eip7702Service } from "#src/eip7702/index.js";
+import { Eip7702ServiceLive } from "#src/eip7702/index.js";
+import type { EnsResolver } from "#src/ens/index.js";
+import { EnsResolverLive } from "#src/ens/index.js";
+import type { Erc721Service } from "#src/erc721/index.js";
+import { Erc721ServiceLive } from "#src/erc721/index.js";
 import type {
   CursorStore,
   CursorStream,
   EventBackfill,
   EventStream,
   ReliableEventStream,
-} from "@/src/events/index.js";
+} from "#src/events/index.js";
 import {
   CursorStreamLive,
   EventBackfillLive,
   EventStreamLive,
   InMemoryCursorStoreLive,
   ReliableEventStreamLive,
-} from "@/src/events/index.js";
-import type { GasService } from "@/src/gas/index.js";
-import { GasServiceLive } from "@/src/gas/index.js";
-import { parseHexInt } from "@/src/internal/index.js";
-import type { NonceService } from "@/src/nonce/index.js";
-import { NonceServiceLive } from "@/src/nonce/index.js";
-import type { ChainHead, ContractQuery, MulticallBatcher, QueryClient } from "@/src/query/index.js";
+} from "#src/events/index.js";
+import type { GasService } from "#src/gas/index.js";
+import { GasServiceLive } from "#src/gas/index.js";
+import { parseHexInt } from "#src/internal/index.js";
+import type { NonceService } from "#src/nonce/index.js";
+import { NonceServiceLive } from "#src/nonce/index.js";
+import type { ChainHead, ContractQuery, MulticallBatcher, QueryClient } from "#src/query/index.js";
 import {
   ChainHeadLive,
   ContractQueryLive,
   MulticallBatcherLive,
   QueryClientLive,
-} from "@/src/query/index.js";
-import type { RequestDedup, RpcCache } from "@/src/rpc/index.js";
-import { makeRpcCacheLive, RequestDedupLive } from "@/src/rpc/index.js";
-import type { SignatureService } from "@/src/signature/index.js";
-import { SignatureServiceLive } from "@/src/signature/index.js";
-import type { SimulationService } from "@/src/simulation/index.js";
-import { SimulationServiceLive } from "@/src/simulation/index.js";
-import type { SubscriptionService } from "@/src/subscriptions/index.js";
-import { SubscriptionServiceLive } from "@/src/subscriptions/index.js";
-import type { TxManager, TxPolicy, TxReplacement } from "@/src/tx/index.js";
-import { makeTxManagerLive, TxManagerLive, TxReplacementLive } from "@/src/tx/index.js";
-import type { WalletLifecycle, WalletProvider, WalletService } from "@/src/wallet/index.js";
+} from "#src/query/index.js";
+import type { RequestDedup, RpcCache } from "#src/rpc/index.js";
+import { makeRpcCacheLive, RequestDedupLive } from "#src/rpc/index.js";
+import type { SignatureService } from "#src/signature/index.js";
+import { SignatureServiceLive } from "#src/signature/index.js";
+import type { SimulationService } from "#src/simulation/index.js";
+import { SimulationServiceLive } from "#src/simulation/index.js";
+import type { SubscriptionService } from "#src/subscriptions/index.js";
+import { SubscriptionServiceLive } from "#src/subscriptions/index.js";
+import type { TxManager, TxPolicy, TxReplacement } from "#src/tx/index.js";
+import { makeTxManagerLive, TxManagerLive, TxReplacementLive } from "#src/tx/index.js";
+import type { WalletLifecycle, WalletProvider, WalletService } from "#src/wallet/index.js";
 import {
   makeWalletLifecycleLive,
   makeWalletProviderRefLive,
@@ -71,7 +71,7 @@ import {
   WalletLifecycleFromProviderRefLive,
   WalletProviderRef,
   WalletServiceFromProviderRefLive,
-} from "@/src/wallet/index.js";
+} from "#src/wallet/index.js";
 import type { HttpTransportOptions } from "./transports.js";
 import { makeHttpTransport } from "./transports.js";
 

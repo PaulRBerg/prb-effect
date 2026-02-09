@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@effect/vitest";
 import { Deferred, Effect, Fiber } from "effect";
-import { RequestDedup, RequestDedupLive } from "@/src/rpc/index.js";
+import { RequestDedup, RequestDedupLive } from "#src/rpc/index.js";
 
 describe("RequestDedup", () => {
   it.effect("single call executes effect once", () =>

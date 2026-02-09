@@ -1,7 +1,7 @@
 import type { Fiber } from "effect";
 import { Context, Effect, Layer, Ref, Stream } from "effect";
-import { ChainHead } from "@/src/query/chain-head.js";
-import { RequestDedup, RpcCache } from "@/src/rpc/index.js";
+import { ChainHead } from "#src/query/chain-head.js";
+import { RequestDedup, RpcCache } from "#src/rpc/index.js";
 
 export type QueryOptions = {
   readonly ttl?: number | undefined;

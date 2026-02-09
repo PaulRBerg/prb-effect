@@ -6,8 +6,8 @@ import {
   TenderlyApiError,
   TenderlyNotConfiguredError,
   TenderlyRateLimitError,
-} from "@/src/simulation/index.js";
-import type { SimulationResult, StateOverride, TraceCall } from "@/src/simulation/types.ts";
+} from "#src/simulation/index.js";
+import type { SimulationResult, StateOverride, TraceCall } from "#src/simulation/types.ts";
 
 type TenderlySimulationRequest = {
   network_id: string;

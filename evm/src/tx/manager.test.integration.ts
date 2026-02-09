@@ -1,9 +1,9 @@
 import { describe, expect, it } from "@effect/vitest";
 import { Chunk, Effect, Either, Exit, Layer, Stream } from "effect";
 import type { TransactionReceipt } from "viem";
-import { MIN_TX_GAS } from "@/src/constants/index.js";
-import { makeMockPublicClientLayer, TEST_CHAIN_ID, TEST_TX_HASH } from "@/src/testing-kit/index.js";
-import { makeTxManagerLive, TxManager, TxManagerLive, TxReplacement } from "@/src/tx/index.js";
+import { MIN_TX_GAS } from "#src/constants/index.js";
+import { makeMockPublicClientLayer, TEST_CHAIN_ID, TEST_TX_HASH } from "#src/testing-kit/index.js";
+import { makeTxManagerLive, TxManager, TxManagerLive, TxReplacement } from "#src/tx/index.js";
 
 const txReplacementLayer = Layer.succeed(
   TxReplacement,

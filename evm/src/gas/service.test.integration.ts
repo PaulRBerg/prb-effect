@@ -2,10 +2,10 @@ import { describe, expect, it } from "@effect/vitest";
 import { Cause, Effect, Exit } from "effect";
 import type { Address, Block } from "viem";
 import { mainnet } from "viem/chains";
-import { MIN_TX_GAS } from "@/src/constants/index.js";
-import { ClientNotFoundError } from "@/src/core/index.js";
-import { GasPriceUnavailableError, GasService } from "@/src/gas/index.js";
-import { makeEffectEvmTestLayer } from "@/src/testing-kit/index.js";
+import { MIN_TX_GAS } from "#src/constants/index.js";
+import { ClientNotFoundError } from "#src/core/index.js";
+import { GasPriceUnavailableError, GasService } from "#src/gas/index.js";
+import { makeEffectEvmTestLayer } from "#src/testing-kit/index.js";
 
 const DEFAULT_BLOCK: Block = {
   baseFeePerGas: 30000000000n,

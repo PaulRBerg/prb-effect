@@ -4,7 +4,7 @@ import {
   CircuitBreakerConfigFromEnv,
   CircuitOpenError,
   makeCircuitBreaker,
-} from "@/src/rpc/index.js";
+} from "#src/rpc/index.js";
 
 describe("CircuitBreaker", () => {
   it.effect("initial state is closed", () =>

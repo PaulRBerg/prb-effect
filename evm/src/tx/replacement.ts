@@ -1,16 +1,16 @@
 import { Context, Effect, Layer } from "effect";
 import type { Hash, PublicClient, Transaction } from "viem";
-import { MIN_TX_GAS } from "@/src/constants/index.js";
+import { MIN_TX_GAS } from "#src/constants/index.js";
 import type {
   ClientNotFoundError,
   WalletNotConnectedError,
   WrongNetworkError,
-} from "@/src/core/index.js";
-import { PublicClientService, TxFailedError, WalletClientService } from "@/src/core/index.js";
-import type { GasPriceUnavailableError } from "@/src/gas/index.js";
-import { GasService } from "@/src/gas/index.js";
-import { bumpByPercent } from "@/src/internal/index.js";
-import type { TxPolicy } from "@/src/tx/index.js";
+} from "#src/core/index.js";
+import { PublicClientService, TxFailedError, WalletClientService } from "#src/core/index.js";
+import type { GasPriceUnavailableError } from "#src/gas/index.js";
+import { GasService } from "#src/gas/index.js";
+import { bumpByPercent } from "#src/internal/index.js";
+import type { TxPolicy } from "#src/tx/index.js";
 
 export type TxReplacementShape = {
   readonly speedup: (

@@ -1,19 +1,19 @@
 import { Effect } from "effect";
 import type { Address, Hex, TypedData } from "viem";
-import { isLikelyUserRejectedError, isUserRejectedError } from "@/src/core/errors/index.js";
-import { SpanNames } from "@/src/telemetry/index.js";
+import { isLikelyUserRejectedError, isUserRejectedError } from "#src/core/errors/index.js";
+import { SpanNames } from "#src/telemetry/index.js";
 import type {
   SignMessageParams,
   SignTransactionParams,
   SignTypedDataParams,
   WalletProvider,
-} from "@/src/wallet/index.js";
+} from "#src/wallet/index.js";
 import {
   AccountNotConnectedError,
   SignMessageError,
   SignTxError,
   SignTypedDataError,
-} from "@/src/wallet/index.js";
+} from "#src/wallet/index.js";
 
 /**
  * Detect if an error is a user rejection

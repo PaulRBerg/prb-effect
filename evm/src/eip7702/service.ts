@@ -8,7 +8,7 @@ import type {
   TxFailedError,
   TxReplacedError,
   WrongNetworkError,
-} from "@/src/core/index.js";
+} from "#src/core/index.js";
 import {
   InsufficientFundsError,
   isInsufficientFunds,
@@ -17,10 +17,10 @@ import {
   UserRejectedError,
   WalletClientService,
   WalletNotConnectedError,
-} from "@/src/core/index.js";
-import type { TxPolicy } from "@/src/tx/index.js";
-import { defaultPolicy, TxManager } from "@/src/tx/index.js";
-import type { TxResult } from "@/src/types/index.js";
+} from "#src/core/index.js";
+import type { TxPolicy } from "#src/tx/index.js";
+import { defaultPolicy, TxManager } from "#src/tx/index.js";
+import type { TxResult } from "#src/types/index.js";
 import type { Erc7579ModeCode } from "./erc7579.js";
 import {
   ERC7579_MODE_SIMPLE_BATCH,

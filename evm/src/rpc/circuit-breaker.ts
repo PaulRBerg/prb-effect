@@ -1,5 +1,5 @@
 import { Clock, Config, Effect, Ref, Schema } from "effect";
-import { DEFAULT_MAX_DELAY } from "@/src/constants/index.js";
+import { DEFAULT_MAX_DELAY } from "#src/constants/index.js";
 
 export type CircuitState = "closed" | "open" | "half-open";
 

@@ -1,6 +1,6 @@
 import { Config, Effect, Schedule } from "effect";
-import type { BackoffConfig } from "@/src/internal/index.js";
-import { makeBackoffSchedule } from "@/src/internal/index.js";
+import type { BackoffConfig } from "#src/internal/index.js";
+import { makeBackoffSchedule } from "#src/internal/index.js";
 
 export type RetryConfig = BackoffConfig & {
   /** Array of error message patterns that should trigger retries */

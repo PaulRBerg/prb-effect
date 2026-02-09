@@ -2,25 +2,25 @@ import { describe, expect, it } from "@effect/vitest";
 import { Effect, Exit, Layer } from "effect";
 import type { Transport } from "viem";
 import { mainnet, sepolia } from "viem/chains";
-import { BalanceService } from "@/src/balance/index.js";
-import { BlockService } from "@/src/block/index.js";
-import { ContractReader, ContractWriter } from "@/src/contract/index.js";
-import { PublicClientService, WalletClientService } from "@/src/core/index.js";
-import { DeployService } from "@/src/deploy/index.js";
-import { Erc721Service } from "@/src/erc721/index.js";
-import { EventStream } from "@/src/events/index.js";
-import { GasService } from "@/src/gas/index.js";
-import { NonceService } from "@/src/nonce/index.js";
+import { BalanceService } from "#src/balance/index.js";
+import { BlockService } from "#src/block/index.js";
+import { ContractReader, ContractWriter } from "#src/contract/index.js";
+import { PublicClientService, WalletClientService } from "#src/core/index.js";
+import { DeployService } from "#src/deploy/index.js";
+import { Erc721Service } from "#src/erc721/index.js";
+import { EventStream } from "#src/events/index.js";
+import { GasService } from "#src/gas/index.js";
+import { NonceService } from "#src/nonce/index.js";
 import {
   effectEvmServices,
   makeEffectEvmLayer,
   makePublicClientLayer,
   makeWalletClientLayer,
-} from "@/src/presets/index.js";
-import { SignatureService } from "@/src/signature/index.js";
-import { SimulationService } from "@/src/simulation/index.js";
-import { SubscriptionService } from "@/src/subscriptions/index.js";
-import { TxManager } from "@/src/tx/index.js";
+} from "#src/presets/index.js";
+import { SignatureService } from "#src/signature/index.js";
+import { SimulationService } from "#src/simulation/index.js";
+import { SubscriptionService } from "#src/subscriptions/index.js";
+import { TxManager } from "#src/tx/index.js";
 
 describe("Preset Layers", () => {
   describe("makePublicClientLayer", () => {

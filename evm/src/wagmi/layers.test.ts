@@ -6,21 +6,21 @@ import { mainnet, sepolia } from "viem/chains";
 import { createConfig as createReactConfig, http as wagmiHttp } from "wagmi";
 import { mainnet as wagmiMainnet } from "wagmi/chains";
 import { mock } from "wagmi/connectors";
-import { BalanceService } from "@/src/balance/index.js";
-import { BlockService } from "@/src/block/index.js";
-import { PublicClientService, WalletClientService } from "@/src/core/index.js";
-import { DeployService } from "@/src/deploy/index.js";
-import { Erc721Service } from "@/src/erc721/index.js";
-import { GasService } from "@/src/gas/index.js";
-import { NonceService } from "@/src/nonce/index.js";
-import { SignatureService } from "@/src/signature/index.js";
-import { SimulationService } from "@/src/simulation/index.js";
-import { SubscriptionService } from "@/src/subscriptions/index.js";
+import { BalanceService } from "#src/balance/index.js";
+import { BlockService } from "#src/block/index.js";
+import { PublicClientService, WalletClientService } from "#src/core/index.js";
+import { DeployService } from "#src/deploy/index.js";
+import { Erc721Service } from "#src/erc721/index.js";
+import { GasService } from "#src/gas/index.js";
+import { NonceService } from "#src/nonce/index.js";
+import { SignatureService } from "#src/signature/index.js";
+import { SimulationService } from "#src/simulation/index.js";
+import { SubscriptionService } from "#src/subscriptions/index.js";
 import {
   makeEffectEvmLayerFromWagmi,
   makePublicClientLayerFromWagmi,
   makeWalletClientLayerFromWagmi,
-} from "@/src/wagmi/index.js";
+} from "#src/wagmi/index.js";
 
 describe("Wagmi preset layers", () => {
   it.effect("makePublicClientLayerFromWagmi provides public client", () =>

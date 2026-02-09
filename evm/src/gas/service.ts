@@ -1,11 +1,11 @@
 import { Context, Effect, Layer } from "effect";
 import type { Address, Hex } from "viem";
-import type { ClientNotFoundError } from "@/src/core/errors/index.js";
-import { PublicClientService } from "@/src/core/index.js";
-import { GasPriceUnavailableError } from "@/src/gas/errors.js";
-import type { FeeEstimate, GasSpeed } from "@/src/gas/estimator.js";
-import { getAllFeeEstimatesImpl, supportsEip1559Impl } from "@/src/gas/estimator.js";
-import { SpanNames } from "@/src/telemetry/index.js";
+import type { ClientNotFoundError } from "#src/core/errors/index.js";
+import { PublicClientService } from "#src/core/index.js";
+import { GasPriceUnavailableError } from "#src/gas/errors.js";
+import type { FeeEstimate, GasSpeed } from "#src/gas/estimator.js";
+import { getAllFeeEstimatesImpl, supportsEip1559Impl } from "#src/gas/estimator.js";
+import { SpanNames } from "#src/telemetry/index.js";
 
 export type GasServiceShape = {
   readonly estimateFees: (params: {

@@ -7,14 +7,14 @@ import type {
   TransactionType,
   WalletClient,
 } from "viem";
-import { MIN_TX_GAS } from "@/src/constants/index.js";
+import { MIN_TX_GAS } from "#src/constants/index.js";
 import type {
   ClientNotFoundError,
   TxReplacementReason,
   WalletNotConnectedError,
   WrongNetworkError,
-} from "@/src/core/index.js";
-import { PublicClientService, TxFailedError, WalletClientService } from "@/src/core/index.js";
+} from "#src/core/index.js";
+import { PublicClientService, TxFailedError, WalletClientService } from "#src/core/index.js";
 
 export type TxRequestMeta = {
   readonly accessList?: AccessList | undefined;

@@ -8,17 +8,17 @@
 
 import { Effect } from "effect";
 import type { Address, Hash, WalletClient } from "viem";
-import { erc721Abi } from "@/src/abi/index.js";
+import { erc721Abi } from "#src/abi/index.js";
 import type {
   PublicClientServiceShape,
   WalletClientServiceShape,
-} from "@/src/core/clients/index.js";
+} from "#src/core/clients/index.js";
 import type {
   ClientNotFoundError,
   WalletNotConnectedError,
   WrongNetworkError,
-} from "@/src/core/errors/index.js";
-import { viemTryPromise, withPublicClient, withWalletClient } from "@/src/internal/index.js";
+} from "#src/core/errors/index.js";
+import { viemTryPromise, withPublicClient, withWalletClient } from "#src/internal/index.js";
 
 /**
  * Read from an ERC-721 contract with automatic client retrieval and error handling.

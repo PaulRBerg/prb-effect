@@ -1,7 +1,7 @@
 import type { Scope } from "effect";
 import { Effect } from "effect";
 import type { Abi, Hash, TransactionReceipt } from "viem";
-import type { ContractWriterShape } from "@/src/contract/index.js";
+import type { ContractWriterShape } from "#src/contract/index.js";
 import type {
   ClientNotFoundError,
   ContractReadError,
@@ -16,13 +16,13 @@ import type {
   UserRejectedError,
   WalletNotConnectedError,
   WrongNetworkError,
-} from "@/src/core/index.js";
-import type { EventStreamShape } from "@/src/events/index.js";
-import type { GasPriceUnavailableError, GasServiceShape } from "@/src/gas/index.js";
-import type { NonceServiceShape } from "@/src/nonce/index.js";
-import type { TxManagerShape, TxPolicy } from "@/src/tx/index.js";
-import { defaultPolicy } from "@/src/tx/index.js";
-import type { ContractFunctionName, WriteParams } from "@/src/types/index.js";
+} from "#src/core/index.js";
+import type { EventStreamShape } from "#src/events/index.js";
+import type { GasPriceUnavailableError, GasServiceShape } from "#src/gas/index.js";
+import type { NonceServiceShape } from "#src/nonce/index.js";
+import type { TxManagerShape, TxPolicy } from "#src/tx/index.js";
+import { defaultPolicy } from "#src/tx/index.js";
+import type { ContractFunctionName, WriteParams } from "#src/types/index.js";
 import type { PipelineHooks, WriteAndTrackResult } from "../types.js";
 import { confirmNonce, withNonceReservation } from "./nonce.js";
 import { deriveBaseOverrides, simulateAndEstimate } from "./prepare.js";

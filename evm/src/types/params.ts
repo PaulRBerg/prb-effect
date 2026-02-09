@@ -8,7 +8,7 @@ import type {
   Hash,
   TransactionReceipt,
 } from "viem";
-import type { TxOverrides } from "@/src/types/index.js";
+import type { TxOverrides } from "#src/types/index.js";
 
 type ValueField<TAbi extends Abi, TFunctionName extends string> = Readonly<
   GetValue<TAbi, TFunctionName, bigint>

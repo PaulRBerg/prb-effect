@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@effect/vitest";
 import { Effect, Layer } from "effect";
-import { Eip7702Service, Eip7702ServiceLive } from "@/src/eip7702/index.js";
+import { Eip7702Service, Eip7702ServiceLive } from "#src/eip7702/index.js";
 import {
   makeMockPublicClientLayer,
   makeMockWalletClientLayer,
@@ -8,8 +8,8 @@ import {
   TEST_ADDRESS_2,
   TEST_CHAIN_ID,
   TEST_TX_HASH,
-} from "@/src/testing-kit/index.js";
-import { TxManager } from "@/src/tx/index.js";
+} from "#src/testing-kit/index.js";
+import { TxManager } from "#src/tx/index.js";
 
 describe("Eip7702Service", () => {
   it.effect("sends an eip7702 tx to self with an unsigned authorization", () =>

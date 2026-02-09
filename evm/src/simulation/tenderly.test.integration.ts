@@ -8,7 +8,7 @@ import {
   simulateTenderly,
   TenderlyApiError,
   TenderlyRateLimitError,
-} from "@/src/simulation/index.js";
+} from "#src/simulation/index.js";
 
 const configProvider = ConfigProvider.fromMap(
   new Map([

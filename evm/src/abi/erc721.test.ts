@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@effect/vitest";
-import { ERC721_INTERFACE_ID, erc721Abi } from "@/src/abi/index.js";
+import { ERC721_INTERFACE_ID, erc721Abi } from "#src/abi/index.js";
 
 describe("ERC-721 ABI Exports", () => {
   it("exports erc721Abi from viem", () => {

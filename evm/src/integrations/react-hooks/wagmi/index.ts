@@ -4,8 +4,8 @@ import type { Config } from "@wagmi/core";
 import { getAccount, watchAccount } from "@wagmi/core";
 import * as Layer from "effect/Layer";
 import * as React from "react";
-import { makeEffectEvmLayerFromWagmiWithWalletProviderRef } from "@/src/wagmi/index.js";
-import type { WalletProvider } from "@/src/wallet/index.js";
+import { makeEffectEvmLayerFromWagmiWithWalletProviderRef } from "#src/wagmi/index.js";
+import type { WalletProvider } from "#src/wallet/index.js";
 import { EffectEvmProvider, EffectEvmProviderSync } from "../provider.js";
 import { useWalletProviderRef } from "../wallet-provider-ref.js";
 

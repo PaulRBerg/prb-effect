@@ -1,6 +1,6 @@
 import { Effect } from "effect";
 import type { Abi } from "viem";
-import type { ContractWriterShape } from "@/src/contract/index.js";
+import type { ContractWriterShape } from "#src/contract/index.js";
 import type {
   ClientNotFoundError,
   ContractReadError,
@@ -8,17 +8,17 @@ import type {
   InsufficientFundsError,
   SimulationFailedError,
   UserRejectedError,
-} from "@/src/core/index.js";
-import type { GasPriceUnavailableError, GasServiceShape } from "@/src/gas/index.js";
-import { GasService } from "@/src/gas/index.js";
-import type { TxPolicy } from "@/src/tx/index.js";
-import { deriveFeeOverrides, deriveTxType } from "@/src/tx/index.js";
+} from "#src/core/index.js";
+import type { GasPriceUnavailableError, GasServiceShape } from "#src/gas/index.js";
+import { GasService } from "#src/gas/index.js";
+import type { TxPolicy } from "#src/tx/index.js";
+import { deriveFeeOverrides, deriveTxType } from "#src/tx/index.js";
 import type {
   ContractFunctionName,
   FeeOverrides,
   TxOverrides,
   WriteParams,
-} from "@/src/types/index.js";
+} from "#src/types/index.js";
 import { applyGasLimitMultiplier } from "./helpers.js";
 
 export type BaseOverrides = TxOverrides & FeeOverrides;

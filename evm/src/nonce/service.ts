@@ -1,9 +1,9 @@
 import { Context, Effect, Layer } from "effect";
 import type { Address } from "viem";
-import type { ClientNotFoundError } from "@/src/core/errors/index.js";
-import { PublicClientService, TransportError } from "@/src/core/index.js";
-import { makeNonceManager } from "@/src/nonce/manager.js";
-import { SpanNames } from "@/src/telemetry/index.js";
+import type { ClientNotFoundError } from "#src/core/errors/index.js";
+import { PublicClientService, TransportError } from "#src/core/index.js";
+import { makeNonceManager } from "#src/nonce/manager.js";
+import { SpanNames } from "#src/telemetry/index.js";
 
 export type NonceServiceShape = {
   readonly getNext: (params: {

@@ -4,7 +4,7 @@ import {
   InstructionBuildError,
   InstructionNotFoundError,
   ProgramCreationError,
-} from "@/src/program/index.js";
+} from "#src/program/index.js";
 import {
   BlockhashExpiredError,
   SimulationFailedError,

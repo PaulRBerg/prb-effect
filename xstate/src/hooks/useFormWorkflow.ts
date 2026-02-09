@@ -37,7 +37,7 @@
 
 import { useActor } from "@xstate/react";
 import type { AnyActorLogic, InspectionEvent, Observer } from "xstate";
-import type { FormMachineContext } from "@/src/machines/index.js";
+import type { FormMachineContext } from "#src/machines/index.js";
 
 // =============================================================================
 // Types

@@ -2,16 +2,16 @@ import { describe, expect, it } from "@effect/vitest";
 import { Effect, Layer, Stream } from "effect";
 import type { Abi } from "viem";
 import { erc20Abi } from "viem";
-import { ContractReader } from "@/src/contract/index.js";
+import { ContractReader } from "#src/contract/index.js";
 import {
   ChainHead,
   ContractQuery,
   ContractQueryLive,
   MulticallBatcherLive,
   QueryClientLive,
-} from "@/src/query/index.js";
-import { makeRpcCacheLive, RequestDedupLive } from "@/src/rpc/index.js";
-import { TEST_ADDRESS, TEST_ADDRESS_2, TEST_CHAIN_ID } from "@/src/testing-kit/index.js";
+} from "#src/query/index.js";
+import { makeRpcCacheLive, RequestDedupLive } from "#src/rpc/index.js";
+import { TEST_ADDRESS, TEST_ADDRESS_2, TEST_CHAIN_ID } from "#src/testing-kit/index.js";
 
 describe("ContractQuery", () => {
   it.effect("batches concurrent reads into a single multicall", () =>

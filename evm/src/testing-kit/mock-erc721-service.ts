@@ -1,8 +1,8 @@
 import type { Layer } from "effect";
 import { Effect } from "effect";
 import type { Address, Hash, Hex } from "viem";
-import type { Erc721ServiceShape, NftMetadata } from "@/src/erc721/index.js";
-import { Erc721Service } from "@/src/erc721/index.js";
+import type { Erc721ServiceShape, NftMetadata } from "#src/erc721/index.js";
+import { Erc721Service } from "#src/erc721/index.js";
 import { makeMockServiceLayer, withChainIdCheck, withWalletChainIdCheck } from "./helpers.js";
 
 /**

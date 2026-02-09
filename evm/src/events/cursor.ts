@@ -1,10 +1,10 @@
 import { Context, Effect, Layer, Ref, Stream } from "effect";
 import type { Abi } from "viem";
-import type { ClientNotFoundError, EventWatchError } from "@/src/core/index.js";
-import type { BackfillParams, DecodedEvent, WatchParams } from "@/src/events/index.js";
-import { EventBackfill, EventStream } from "@/src/events/index.js";
-import type { StorageError } from "@/src/platform/browser/storage/index.js";
-import type { ContractEventName } from "@/src/types/index.js";
+import type { ClientNotFoundError, EventWatchError } from "#src/core/index.js";
+import type { BackfillParams, DecodedEvent, WatchParams } from "#src/events/index.js";
+import { EventBackfill, EventStream } from "#src/events/index.js";
+import type { StorageError } from "#src/platform/browser/storage/index.js";
+import type { ContractEventName } from "#src/types/index.js";
 
 export type StreamCursor = {
   chainId: number;

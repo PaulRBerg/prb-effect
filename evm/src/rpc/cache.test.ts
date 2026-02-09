@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@effect/vitest";
 import { Effect, TestClock } from "effect";
-import { makeRpcCacheLive, RpcCache } from "@/src/rpc/index.js";
+import { makeRpcCacheLive, RpcCache } from "#src/rpc/index.js";
 
 describe("RpcCache", () => {
   const testLayer = makeRpcCacheLive();

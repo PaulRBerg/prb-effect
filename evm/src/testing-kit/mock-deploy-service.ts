@@ -1,10 +1,10 @@
 import type { Layer } from "effect";
 import { Effect, SubscriptionRef } from "effect";
 import type { Abi, Address, ContractConstructorArgs, Hash, Hex, TransactionReceipt } from "viem";
-import { MIN_TX_GAS } from "@/src/constants/index.js";
-import type { DeployResult, DeployServiceShape } from "@/src/deploy/index.js";
-import { DeployService } from "@/src/deploy/index.js";
-import type { TxState } from "@/src/tx/index.js";
+import { MIN_TX_GAS } from "#src/constants/index.js";
+import type { DeployResult, DeployServiceShape } from "#src/deploy/index.js";
+import { DeployService } from "#src/deploy/index.js";
+import type { TxState } from "#src/tx/index.js";
 import { makeMockServiceLayer, withChainIdCheck } from "./helpers.js";
 
 type DeployArgsField<TAbi extends Abi> =

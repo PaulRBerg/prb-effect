@@ -2,14 +2,10 @@ import { describe, expect, it } from "@effect/vitest";
 import { Effect, Exit, Layer, Stream } from "effect";
 import type { Abi, Hash, TransactionReceipt } from "viem";
 import { erc20Abi } from "viem";
-import {
-  ContractPipeline,
-  ContractPipelineLive,
-  ContractWriterLive,
-} from "@/src/contract/index.js";
-import { ClientNotFoundError, ReceiptTimeoutError } from "@/src/core/index.js";
-import type { DecodedEvent } from "@/src/events/index.js";
-import { EventStream } from "@/src/events/index.js";
+import { ContractPipeline, ContractPipelineLive, ContractWriterLive } from "#src/contract/index.js";
+import { ClientNotFoundError, ReceiptTimeoutError } from "#src/core/index.js";
+import type { DecodedEvent } from "#src/events/index.js";
+import { EventStream } from "#src/events/index.js";
 import {
   makeMockGasServiceLayer,
   makeMockNonceServiceLayer,
@@ -19,9 +15,9 @@ import {
   TEST_ADDRESS_2,
   TEST_CHAIN_ID,
   TEST_TX_HASH,
-} from "@/src/testing-kit/index.js";
-import { TxManager, TxReplacement } from "@/src/tx/index.js";
-import type { ContractEventName } from "@/src/types/index.js";
+} from "#src/testing-kit/index.js";
+import { TxManager, TxReplacement } from "#src/tx/index.js";
+import type { ContractEventName } from "#src/types/index.js";
 
 const commonServices = Layer.mergeAll(
   makeMockGasServiceLayer({}, TEST_CHAIN_ID),

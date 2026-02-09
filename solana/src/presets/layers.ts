@@ -1,19 +1,19 @@
 import { Layer } from "effect";
-import type { BalanceService } from "@/src/balance/index.js";
-import { BalanceServiceLive } from "@/src/balance/index.js";
-import type { PdaService } from "@/src/pda/index.js";
-import { PdaServiceLive } from "@/src/pda/index.js";
-import type { ProgramWriter } from "@/src/program/index.js";
-import { ProgramWriterLive } from "@/src/program/index.js";
-import type { RpcService } from "@/src/rpc/index.js";
-import { makeRpcServiceLive } from "@/src/rpc/index.js";
-import type { SignerService, WalletAdapter } from "@/src/signer/index.js";
-import { makeSignerServiceFromAdapter } from "@/src/signer/index.js";
-import type { TokenService } from "@/src/token/index.js";
-import { TokenServiceLive } from "@/src/token/index.js";
-import type { TransactionService } from "@/src/tx/index.js";
-import { TransactionServiceLive } from "@/src/tx/index.js";
-import type { Cluster, ClusterConfig } from "@/src/types/index.js";
+import type { BalanceService } from "#src/balance/index.js";
+import { BalanceServiceLive } from "#src/balance/index.js";
+import type { PdaService } from "#src/pda/index.js";
+import { PdaServiceLive } from "#src/pda/index.js";
+import type { ProgramWriter } from "#src/program/index.js";
+import { ProgramWriterLive } from "#src/program/index.js";
+import type { RpcService } from "#src/rpc/index.js";
+import { makeRpcServiceLive } from "#src/rpc/index.js";
+import type { SignerService, WalletAdapter } from "#src/signer/index.js";
+import { makeSignerServiceFromAdapter } from "#src/signer/index.js";
+import type { TokenService } from "#src/token/index.js";
+import { TokenServiceLive } from "#src/token/index.js";
+import type { TransactionService } from "#src/tx/index.js";
+import { TransactionServiceLive } from "#src/tx/index.js";
+import type { Cluster, ClusterConfig } from "#src/types/index.js";
 
 /**
  * Configuration for connecting to a Solana cluster.
