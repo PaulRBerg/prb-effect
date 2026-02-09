@@ -6,8 +6,8 @@
     "paths": {
       "@/src": ["./src"],
       "@/src/*": ["./src/*"],
-      "@prb/effect-evm": ["../evm/src/index.ts"],
-      "@prb/effect-evm/*": ["../evm/src/*"]
+      "@prb/effect-evm": ["../evm/dist/index.d.ts"],
+      "@prb/effect-evm/*": ["../evm/dist/*/index.d.ts"]
     }
   },
   "exclude": ["**/node_modules/", "dist/"],
