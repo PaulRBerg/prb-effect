@@ -3,7 +3,6 @@ import type {
   AccessList,
   Hash,
   PublicClient,
-  Transaction,
   TransactionReceipt,
   TransactionType,
   WalletClient,
@@ -63,6 +62,10 @@ export type TxState =
 
 export const initialTxState: TxState = { status: "idle" };
 
+function isNotNullish<T>(value: T): value is NonNullable<T> {
+  return value != null;
+}
+
 /** Create a TxState tracker with subscription capabilities */
 export const makeTxTracker = Effect.gen(function* () {
   const ref = yield* SubscriptionRef.make<TxState>(initialTxState);
@@ -84,7 +87,7 @@ const getOriginalTx = (publicClient: PublicClient, hash: Hash) =>
     try: () => publicClient.getTransaction({ hash }),
   }).pipe(
     Effect.filterOrFail(
-      (tx): tx is Transaction => tx != null,
+      isNotNullish,
       () => new TxFailedError({ hash, message: `Transaction ${hash} not found` })
     )
   );

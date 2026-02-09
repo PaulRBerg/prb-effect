@@ -9,6 +9,7 @@ import type {
   SimulateContractParameters,
   WriteContractParameters,
 } from "viem";
+import { encodeFunctionData } from "viem";
 import type {
   ClientNotFoundError,
   ContractReadError,
@@ -45,6 +46,24 @@ const txRequestOverridesFromWriteParams = <
     nonce: overrides?.nonce,
     type: overrides?.type,
   };
+};
+
+const tryEncodeCalldata = <
+  TAbi extends Abi,
+  TFunctionName extends ContractFunctionName<TAbi, "nonpayable" | "payable">,
+>(
+  params: WriteParams<TAbi, TFunctionName>
+): string | undefined => {
+  try {
+    return encodeFunctionData({
+      abi: params.abi as Abi,
+      args: params.args as readonly unknown[] | undefined,
+      functionName: params.functionName as string,
+    });
+  } catch {
+    // Ignore encoding errors, calldata is optional context.
+    return undefined;
+  }
 };
 
 /**
@@ -121,11 +140,15 @@ export const ContractWriterLive = Layer.effect(
         const publicClient = yield* publicClientService.get(params.chainId);
 
         return yield* Effect.tryPromise({
-          catch: (cause) =>
-            classifyGasEstimationError(cause, {
+          catch: (cause) => {
+            const calldata = tryEncodeCalldata(params);
+            return classifyGasEstimationError(cause, {
               address: params.address,
+              calldata,
               functionName: params.functionName as string,
-            }),
+              sender: params.account,
+            });
+          },
           try: () =>
             publicClient.estimateContractGas({
               abi: params.abi,
@@ -145,11 +168,15 @@ export const ContractWriterLive = Layer.effect(
         const publicClient = yield* publicClientService.get(params.chainId);
 
         return yield* Effect.tryPromise({
-          catch: (cause) =>
-            classifyContractError(cause, {
+          catch: (cause) => {
+            const calldata = tryEncodeCalldata(params);
+            return classifyContractError(cause, {
               address: params.address,
+              calldata,
               functionName: params.functionName as string,
-            }),
+              sender: params.account,
+            });
+          },
           try: async () => {
             const result = await publicClient.simulateContract({
               abi: params.abi,
@@ -182,11 +209,15 @@ export const ContractWriterLive = Layer.effect(
         const walletClient = yield* walletClientService.get(params.chainId);
 
         return yield* Effect.tryPromise({
-          catch: (cause) =>
-            classifyWriteError(cause, {
+          catch: (cause) => {
+            const calldata = tryEncodeCalldata(params);
+            return classifyWriteError(cause, {
               address: params.address,
+              calldata,
               functionName: params.functionName as string,
-            }),
+              sender: params.account,
+            });
+          },
           try: () =>
             walletClient.writeContract({
               abi: params.abi,

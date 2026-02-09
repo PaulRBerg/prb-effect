@@ -200,7 +200,7 @@ function getReplacementHashFromMessage(message: string): Hash | undefined {
  */
 export function classifyContractError(
   error: unknown,
-  context: { address: Address; functionName: string }
+  context: { address: Address; calldata?: string; functionName: string; sender?: string }
 ): ContractReadError | SimulationFailedError | InsufficientFundsError | UserRejectedError {
   // Check for user rejection first
   if (isUserRejection(error)) {
@@ -226,9 +226,11 @@ export function classifyContractError(
     const revertReason = extractRevertReason(error);
     return new SimulationFailedError({
       address: context.address,
+      calldata: context.calldata,
       functionName: context.functionName,
       message: `Failed to simulate ${context.functionName} on ${context.address}${revertReason ? `: ${revertReason}` : ""}`,
       revertData: revertReason,
+      sender: context.sender,
     });
   }
 
@@ -246,7 +248,7 @@ export function classifyContractError(
  */
 export function classifyWriteError(
   error: unknown,
-  context: { address: Address; functionName: string }
+  context: { address: Address; calldata?: string; functionName: string; sender?: string }
 ): ContractWriteError | InsufficientFundsError | UserRejectedError {
   // Check for user rejection first
   if (isUserRejection(error)) {
@@ -267,9 +269,11 @@ export function classifyWriteError(
   // Default: return generic contract write error
   return new ContractWriteError({
     address: context.address,
+    calldata: context.calldata,
     cause: error,
     functionName: context.functionName,
     message: `Failed to write ${context.functionName} to ${context.address}`,
+    sender: context.sender,
   });
 }
 
@@ -278,7 +282,7 @@ export function classifyWriteError(
  */
 export function classifyGasEstimationError(
   error: unknown,
-  context: { address: Address; functionName: string }
+  context: { address: Address; calldata?: string; functionName: string; sender?: string }
 ): GasEstimationError | InsufficientFundsError | UserRejectedError {
   // Check for user rejection
   if (isUserRejection(error)) {
@@ -301,18 +305,22 @@ export function classifyGasEstimationError(
     const revertReason = extractRevertReason(error.cause);
     return new GasEstimationError({
       address: context.address,
+      calldata: context.calldata,
       cause: error,
       functionName: context.functionName,
       message: `Failed to estimate gas for ${context.functionName} on ${context.address}${revertReason ? `: ${revertReason}` : ""}`,
+      sender: context.sender,
     });
   }
 
   // Default: return generic gas estimation error
   return new GasEstimationError({
     address: context.address,
+    calldata: context.calldata,
     cause: error,
     functionName: context.functionName,
     message: `Failed to estimate gas for ${context.functionName} on ${context.address}`,
+    sender: context.sender,
   });
 }
 
