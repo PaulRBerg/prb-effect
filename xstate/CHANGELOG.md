@@ -6,6 +6,14 @@ The format is based on [Common Changelog](https://common-changelog.org/).
 
 [1.0.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-xstate%401.0.0
 [1.0.1]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-xstate%401.0.1
+[2.0.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-xstate%402.0.0
+
+## [2.0.0] - 2026-02-10
+
+### Changed
+
+- Preserve structured transaction errors in workflow hooks and the transaction machine
+- Migrate internal source imports from `@/src/*` to `#src/*` subpath imports
 
 ## [1.0.1] - 2026-02-09
 
