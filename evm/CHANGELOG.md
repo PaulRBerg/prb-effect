@@ -8,6 +8,15 @@ The format is based on [Common Changelog](https://common-changelog.org/).
 [1.0.1]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-evm%401.0.1
 [1.1.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-evm%401.1.0
 [1.1.1]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-evm%401.1.1
+[1.2.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-evm%401.2.0
+
+## [1.2.0] - 2026-02-10
+
+### Added
+
+- Add `isMetaMaskExtensionConnectionError` detector for broken MetaMask extension bridge errors
+- Add `getWalletExtensionErrorDetail` to extract typed `WalletExtensionErrorDetail` from unknown errors
+- Add `isWalletExtensionErrorDetail` type guard
 
 ## [1.1.1] - 2026-02-09
 
