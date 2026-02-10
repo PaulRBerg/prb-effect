@@ -61,3 +61,51 @@ export class OffchainSignatureTimeoutError extends Schema.TaggedError<OffchainSi
     timeout: Schema.Number,
   }
 ) {}
+
+// MultiSend errors
+
+export class SafeMultiSendUnavailableError extends Schema.TaggedError<SafeMultiSendUnavailableError>()(
+  "SafeMultiSendUnavailableError",
+  {
+    cause: Schema.optional(Schema.Unknown),
+    chainId: Schema.optional(Schema.Number),
+    message: Schema.String,
+  }
+) {}
+
+// MultiSend error detection
+
+const MULTISEND_ERROR_PATTERN = /MultiSend contract not deployed|MultiSend call failed/i;
+const MAX_ERROR_DEPTH = 10;
+
+/**
+ * Check if an error is caused by MultiSend contract unavailability.
+ * Recursively checks error messages and causes for MultiSend-related strings.
+ */
+export function isMultiSendUnavailableError(error: unknown): boolean {
+  return checkMultiSendError(error, 0);
+}
+
+function checkMultiSendError(error: unknown, depth: number): boolean {
+  if (depth >= MAX_ERROR_DEPTH) {
+    return false;
+  }
+
+  if (typeof error === "string") {
+    return MULTISEND_ERROR_PATTERN.test(error);
+  }
+
+  if (typeof error === "object" && error !== null) {
+    const { message, cause } = error as { message?: unknown; cause?: unknown };
+
+    if (typeof message === "string" && MULTISEND_ERROR_PATTERN.test(message)) {
+      return true;
+    }
+
+    if (cause) {
+      return checkMultiSendError(cause, depth + 1);
+    }
+  }
+
+  return false;
+}
