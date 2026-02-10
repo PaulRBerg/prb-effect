@@ -9,6 +9,7 @@
 
 import { Effect } from "effect";
 import {
+  getSafeErrorMessage,
   isMultiSendUnavailableError,
   SafeMultiSendUnavailableError,
   SafeMultisigTxSubmissionError,
@@ -39,9 +40,15 @@ export const safeMultisigBatchWrite = Effect.fn("safeMultisigBatchWrite")(functi
           message: `MultiSend contract not available on chain ${chainId ?? "unknown"}`,
         });
       }
+
+      if (error instanceof SafeMultisigTxSubmissionError) {
+        return error;
+      }
+
+      const detail = getSafeErrorMessage(error);
       return new SafeMultisigTxSubmissionError({
         cause: error,
-        message: `Safe batch write failed: ${error.message}`,
+        message: detail ? `Safe batch write failed: ${detail}` : "Safe batch write failed",
       });
     })
   );

@@ -77,6 +77,109 @@ export class SafeMultiSendUnavailableError extends Schema.TaggedError<SafeMultiS
 
 const MULTISEND_ERROR_PATTERN = /MultiSend contract not deployed|MultiSend call failed/i;
 const MAX_ERROR_DEPTH = 10;
+const USER_REJECTION_CODE = 4001;
+const MAX_ERROR_MESSAGE_DEPTH = 10;
+
+type ErrorMessageShape = {
+  readonly cause?: unknown;
+  readonly code?: unknown;
+  readonly error?: unknown;
+  readonly errors?: unknown;
+  readonly message?: unknown;
+  readonly shortMessage?: unknown;
+};
+
+function toNonEmptyString(value: unknown): string | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : undefined;
+}
+
+function isUserRejectionCode(code: unknown): boolean {
+  return code === USER_REJECTION_CODE || code === `${USER_REJECTION_CODE}`;
+}
+
+function getSafeErrorMessageInternal(error: unknown, depth: number): string | undefined {
+  if (!error || depth >= MAX_ERROR_MESSAGE_DEPTH) {
+    return undefined;
+  }
+
+  if (typeof error === "string") {
+    return toNonEmptyString(error);
+  }
+
+  if (error instanceof Error) {
+    if (isUserRejectionCode((error as { code?: unknown }).code)) {
+      return "User rejected the request";
+    }
+
+    const shortMessage = toNonEmptyString((error as { shortMessage?: unknown }).shortMessage);
+    if (shortMessage) {
+      return shortMessage;
+    }
+
+    const message = toNonEmptyString(error.message);
+    if (message) {
+      return message;
+    }
+
+    return getSafeErrorMessageInternal((error as { cause?: unknown }).cause, depth + 1);
+  }
+
+  if (typeof error !== "object") {
+    return undefined;
+  }
+
+  const typedError = error as ErrorMessageShape;
+
+  if (isUserRejectionCode(typedError.code)) {
+    return "User rejected the request";
+  }
+
+  const shortMessage = toNonEmptyString(typedError.shortMessage);
+  if (shortMessage) {
+    return shortMessage;
+  }
+
+  const message = toNonEmptyString(typedError.message);
+  if (message) {
+    return message;
+  }
+
+  const causeMessage = getSafeErrorMessageInternal(typedError.cause, depth + 1);
+  if (causeMessage) {
+    return causeMessage;
+  }
+
+  const nestedErrorMessage = getSafeErrorMessageInternal(typedError.error, depth + 1);
+  if (nestedErrorMessage) {
+    return nestedErrorMessage;
+  }
+
+  if (!Array.isArray(typedError.errors)) {
+    return undefined;
+  }
+
+  for (const nestedError of typedError.errors) {
+    const nestedMessage = getSafeErrorMessageInternal(nestedError, depth + 1);
+    if (nestedMessage) {
+      return nestedMessage;
+    }
+  }
+
+  return undefined;
+}
+
+/**
+ * Best-effort extraction of a human-readable Safe SDK error message.
+ * Preserves nested `cause` / `error` chains and handles EIP-1193 user rejection codes.
+ */
+export function getSafeErrorMessage(error: unknown): string | undefined {
+  return getSafeErrorMessageInternal(error, 0);
+}
 
 /**
  * Check if an error is caused by MultiSend contract unavailability.

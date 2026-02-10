@@ -12,6 +12,7 @@ import type { SafeAppsSDKInstance, SafeAppsSdkConfig } from "./adapter.js";
 import { loadSafeSdk } from "./adapter.js";
 import type { SafeAppsSdkUnavailableError } from "./errors.js";
 import {
+  getSafeErrorMessage,
   NotInSafeAppContextError,
   OffchainSignatureTimeoutError,
   SafeMultisigInfoUnavailableError,
@@ -168,11 +169,15 @@ export const SafeAppsServiceLive = (config?: SafeAppsServiceConfig) =>
           getSdk,
           (s) =>
             Effect.tryPromise({
-              catch: (cause) =>
-                new SafeMultisigTxSubmissionError({
+              catch: (cause) => {
+                const detail = getSafeErrorMessage(cause);
+                return new SafeMultisigTxSubmissionError({
                   cause,
-                  message: "Failed to submit txs to Safe",
-                }),
+                  message: detail
+                    ? `Failed to submit txs to Safe: ${detail}`
+                    : "Failed to submit txs to Safe",
+                });
+              },
               try: () => s.txs.send({ params, txs: sdkTxs }),
             }),
           (e) => new SafeMultisigTxSubmissionError({ cause: e, message: e.message })
