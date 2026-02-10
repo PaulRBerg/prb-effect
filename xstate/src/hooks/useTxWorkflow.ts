@@ -7,7 +7,7 @@
  * @example
  * ```typescript
  * function SendTransaction() {
- *   const { status, submit, reset, error, hash, gasLimit } = useTxWorkflow<
+ *   const { status, submit, reset, errorMessage, hash, gasLimit } = useTxWorkflow<
  *     TransferPayload,
  *     PreprocessedData,
  *     SignatureResult,
@@ -28,7 +28,7 @@
  *       submit(formData);
  *     }}>
  *       {status.isLoading && <Spinner />}
- *       {error && <ErrorMessage>{error}</ErrorMessage>}
+ *       {errorMessage && <ErrorMessage>{errorMessage}</ErrorMessage>}
  *       <button type="submit" disabled={status.isLoading}>
  *         Send Transaction
  *       </button>
@@ -41,6 +41,7 @@
 
 import { useActor } from "@xstate/react";
 import type { AnyActorLogic, InspectionEvent, Observer } from "xstate";
+import type { TxError } from "#src/errors/index.js";
 import type { GasLimitOverflow, TxMachineContext, TxMachineEvents } from "#src/machines/index.js";
 
 // =============================================================================
@@ -65,8 +66,11 @@ type UseTxWorkflowReturn<TPayload, TPreprocess, TSignResult, TResult> = {
   /** Raw send function for custom events */
   send: (event: TxMachineEvents<TPayload>) => void;
 
-  /** Error message if operation failed */
-  error: string | null;
+  /** Structured error data if operation failed */
+  error: TxError | null;
+
+  /** Convenience error message for UI rendering */
+  errorMessage: string | null;
 
   /** Estimated gas limit */
   gasLimit: bigint | undefined;
@@ -172,6 +176,7 @@ export function useTxWorkflow<
   return {
     context,
     error: context.error,
+    errorMessage: context.errorMessage,
     gasLimit: context.gasLimit,
     gasLimitOverflow: context.gasLimitOverflow,
     hash: context.hash,

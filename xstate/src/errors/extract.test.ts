@@ -44,6 +44,32 @@ describe("errors/extract", () => {
     expect(extractErrorData(new Error("boom"))).toBe("boom");
   });
 
+  it("extractErrorData() parses serialized tagged errors from Error.message", () => {
+    const serialized = new Error(
+      JSON.stringify({
+        _tag: "ContractWriteError",
+        address: "0xabc",
+        calldata: "0xdeadbeef",
+        cause: { nested: true },
+        functionName: "transfer",
+        message: "execution reverted",
+        sender: "0xdef",
+      })
+    );
+
+    expect(extractErrorData(serialized)).toEqual({
+      details: {
+        address: "0xabc",
+        calldata: "0xdeadbeef",
+        cause: { nested: true },
+        functionName: "transfer",
+        sender: "0xdef",
+        tag: "ContractWriteError",
+      },
+      message: "execution reverted",
+    });
+  });
+
   it("extractErrorData() falls back for unknown values", () => {
     expect(extractErrorData(123, "fallback")).toBe("fallback");
     expect(extractErrorData(undefined)).toBe("Operation failed");

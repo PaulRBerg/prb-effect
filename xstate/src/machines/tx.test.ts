@@ -407,6 +407,7 @@ describe("machines/tx", () => {
       const snapshot = await waitFor(actor, (s) => s.value === "failure", { timeout: 2000 });
 
       expect(snapshot.context.error).toBe("Network error");
+      expect(snapshot.context.errorMessage).toBe("Network error");
       expect(snapshot.context.gasLimitOverflow).toBe(null);
     });
   });
@@ -457,6 +458,7 @@ describe("machines/tx", () => {
       const snapshot = await waitFor(actor, (s) => s.value === "failure", { timeout: 2000 });
 
       expect(snapshot.context.error).toBe("Transaction underpriced");
+      expect(snapshot.context.errorMessage).toBe("Transaction underpriced");
     });
 
     it("clears all context on user rejection", async () => {
@@ -478,6 +480,7 @@ describe("machines/tx", () => {
 
       expect(snapshot.context).toEqual({
         error: null,
+        errorMessage: null,
         gasLimit: undefined,
         gasLimitOverflow: null,
         hash: null,
@@ -505,8 +508,43 @@ describe("machines/tx", () => {
       const snapshot = await waitFor(actor, (s) => s.value === "failure", { timeout: 2000 });
 
       expect(snapshot.context.error).toBe("Invalid amount: must be positive");
+      expect(snapshot.context.errorMessage).toBe("Invalid amount: must be positive");
       expect(services.onGasCheck).not.toHaveBeenCalled();
       expect(services.onSign).not.toHaveBeenCalled();
+    });
+
+    it("preserves tagged error details in context.error", async () => {
+      const taggedError = {
+        _tag: "ContractWriteError",
+        address: "0xabc",
+        calldata: "0xdeadbeef",
+        cause: { reason: "execution reverted" },
+        functionName: "createStream",
+        message: "write reverted",
+        sender: "0xdef",
+      };
+      const services = createMockServices({
+        onValidate: vi.fn(() => Effect.fail(taggedError as unknown as Error)),
+      });
+      const machine = createTestMachine({ services });
+      const actor = createActor(machine).start();
+
+      actor.send({ payload: { amount: 100, isSafe: false }, type: "SUBMIT" });
+
+      const snapshot = await waitFor(actor, (s) => s.value === "failure", { timeout: 2000 });
+
+      expect(snapshot.context.error).toEqual({
+        details: {
+          address: "0xabc",
+          calldata: "0xdeadbeef",
+          cause: { reason: "execution reverted" },
+          functionName: "createStream",
+          sender: "0xdef",
+          tag: "ContractWriteError",
+        },
+        message: "write reverted",
+      });
+      expect(snapshot.context.errorMessage).toBe("write reverted");
     });
 
     it("exposes validation error message in context", async () => {
@@ -521,6 +559,7 @@ describe("machines/tx", () => {
       const snapshot = await waitFor(actor, (s) => s.value === "failure", { timeout: 2000 });
 
       expect(snapshot.context.error).toBe("Recipient address is invalid");
+      expect(snapshot.context.errorMessage).toBe("Recipient address is invalid");
     });
   });
 
@@ -544,6 +583,7 @@ describe("machines/tx", () => {
       const snapshot = await waitFor(actor, (s) => s.value === "initial", { timeout: 1000 });
 
       expect(snapshot.context.error).toBe(null);
+      expect(snapshot.context.errorMessage).toBe(null);
       expect(snapshot.context.payload).toBe(null);
     });
 
@@ -574,6 +614,7 @@ describe("machines/tx", () => {
 
       expect(services.onValidate).toHaveBeenCalledTimes(2);
       expect(snapshot.context.error).toBe(null);
+      expect(snapshot.context.errorMessage).toBe(null);
       expect(snapshot.context.result).toEqual({ hash: "0x123", receipt: { status: "success" } });
     });
 
@@ -588,11 +629,13 @@ describe("machines/tx", () => {
       const failureSnapshot = await waitFor(actor, (s) => s.value === "failure", { timeout: 2000 });
 
       expect(failureSnapshot.context.error).toBe("Some error");
+      expect(failureSnapshot.context.errorMessage).toBe("Some error");
 
       actor.send({ type: "RESET" });
       const resetSnapshot = await waitFor(actor, (s) => s.value === "initial", { timeout: 1000 });
 
       expect(resetSnapshot.context.error).toBe(null);
+      expect(resetSnapshot.context.errorMessage).toBe(null);
     });
   });
 
@@ -642,6 +685,7 @@ describe("machines/tx", () => {
 
       expect(resetSnapshot.context).toEqual({
         error: null,
+        errorMessage: null,
         gasLimit: undefined,
         gasLimitOverflow: null,
         hash: null,
@@ -669,6 +713,7 @@ describe("machines/tx", () => {
       const snapshot = await waitFor(actor, (s) => s.value === "failure", { timeout: 2000 });
 
       expect(snapshot.context.error).toBe("Transaction reverted");
+      expect(snapshot.context.errorMessage).toBe("Transaction reverted");
       expect(snapshot.context.signResult).toEqual({ hash: "0x123" });
     });
 
@@ -715,6 +760,7 @@ describe("machines/tx", () => {
       const snapshot = await waitFor(actor, (s) => s.value === "failure", { timeout: 2000 });
 
       expect(snapshot.context.error).toBe("User rejected");
+      expect(snapshot.context.errorMessage).toBe("User rejected");
     });
 
     it("works without isGasLimitOverflowError predicate", async () => {
@@ -735,6 +781,7 @@ describe("machines/tx", () => {
       const snapshot = await waitFor(actor, (s) => s.value === "failure", { timeout: 2000 });
 
       expect(snapshot.context.error).toBe("Gas limit exceeded");
+      expect(snapshot.context.errorMessage).toBe("Gas limit exceeded");
     });
   });
 });

@@ -1,4 +1,4 @@
-import type { TransactionError } from "./types.js";
+import type { TxError } from "./types.js";
 
 /**
  * Shape of a tagged error with common fields
@@ -27,30 +27,50 @@ function hasTaggedErrorShape(error: unknown): error is TaggedErrorShape {
   );
 }
 
+function toTxError(error: TaggedErrorShape): TxError {
+  return {
+    details: {
+      address: error.address,
+      calldata: error.calldata,
+      cause: error.cause,
+      functionName: error.functionName,
+      sender: error.sender,
+      tag: error._tag,
+    },
+    message: error.message,
+  };
+}
+
+function parseErrorMessage(message: string): TaggedErrorShape | null {
+  const normalized = message.trim();
+  if (!normalized.startsWith("{")) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(normalized) as unknown;
+    return hasTaggedErrorShape(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Extract structured error data from various error types.
  *
  * Preserves address, functionName, cause, and tag from Effect-TS tagged errors.
  */
-export function extractErrorData(
-  error: unknown,
-  fallbackMessage = "Operation failed"
-): TransactionError {
+export function extractErrorData(error: unknown, fallbackMessage = "Operation failed"): TxError {
   if (hasTaggedErrorShape(error)) {
-    return {
-      details: {
-        address: error.address,
-        calldata: error.calldata,
-        cause: error.cause,
-        functionName: error.functionName,
-        sender: error.sender,
-        tag: error._tag,
-      },
-      message: error.message,
-    };
+    return toTxError(error);
   }
 
   if (error instanceof Error) {
+    const parsedTaggedError = parseErrorMessage(error.message);
+    if (parsedTaggedError) {
+      return toTxError(parsedTaggedError);
+    }
+
     return error.message;
   }
 

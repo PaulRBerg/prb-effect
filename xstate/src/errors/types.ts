@@ -15,7 +15,7 @@ export type ErrorDetails = {
 };
 
 /** Error state supporting both simple strings and structured data */
-export type TransactionError =
+export type TxError =
   | string
   | {
       details?: ErrorDetails;

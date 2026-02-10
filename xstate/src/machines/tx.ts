@@ -1,5 +1,7 @@
 import { Effect } from "effect";
 import { assign, fromPromise, setup } from "xstate";
+import type { TxError } from "#src/errors/index.js";
+import { extractErrorData } from "#src/errors/index.js";
 
 /**
  * Gas limit overflow information
@@ -19,8 +21,10 @@ type GasLimitOverflow = {
  * Machine context for transaction workflow
  */
 type TxMachineContext<TPayload, TPreprocess, TSignResult, TResult> = {
-  /** Error message from failed operations */
-  error: string | null;
+  /** Structured error data from failed operations */
+  error: TxError | null;
+  /** Convenience error message for UI rendering */
+  errorMessage: string | null;
   /** Gas limit to use for the transaction */
   gasLimit: bigint | undefined;
   /** Gas limit overflow details when transaction exceeds limits */
@@ -90,6 +94,24 @@ type TxMachineConfig<TPayload, TPreprocess, TSignResult, TResult> = {
   isGasLimitOverflowError?: (error: unknown) => GasLimitOverflow | undefined;
 };
 
+const UNKNOWN_TX_ERROR_MESSAGE = "An unknown error occurred";
+
+function getTxErrorMessage(error: TxError): string {
+  return typeof error === "string" ? error : error.message;
+}
+
+function normalizeTxError(error: unknown): {
+  error: TxError;
+  errorMessage: string;
+} {
+  const txError = extractErrorData(error, UNKNOWN_TX_ERROR_MESSAGE);
+
+  return {
+    error: txError,
+    errorMessage: getTxErrorMessage(txError),
+  };
+}
+
 /**
  * Creates a transaction workflow state machine with branching paths for Safe vs EOA wallets.
  *
@@ -129,6 +151,8 @@ function createTxMachine<TPayload, TPreprocess, TSignResult, TResult>({
     actions: {
       doCache: assign({
         error: ({ context, event }) => (event.type === "SUBMIT" ? null : context.error),
+        errorMessage: ({ context, event }) =>
+          event.type === "SUBMIT" ? null : context.errorMessage,
         gasLimit: ({ context, event }) => (event.type === "SUBMIT" ? undefined : context.gasLimit),
         gasLimitOverflow: ({ context, event }) =>
           event.type === "SUBMIT" ? null : context.gasLimitOverflow,
@@ -139,13 +163,8 @@ function createTxMachine<TPayload, TPreprocess, TSignResult, TResult>({
         result: ({ context, event }) => (event.type === "SUBMIT" ? null : context.result),
         signResult: ({ context, event }) => (event.type === "SUBMIT" ? null : context.signResult),
       }),
-      doError: assign({
-        error: ({ event }) => {
-          if ("error" in event && event.error instanceof Error) {
-            return event.error.message;
-          }
-          return "An unknown error occurred";
-        },
+      doError: assign(({ event }) => {
+        return normalizeTxError("error" in event ? event.error : undefined);
       }),
       doGasLimit: assign({
         gasLimit: ({ event }) => {
@@ -190,6 +209,7 @@ function createTxMachine<TPayload, TPreprocess, TSignResult, TResult>({
       }),
       doReset: assign({
         error: () => null,
+        errorMessage: () => null,
         gasLimit: () => undefined,
         gasLimitOverflow: () => null,
         hash: () => null,
@@ -296,6 +316,7 @@ function createTxMachine<TPayload, TPreprocess, TSignResult, TResult>({
   }).createMachine({
     context: {
       error: null,
+      errorMessage: null,
       gasLimit: undefined,
       gasLimitOverflow: null,
       hash: null,
