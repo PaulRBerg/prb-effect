@@ -1,4 +1,4 @@
-# @prb/effect-evm
+# @prb/effect-solana
 
 ## References
 
