@@ -12,8 +12,10 @@ import type {
 import {
   InsufficientFundsError,
   isInsufficientFunds,
+  isResourceExhaustion,
   isUserRejection,
   PublicClientService,
+  ResourceExhaustionError,
   UserRejectedError,
   WalletClientService,
   WalletNotConnectedError,
@@ -75,7 +77,7 @@ export type DelegateAndExecuteResult = TxResult;
 function mapSendEip7702TransactionCause(
   chainId: number,
   cause: unknown
-): Eip7702SendTxError | InsufficientFundsError | UserRejectedError {
+): Eip7702SendTxError | InsufficientFundsError | ResourceExhaustionError | UserRejectedError {
   if (isUserRejection(cause)) {
     return new UserRejectedError({
       message: cause instanceof Error ? cause.message : "User rejected the request",
@@ -84,9 +86,14 @@ function mapSendEip7702TransactionCause(
 
   if (isInsufficientFunds(cause)) {
     return new InsufficientFundsError({
-      available: "0",
       message: cause instanceof Error ? cause.message : "Insufficient funds for transaction",
-      required: "0",
+    });
+  }
+
+  if (isResourceExhaustion(cause)) {
+    return new ResourceExhaustionError({
+      cause,
+      message: "Device ran out of memory during EIP-7702 transaction submission",
     });
   }
 
@@ -116,6 +123,7 @@ export type Eip7702ServiceShape = {
     | Eip7702AuthorizationSigningError
     | Eip7702SendTxError
     | InsufficientFundsError
+    | ResourceExhaustionError
     | UserRejectedError
     | WalletNotConnectedError
     | WrongNetworkError
@@ -132,6 +140,7 @@ export type Eip7702ServiceShape = {
     | Eip7702AuthorizationPreparationError
     | Eip7702AuthorizationSigningError
     | InsufficientFundsError
+    | ResourceExhaustionError
     | UserRejectedError
     | WalletNotConnectedError
     | WrongNetworkError
@@ -149,6 +158,7 @@ export type Eip7702ServiceShape = {
     | Eip7702AuthorizationSigningError
     | Eip7702SendTxError
     | InsufficientFundsError
+    | ResourceExhaustionError
     | UserRejectedError
     | WalletNotConnectedError
     | WrongNetworkError
@@ -165,6 +175,7 @@ export type Eip7702ServiceShape = {
     | Eip7702AuthorizationPreparationError
     | Eip7702AuthorizationSigningError
     | InsufficientFundsError
+    | ResourceExhaustionError
     | UserRejectedError
     | WalletNotConnectedError
     | WrongNetworkError

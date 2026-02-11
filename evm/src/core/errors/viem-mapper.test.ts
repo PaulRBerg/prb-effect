@@ -1,5 +1,11 @@
+import { UnknownRpcError } from "viem";
 import { describe, expect, it } from "vitest";
-import { extractRevertReason, isInsufficientFunds, isUserRejection } from "./viem-mapper.js";
+import {
+  extractRevertReason,
+  isInsufficientFunds,
+  isResourceExhaustion,
+  isUserRejection,
+} from "./viem-mapper.js";
 
 describe("viem error classification", () => {
   describe("isUserRejection", () => {
@@ -59,6 +65,43 @@ describe("viem error classification", () => {
     it("returns false for other errors", () => {
       const error = new Error("Transaction reverted");
       expect(isInsufficientFunds(error)).toBe(false);
+    });
+  });
+
+  describe("isResourceExhaustion", () => {
+    it("detects 'Cannot allocate memory' from plain Error", () => {
+      const error = new Error(
+        "Failed to send transaction. The operation couldn't be completed. Cannot allocate memory"
+      );
+      expect(isResourceExhaustion(error)).toBe(true);
+    });
+
+    it("detects ENOMEM from plain Error", () => {
+      const error = new Error("ENOMEM: not enough memory");
+      expect(isResourceExhaustion(error)).toBe(true);
+    });
+
+    it("detects 'out of memory' from plain Error", () => {
+      const error = new Error("JavaScript heap out of memory");
+      expect(isResourceExhaustion(error)).toBe(true);
+    });
+
+    it("detects memory error buried in viem cause chain", () => {
+      const innerError = new Error("Cannot allocate memory");
+      // Simulate viem's UnknownRpcError wrapping the OS-level error
+      const viemError = new UnknownRpcError(innerError);
+      expect(isResourceExhaustion(viemError)).toBe(true);
+    });
+
+    it("detects from string", () => {
+      expect(isResourceExhaustion("Cannot allocate memory")).toBe(true);
+    });
+
+    it("returns false for unrelated errors", () => {
+      expect(isResourceExhaustion(new Error("Transaction reverted"))).toBe(false);
+      expect(isResourceExhaustion(new Error("insufficient funds"))).toBe(false);
+      expect(isResourceExhaustion(null)).toBe(false);
+      expect(isResourceExhaustion(undefined)).toBe(false);
     });
   });
 

@@ -4,6 +4,7 @@ import { ContractReader, ContractWriter } from "#src/contract/index.js";
 import type {
   ClientNotFoundError,
   InsufficientFundsError,
+  ResourceExhaustionError,
   UserRejectedError,
 } from "#src/core/index.js";
 import { ApprovalCheckError, ApprovalError } from "#src/core/index.js";
@@ -37,10 +38,18 @@ export const Erc20AllowanceServiceLive = Layer.effect(
 
       yield* writer.simulate(writeParams).pipe(
         Effect.mapError(
-          (e): ApprovalError | ClientNotFoundError | InsufficientFundsError | UserRejectedError => {
+          (
+            e
+          ):
+            | ApprovalError
+            | ClientNotFoundError
+            | InsufficientFundsError
+            | ResourceExhaustionError
+            | UserRejectedError => {
             if (
               e._tag === "ClientNotFoundError" ||
               e._tag === "InsufficientFundsError" ||
+              e._tag === "ResourceExhaustionError" ||
               e._tag === "UserRejectedError"
             ) {
               return e;
