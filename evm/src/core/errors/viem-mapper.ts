@@ -17,6 +17,7 @@ import {
 import {
   InsufficientFundsError,
   isLikelyUserRejectedError,
+  ResourceExhaustionError,
   UserRejectedError,
 } from "#src/core/errors/transaction.js";
 import {
@@ -59,6 +60,35 @@ export function isInsufficientFunds(error: unknown): boolean {
       message.includes("insufficient balance") ||
       message.includes("exceeds balance")
     );
+  }
+
+  return false;
+}
+
+const RESOURCE_EXHAUSTION_RE = /cannot allocate memory|ENOMEM|out of memory/i;
+
+/**
+ * Check if an error represents device/environment resource exhaustion.
+ * Walks the viem error cause chain to find the underlying OS-level error.
+ */
+export function isResourceExhaustion(error: unknown): boolean {
+  if (error instanceof CoreError) {
+    const deepest = error.walk();
+    if (deepest instanceof Error && RESOURCE_EXHAUSTION_RE.test(deepest.message)) {
+      return true;
+    }
+    // Also check the top-level details field (BaseError.details is string)
+    if (RESOURCE_EXHAUSTION_RE.test(error.details)) {
+      return true;
+    }
+  }
+
+  if (error instanceof Error) {
+    return RESOURCE_EXHAUSTION_RE.test(error.message);
+  }
+
+  if (typeof error === "string") {
+    return RESOURCE_EXHAUSTION_RE.test(error);
   }
 
   return false;
@@ -201,7 +231,12 @@ function getReplacementHashFromMessage(message: string): Hash | undefined {
 export function classifyContractError(
   error: unknown,
   context: { address: Address; calldata?: string; functionName: string; sender?: string }
-): ContractReadError | SimulationFailedError | InsufficientFundsError | UserRejectedError {
+):
+  | ContractReadError
+  | SimulationFailedError
+  | InsufficientFundsError
+  | ResourceExhaustionError
+  | UserRejectedError {
   // Check for user rejection first
   if (isUserRejection(error)) {
     return new UserRejectedError({
@@ -212,9 +247,15 @@ export function classifyContractError(
   // Check for insufficient funds
   if (isInsufficientFunds(error)) {
     return new InsufficientFundsError({
-      available: "0", // We don't have this info in the error
       message: error instanceof Error ? error.message : "Insufficient funds",
-      required: "0", // We don't have this info in the error
+    });
+  }
+
+  // Check for device/environment resource exhaustion
+  if (isResourceExhaustion(error)) {
+    return new ResourceExhaustionError({
+      cause: error,
+      message: "Device ran out of memory during contract read",
     });
   }
 
@@ -249,7 +290,7 @@ export function classifyContractError(
 export function classifyWriteError(
   error: unknown,
   context: { address: Address; calldata?: string; functionName: string; sender?: string }
-): ContractWriteError | InsufficientFundsError | UserRejectedError {
+): ContractWriteError | InsufficientFundsError | ResourceExhaustionError | UserRejectedError {
   // Check for user rejection first
   if (isUserRejection(error)) {
     return new UserRejectedError({
@@ -260,9 +301,15 @@ export function classifyWriteError(
   // Check for insufficient funds
   if (isInsufficientFunds(error)) {
     return new InsufficientFundsError({
-      available: "0", // We don't have this info in the error
       message: error instanceof Error ? error.message : "Insufficient funds for transaction",
-      required: "0", // We don't have this info in the error
+    });
+  }
+
+  // Check for device/environment resource exhaustion
+  if (isResourceExhaustion(error)) {
+    return new ResourceExhaustionError({
+      cause: error,
+      message: "Device ran out of memory during transaction submission",
     });
   }
 
@@ -283,7 +330,7 @@ export function classifyWriteError(
 export function classifyGasEstimationError(
   error: unknown,
   context: { address: Address; calldata?: string; functionName: string; sender?: string }
-): GasEstimationError | InsufficientFundsError | UserRejectedError {
+): GasEstimationError | InsufficientFundsError | ResourceExhaustionError | UserRejectedError {
   // Check for user rejection
   if (isUserRejection(error)) {
     return new UserRejectedError({
@@ -294,9 +341,15 @@ export function classifyGasEstimationError(
   // Check for insufficient funds
   if (isInsufficientFunds(error)) {
     return new InsufficientFundsError({
-      available: "0",
       message: error instanceof Error ? error.message : "Insufficient funds for gas estimation",
-      required: "0",
+    });
+  }
+
+  // Check for device/environment resource exhaustion
+  if (isResourceExhaustion(error)) {
+    return new ResourceExhaustionError({
+      cause: error,
+      message: "Device ran out of memory during gas estimation",
     });
   }
 

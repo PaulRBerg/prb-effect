@@ -11,6 +11,7 @@ import {
   GasEstimationError,
   MulticallError,
   ReceiptTimeoutError,
+  ResourceExhaustionError,
   SimulationFailedError,
   TransportError,
   TxFailedError,
@@ -258,6 +259,34 @@ describe("ContractWriteError", () => {
       ).pipe(Effect.catchTag("ContractWriteError", (e) => Effect.succeed(e)));
       expect(caught.address).toBe("0x1234");
       expect(caught.functionName).toBe("transfer");
+    })
+  );
+});
+
+describe("ResourceExhaustionError", () => {
+  it("has correct _tag", () => {
+    const error = new ResourceExhaustionError({
+      message: "Device ran out of memory",
+    });
+    expect(error._tag).toBe("ResourceExhaustionError");
+  });
+
+  it("stores message and optional cause", () => {
+    const cause = new Error("Cannot allocate memory");
+    const error = new ResourceExhaustionError({
+      cause,
+      message: "Device ran out of memory during transaction submission",
+    });
+    expect(error.message).toBe("Device ran out of memory during transaction submission");
+    expect(error.cause).toBe(cause);
+  });
+
+  it.effect("can be caught with catchTag", () =>
+    Effect.gen(function* () {
+      const caught = yield* Effect.fail(new ResourceExhaustionError({ message: "test" })).pipe(
+        Effect.catchTag("ResourceExhaustionError", (e) => Effect.succeed(e))
+      );
+      expect(caught.message).toBe("test");
     })
   );
 });

@@ -9,6 +9,15 @@ The format is based on [Common Changelog](https://common-changelog.org/).
 [1.1.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-evm%401.1.0
 [1.1.1]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-evm%401.1.1
 [1.2.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-evm%401.2.0
+[1.2.1]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-evm%401.2.1
+
+## [1.2.1] - 2026-02-11
+
+### Fixed
+
+- Propagate `ResourceExhaustionError` through EIP-7702 and ERC-20 allowance flows instead of collapsing memory-pressure
+  failures into generic errors
+- Preserve explicit resource-exhaustion classification in mapper tests
 
 ## [1.2.0] - 2026-02-10
 

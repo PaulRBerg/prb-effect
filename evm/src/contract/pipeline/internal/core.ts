@@ -10,6 +10,7 @@ import type {
   GasEstimationError,
   InsufficientFundsError,
   ReceiptTimeoutError,
+  ResourceExhaustionError,
   SimulationFailedError,
   TransportError,
   TxFailedError,
@@ -45,6 +46,7 @@ type CorePipelineError =
   | GasEstimationError
   | ContractWriteError
   | InsufficientFundsError
+  | ResourceExhaustionError
   | UserRejectedError
   | GasPriceUnavailableError
   | TxFailedError

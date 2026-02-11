@@ -21,7 +21,7 @@
     },
     "evm": {
       "name": "@prb/effect-evm",
-      "version": "1.1.1",
+      "version": "1.2.0",
       "devDependencies": {
         "@biomejs/biome": "catalog:dev",
         "@effect/platform": "catalog:effect",
@@ -58,7 +58,7 @@
     },
     "evm-safe": {
       "name": "@prb/effect-evm-safe",
-      "version": "1.0.1",
+      "version": "1.1.1",
       "devDependencies": {
         "@biomejs/biome": "catalog:dev",
         "@effect/platform": "catalog:effect",
@@ -189,7 +189,7 @@
     },
     "xstate": {
       "name": "@prb/effect-xstate",
-      "version": "1.0.1",
+      "version": "2.0.0",
       "devDependencies": {
         "@biomejs/biome": "catalog:dev",
         "@effect/vitest": "catalog:dev",

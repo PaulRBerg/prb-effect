@@ -16,6 +16,7 @@ import type {
   ContractWriteError,
   GasEstimationError,
   InsufficientFundsError,
+  ResourceExhaustionError,
   SimulationFailedError,
   UserRejectedError,
   WalletNotConnectedError,
@@ -83,6 +84,7 @@ export type ContractWriterShape = {
     | SimulationFailedError
     | ContractReadError
     | InsufficientFundsError
+    | ResourceExhaustionError
     | UserRejectedError
     | ClientNotFoundError
   >;
@@ -97,7 +99,11 @@ export type ContractWriterShape = {
     params: WriteParams<TAbi, TFunctionName>
   ) => Effect.Effect<
     bigint,
-    GasEstimationError | InsufficientFundsError | UserRejectedError | ClientNotFoundError
+    | GasEstimationError
+    | InsufficientFundsError
+    | ResourceExhaustionError
+    | UserRejectedError
+    | ClientNotFoundError
   >;
 
   /**
@@ -112,6 +118,7 @@ export type ContractWriterShape = {
     Hash,
     | ContractWriteError
     | InsufficientFundsError
+    | ResourceExhaustionError
     | UserRejectedError
     | WalletNotConnectedError
     | WrongNetworkError

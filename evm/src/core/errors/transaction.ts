@@ -37,9 +37,26 @@ export class ReceiptTimeoutError extends Schema.TaggedError<ReceiptTimeoutError>
 export class InsufficientFundsError extends Schema.TaggedError<InsufficientFundsError>()(
   "InsufficientFundsError",
   {
-    available: Schema.String,
+    available: Schema.optional(Schema.String),
     message: Schema.String,
-    required: Schema.String,
+    required: Schema.optional(Schema.String),
+  }
+) {}
+
+/**
+ * Device or environment ran out of resources during an RPC call.
+ *
+ * Common causes:
+ * - iOS WKWebView memory limits (Safari's ~256 MB cap for web content processes)
+ * - Mobile browser memory pressure under constrained conditions
+ *
+ * This error is non-retryable: the transaction was never submitted to the network.
+ */
+export class ResourceExhaustionError extends Schema.TaggedError<ResourceExhaustionError>()(
+  "ResourceExhaustionError",
+  {
+    cause: Schema.optional(Schema.Unknown),
+    message: Schema.String,
   }
 ) {}
 

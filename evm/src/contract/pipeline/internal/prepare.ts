@@ -6,6 +6,7 @@ import type {
   ContractReadError,
   GasEstimationError,
   InsufficientFundsError,
+  ResourceExhaustionError,
   SimulationFailedError,
   UserRejectedError,
 } from "#src/core/index.js";
@@ -81,6 +82,7 @@ export const simulateAndEstimate = <
   | GasEstimationError
   | ClientNotFoundError
   | InsufficientFundsError
+  | ResourceExhaustionError
   | UserRejectedError
 > =>
   Effect.gen(function* () {

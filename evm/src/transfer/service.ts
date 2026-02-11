@@ -5,9 +5,11 @@ import type { ClientNotFoundError, WrongNetworkError } from "#src/core/index.js"
 import {
   InsufficientFundsError,
   isInsufficientFunds,
+  isResourceExhaustion,
   isUserRejection,
   PublicClientService,
   ReceiptTimeoutError,
+  ResourceExhaustionError,
   TxFailedError,
   UserRejectedError,
   WalletClientService,
@@ -29,6 +31,7 @@ export type TransferServiceShape = {
   }) => Effect.Effect<
     Hash,
     | InsufficientFundsError
+    | ResourceExhaustionError
     | UserRejectedError
     | WalletNotConnectedError
     | WrongNetworkError
@@ -46,6 +49,7 @@ export type TransferServiceShape = {
   }) => Effect.Effect<
     TransactionReceipt,
     | InsufficientFundsError
+    | ResourceExhaustionError
     | UserRejectedError
     | WalletNotConnectedError
     | WrongNetworkError
@@ -73,7 +77,7 @@ export class TransferService extends Context.Tag("ew3/TransferService")<
 const classifyTransferError = (
   error: unknown,
   to: Address
-): InsufficientFundsError | UserRejectedError | TxFailedError => {
+): InsufficientFundsError | ResourceExhaustionError | UserRejectedError | TxFailedError => {
   if (isUserRejection(error)) {
     return new UserRejectedError({
       message: error instanceof Error ? error.message : "User rejected the transaction",
@@ -82,9 +86,14 @@ const classifyTransferError = (
 
   if (isInsufficientFunds(error)) {
     return new InsufficientFundsError({
-      available: "0",
       message: error instanceof Error ? error.message : "Insufficient funds for transfer",
-      required: "0",
+    });
+  }
+
+  if (isResourceExhaustion(error)) {
+    return new ResourceExhaustionError({
+      cause: error,
+      message: "Device ran out of memory during transfer",
     });
   }
 

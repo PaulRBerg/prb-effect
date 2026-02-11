@@ -3,7 +3,7 @@ import type { Abi } from "viem";
 import type { ClientNotFoundError } from "#src/core/index.js";
 import {
   ContractReadError,
-  classifyContractError,
+  extractRevertReason,
   MulticallError,
   PublicClientService,
 } from "#src/core/index.js";
@@ -128,19 +128,13 @@ export const ContractReaderLive = Layer.effect(
 
         return yield* Effect.tryPromise({
           catch: (cause) => {
-            const classified = classifyContractError(cause, {
+            const revertReason = extractRevertReason(cause);
+            return new ContractReadError({
               address: params.address,
+              cause,
               functionName: params.functionName as string,
+              message: `Failed to read ${params.functionName as string} from ${params.address}${revertReason ? `: ${revertReason}` : ""}`,
             });
-
-            return classified instanceof ContractReadError
-              ? classified
-              : new ContractReadError({
-                  address: params.address,
-                  cause: classified,
-                  functionName: params.functionName as string,
-                  message: classified.message,
-                });
           },
           try: () =>
             client.readContract({

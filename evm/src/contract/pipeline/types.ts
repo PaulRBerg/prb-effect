@@ -8,6 +8,7 @@ import type {
   GasEstimationError,
   InsufficientFundsError,
   ReceiptTimeoutError,
+  ResourceExhaustionError,
   SimulationFailedError,
   TransportError,
   TxFailedError,
@@ -40,6 +41,7 @@ export type WriteAndTrackError =
   | GasEstimationError
   | ContractWriteError
   | InsufficientFundsError
+  | ResourceExhaustionError
   | UserRejectedError
   | GasPriceUnavailableError
   | TxFailedError

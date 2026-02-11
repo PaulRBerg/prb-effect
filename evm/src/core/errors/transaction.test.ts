@@ -23,9 +23,7 @@ describe("isUserRejectedError", () => {
 
   it("returns false for other TaggedError", () => {
     const error = new InsufficientFundsError({
-      available: "0",
       message: "Not enough funds",
-      required: "100",
     });
     expect(isUserRejectedError(error)).toBe(false);
   });
@@ -119,9 +117,7 @@ describe("isTaggedUserRejectedError", () => {
 
   it("returns false for other TaggedError", () => {
     const error = new InsufficientFundsError({
-      available: "0",
       message: "Not enough funds",
-      required: "100",
     });
     expect(isTaggedUserRejectedError(error)).toBe(false);
   });
@@ -157,9 +153,7 @@ describe("catchUserRejection", () => {
   it("propagates other TaggedErrors", async () => {
     const effect = Effect.fail(
       new InsufficientFundsError({
-        available: "0",
         message: "Not enough",
-        required: "100",
       })
     );
     const exit = await Effect.runPromiseExit(catchUserRejection(effect, null));
