@@ -1,5 +1,19 @@
 import type { Instruction } from "@solana/instructions";
 import type { Signature } from "@solana/keys";
+import type {
+  TransactionMessage,
+  TransactionMessageWithFeePayer,
+  TransactionMessageWithLifetime,
+} from "@solana/transaction-messages";
+
+/**
+ * A transaction message shape that is ready to compile/sign/send.
+ *
+ * @category Types
+ */
+export type SignableTransactionMessage = TransactionMessage &
+  TransactionMessageWithFeePayer &
+  TransactionMessageWithLifetime;
 
 /**
  * Options for confirming a transaction.

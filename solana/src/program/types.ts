@@ -8,6 +8,7 @@
 
 import type { Address } from "@solana/addresses";
 import type { Instruction } from "@solana/instructions";
+import { Schema } from "effect";
 
 // =============================================================================
 // Re-exports from Anchor
@@ -58,51 +59,81 @@ export type BuildInstructionResult = {
 };
 
 // =============================================================================
+// Program Reader Types
+// =============================================================================
+
+/**
+ * Parameters for calling `.view()` on an Anchor program method.
+ */
+export type ViewParams<TArgs extends readonly unknown[] = readonly unknown[]> = {
+  /** The Anchor IDL */
+  readonly idl: import("@coral-xyz/anchor").Idl;
+  /** The method/instruction name to call via `.view()` */
+  readonly method: string;
+  /** Method arguments in order */
+  readonly args: TArgs;
+  /** Account addresses mapped by name */
+  readonly accounts: AccountsMap;
+  /** Override the program address from IDL */
+  readonly programId?: Address;
+};
+
+// =============================================================================
 // Error Types
 // =============================================================================
 
 /**
  * Error thrown when an instruction method is not found in the IDL.
  */
-export class InstructionNotFoundError extends Error {
-  readonly _tag = "InstructionNotFoundError";
-  readonly method: string;
-  readonly idlName: string;
-
-  constructor(method: string, idlName: string) {
-    super(`Instruction "${method}" not found in IDL "${idlName}"`);
-    this.name = "InstructionNotFoundError";
-    this.method = method;
-    this.idlName = idlName;
+export class InstructionNotFoundError extends Schema.TaggedError<InstructionNotFoundError>()(
+  "InstructionNotFoundError",
+  {
+    idlName: Schema.String,
+    message: Schema.String,
+    method: Schema.String,
   }
-}
+) {}
 
 /**
  * Error thrown when program creation fails.
  */
-export class ProgramCreationError extends Error {
-  readonly _tag = "ProgramCreationError";
-  override readonly cause: unknown;
-
-  constructor(cause: unknown, message?: string) {
-    super(message ?? "Failed to create Anchor program");
-    this.name = "ProgramCreationError";
-    this.cause = cause;
+export class ProgramCreationError extends Schema.TaggedError<ProgramCreationError>()(
+  "ProgramCreationError",
+  {
+    cause: Schema.optional(Schema.Unknown),
+    message: Schema.String,
   }
-}
+) {}
 
 /**
  * Error thrown when instruction building fails.
  */
-export class InstructionBuildError extends Error {
-  readonly _tag = "InstructionBuildError";
-  readonly method: string;
-  override readonly cause: unknown;
-
-  constructor(method: string, cause: unknown) {
-    super(`Failed to build instruction "${method}"`);
-    this.name = "InstructionBuildError";
-    this.method = method;
-    this.cause = cause;
+export class InstructionBuildError extends Schema.TaggedError<InstructionBuildError>()(
+  "InstructionBuildError",
+  {
+    cause: Schema.optional(Schema.Unknown),
+    message: Schema.String,
+    method: Schema.String,
   }
-}
+) {}
+
+/**
+ * Error thrown when a `.view()` call fails.
+ */
+export class ProgramReadError extends Schema.TaggedError<ProgramReadError>()("ProgramReadError", {
+  cause: Schema.optional(Schema.Unknown),
+  message: Schema.String,
+  method: Schema.String,
+}) {}
+
+/**
+ * Error thrown when a method is not compatible with `.view()` semantics.
+ */
+export class ViewNotSupportedError extends Schema.TaggedError<ViewNotSupportedError>()(
+  "ViewNotSupportedError",
+  {
+    idlName: Schema.String,
+    message: Schema.String,
+    method: Schema.String,
+  }
+) {}

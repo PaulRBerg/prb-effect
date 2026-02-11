@@ -1,7 +1,6 @@
 import { pipe } from "@solana/functional";
 import type { Instruction } from "@solana/instructions";
 import type { Signature } from "@solana/keys";
-import type { CompilableTransactionMessage } from "@solana/transaction-messages";
 import {
   appendTransactionMessageInstructions,
   createTransactionMessage,
@@ -34,6 +33,7 @@ import { SpanNames } from "#src/telemetry/index.js";
 import type {
   ComputeBudgetConfig,
   ConfirmOpts,
+  SignableTransactionMessage,
   TransactionBatchItem,
   TransactionBatchOpts,
   TransactionBuildOpts,
@@ -52,13 +52,13 @@ export type TransactionServiceShape = {
   readonly build: (
     instructions: readonly Instruction[],
     opts?: TransactionBuildOpts
-  ) => Effect.Effect<CompilableTransactionMessage, TransactionSendError | WalletNotConnectedError>;
+  ) => Effect.Effect<SignableTransactionMessage, TransactionSendError | WalletNotConnectedError>;
 
   /**
    * Sign multiple transactions in a batch.
    */
   readonly signAll: (
-    txs: readonly CompilableTransactionMessage[]
+    txs: readonly SignableTransactionMessage[]
   ) => Effect.Effect<
     readonly (Transaction & TransactionWithLifetime)[],
     TransactionSendError | WalletNotConnectedError
@@ -67,7 +67,7 @@ export type TransactionServiceShape = {
   /**
    * Sign a transaction.
    */
-  readonly sign: <T extends CompilableTransactionMessage>(
+  readonly sign: <T extends SignableTransactionMessage>(
     tx: T
   ) => Effect.Effect<
     Transaction & TransactionWithLifetime,
@@ -128,7 +128,7 @@ export type TransactionServiceShape = {
   /**
    * Simulate a transaction.
    */
-  readonly simulate: <T extends CompilableTransactionMessage>(
+  readonly simulate: <T extends SignableTransactionMessage>(
     tx: T
   ) => Effect.Effect<void, SimulationFailedError | TransactionSendError | WalletNotConnectedError>;
 };

@@ -1,6 +1,5 @@
 import type { Instruction } from "@solana/instructions";
 import type { Signature } from "@solana/keys";
-import type { CompilableTransactionMessage } from "@solana/transaction-messages";
 import type { Transaction, TransactionWithLifetime } from "@solana/transactions";
 import type { Layer } from "effect";
 import { Effect } from "effect";
@@ -13,6 +12,7 @@ import type {
 } from "#src/core/errors/index.js";
 import type {
   ConfirmOpts,
+  SignableTransactionMessage,
   TransactionBatchItem,
   TransactionBatchOpts,
   TransactionReceipt,
@@ -30,14 +30,14 @@ import { makeMockServiceLayer } from "./helpers.js";
 export type MockTransactionServiceConfig = {
   build?: (
     instructions: readonly Instruction[]
-  ) => Effect.Effect<CompilableTransactionMessage, TransactionSendError | WalletNotConnectedError>;
+  ) => Effect.Effect<SignableTransactionMessage, TransactionSendError | WalletNotConnectedError>;
   signAll?: (
-    txs: readonly CompilableTransactionMessage[]
+    txs: readonly SignableTransactionMessage[]
   ) => Effect.Effect<
     readonly (Transaction & TransactionWithLifetime)[],
     TransactionSendError | WalletNotConnectedError
   >;
-  sign?: <T extends CompilableTransactionMessage>(
+  sign?: <T extends SignableTransactionMessage>(
     tx: T
   ) => Effect.Effect<
     Transaction & TransactionWithLifetime,
@@ -74,13 +74,13 @@ export type MockTransactionServiceConfig = {
     | TransactionTimeoutError
     | TransactionFailedError
   >;
-  simulate?: <T extends CompilableTransactionMessage>(
+  simulate?: <T extends SignableTransactionMessage>(
     tx: T
   ) => Effect.Effect<void, SimulationFailedError | TransactionSendError | WalletNotConnectedError>;
 };
 
 const defaultConfig: Required<MockTransactionServiceConfig> = {
-  build: () => Effect.succeed({} as CompilableTransactionMessage),
+  build: () => Effect.succeed({} as SignableTransactionMessage),
   confirm: (signature) =>
     Effect.succeed({
       confirmations: 10n,

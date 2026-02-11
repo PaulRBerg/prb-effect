@@ -7,7 +7,7 @@
   "sideEffects": false,
   "type": "module",
   "types": "./dist/index.d.ts",
-  "version": "1.0.0-beta.4",
+  "version": "1.0.0-beta.5",
   "scripts": {
     "build": "just build",
     "prepack": "bun install --frozen-lockfile && just build"
@@ -25,7 +25,8 @@
     "url": "https://github.com/PaulRBerg/prb-effect/issues"
   },
   "dependencies": {
-    "bn.js": "^5.2.1"
+    "bn.js": "^5.2.1",
+    "buffer": "^6.0.3"
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:dev",
@@ -33,10 +34,10 @@
     "@effect/platform": "catalog:effect",
     "@effect/vitest": "catalog:dev",
     "@sablier/devkit": "catalog:dev",
-    "@solana-program/compute-budget": "^0.8.0",
-    "@solana-program/system": "^0.8.0",
-    "@solana-program/token": "^0.8.0",
-    "@solana/kit": "^2.2.7",
+    "@solana-program/compute-budget": "^0.12.0",
+    "@solana-program/system": "^0.10.0",
+    "@solana-program/token": "^0.9.0",
+    "@solana/kit": "^5.4.0",
     "@solana/web3.js": "^1.95.0",
     "@types/bn.js": "^5.2.0",
     "@types/node": "^25.0.3",
@@ -56,6 +57,7 @@
       "import": "./dist/index.js"
     },
     "./internal/*": null,
+    "./*/internal/*": null,
     "./*": {
       "types": "./dist/*/index.d.ts",
       "import": "./dist/*/index.js"
@@ -78,10 +80,10 @@
   "peerDependencies": {
     "@coral-xyz/anchor": "^0.31.1",
     "@effect/platform": "catalog:peers",
-    "@solana-program/compute-budget": "^0.8.0",
-    "@solana-program/system": "^0.8.0",
-    "@solana-program/token": "^0.8.0",
-    "@solana/kit": "^2.2.0",
+    "@solana-program/compute-budget": "^0.12.0",
+    "@solana-program/system": "^0.10.0",
+    "@solana-program/token": "^0.9.0",
+    "@solana/kit": "^5.4.0",
     "@solana/web3.js": "^1.95.0",
     "effect": "catalog:peers",
     "react": "catalog:peers",

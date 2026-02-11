@@ -13,58 +13,20 @@ import type { Address } from "@solana/addresses";
 import type { Instruction } from "@solana/instructions";
 import { AccountRole } from "@solana/instructions";
 import type { TransactionInstruction } from "@solana/web3.js";
-import { PublicKey } from "@solana/web3.js";
-import BN from "bn.js";
 import { Context, Effect, Layer } from "effect";
 import { RpcService } from "#src/rpc/index.js";
 import { SpanNames } from "#src/telemetry/index.js";
-import type { AccountsMap, BuildInstructionParams, CreateProgramParams } from "./types.js";
+import {
+  makeProgramConnectionShim,
+  toAnchorAccounts,
+  toAnchorArgs,
+} from "./internal/anchor-helpers.js";
+import type { BuildInstructionParams, CreateProgramParams } from "./types.js";
 import { InstructionBuildError, InstructionNotFoundError, ProgramCreationError } from "./types.js";
 
 // =============================================================================
 // Helpers
 // =============================================================================
-
-/**
- * Convert a string/Address to PublicKey.
- */
-function toPublicKey(address: Address | string): PublicKey {
-  return new PublicKey(address);
-}
-
-/**
- * Convert account map values to PublicKeys for Anchor.
- */
-function toAnchorAccounts(accounts: AccountsMap): Record<string, PublicKey> {
-  const result: Record<string, PublicKey> = {};
-  for (const [key, value] of Object.entries(accounts)) {
-    result[key] = toPublicKey(value);
-  }
-  return result;
-}
-
-/**
- * Convert a bigint to BN for Anchor.
- */
-function toBN(value: bigint | number): BN {
-  return new BN(value.toString());
-}
-
-/**
- * Convert args to Anchor-compatible format.
- * Handles bigint -> BN conversion.
- */
-function toAnchorArgs(args: readonly unknown[]): unknown[] {
-  return args.map((arg) => {
-    if (typeof arg === "bigint") {
-      return toBN(arg);
-    }
-    if (typeof arg === "number" && Number.isInteger(arg)) {
-      return toBN(arg);
-    }
-    return arg;
-  });
-}
 
 /**
  * Get account role from signer and writable flags.
@@ -187,7 +149,11 @@ export const ProgramWriterLive = Layer.effect(
           const methodFn = (program.methods as Record<string, unknown>)[method];
           if (!methodFn || typeof methodFn !== "function") {
             return yield* Effect.fail(
-              new InstructionNotFoundError(method, program.idl.metadata?.name ?? "unknown")
+              new InstructionNotFoundError({
+                idlName: program.idl.metadata?.name ?? "unknown",
+                message: `Instruction "${method}" not found in IDL "${program.idl.metadata?.name ?? "unknown"}"`,
+                method,
+              })
             );
           }
 
@@ -204,7 +170,12 @@ export const ProgramWriterLive = Layer.effect(
           ).accountsPartial(anchorAccounts);
 
           const anchorInstruction = yield* Effect.tryPromise({
-            catch: (error) => new InstructionBuildError(method, error),
+            catch: (error) =>
+              new InstructionBuildError({
+                cause: error,
+                message: `Failed to build instruction "${method}"`,
+                method,
+              }),
             try: () =>
               (
                 withAccounts as { instruction: () => Promise<TransactionInstruction> }
@@ -229,21 +200,18 @@ export const ProgramWriterLive = Layer.effect(
           const idlWithAddress = programId ? { ...idl, address: programId as string } : idl;
 
           return yield* Effect.try({
-            catch: (error) => new ProgramCreationError(error),
+            catch: (error) =>
+              new ProgramCreationError({
+                cause: error,
+                message: "Failed to create Anchor program",
+              }),
             try: () =>
               // Create Program with a dummy provider (we're only using it for instruction building)
               // Anchor requires a provider but we only need the IDL parsing
               new Program(
                 idlWithAddress as Idl,
                 {
-                  connection: {
-                    getAccountInfo: (pubkey: PublicKey) =>
-                      rpc
-                        .getAccountInfo(pubkey.toBase58() as Address, { encoding: "base64" })
-                        .send(),
-                    // Minimal connection interface for Anchor
-                    getLatestBlockhash: () => rpc.getLatestBlockhash().send(),
-                  } as unknown as Program["provider"]["connection"],
+                  connection: makeProgramConnectionShim(rpc, "ProgramWriter"),
                 } as unknown as Program["provider"]
               ) as unknown as Program<typeof params.idl>,
           });
