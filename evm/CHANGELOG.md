@@ -10,6 +10,27 @@ The format is based on [Common Changelog](https://common-changelog.org/).
 [1.1.1]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-evm%401.1.1
 [1.2.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-evm%401.2.0
 [1.2.1]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-evm%401.2.1
+[1.3.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-evm%401.3.0
+
+## [1.3.0] - 2026-02-13
+
+### Changed
+
+- Enrich `SimulationFailedError` and `GasEstimationError` with `phase`, `revertReason`, and `customErrorName` fields
+- Refactor `writeAndTrack` to track failure phases (`preflight`, `submission`, `receipt`, `event-decode`) and propagate
+  `preflightWarning` through all `TxState` variants
+
+### Added
+
+- Add configurable preflight modes (`strict`, `best-effort`, `none`) for `ContractPipeline` write operations via
+  `preflight.mode` parameter
+- Add `TxFailedPhase` and `TxPreflightWarning` types to `TxState` for granular failure tracking
+- Add `decodeExecutionFailure` utility for structured revert reason extraction from viem errors
+
+### Fixed
+
+- Relax best-effort preflight recovery to continue on any `GasEstimationError` or `SimulationFailedError`, not just
+  execution reverts
 
 ## [1.2.1] - 2026-02-11
 
