@@ -11,6 +11,14 @@ The format is based on [Common Changelog](https://common-changelog.org/).
 [1.2.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-evm%401.2.0
 [1.2.1]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-evm%401.2.1
 [1.3.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-evm%401.3.0
+[1.3.1]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-evm%401.3.1
+
+## [1.3.1] - 2026-02-13
+
+### Fixed
+
+- Fail fast on reverted transactions in `ContractPipeline`, `writeAndTrack`, and `TxManager` instead of silently
+  succeeding with a reverted receipt
 
 ## [1.3.0] - 2026-02-13
 
