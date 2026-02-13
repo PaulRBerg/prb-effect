@@ -8,8 +8,7 @@ Type-safe, composable EVM services for [Effect](https://effect.website), built o
 2. Provide a Layer (`makeEffectEvmLayer` for dapps, or `makePublicClientLayer` for read-only) + any optional service
    layers
 3. Read via `ContractReader` (or `typedContract`) and higher-level helpers like `BalanceService`
-4. Write via `ContractPipeline` (simulate -> estimate -> send -> wait -> decode), or dedicated services like
-   `DeployService`
+4. Write via `ContractPipeline` (preflight -> send -> wait -> decode), or dedicated services like `DeployService`
 5. Stream/decode events via `EventStream` (or `ReliableEventStream` for confirmations), or raw watchers via
    `SubscriptionService`
 6. In tests, use `effect-evm/testing-kit`
@@ -465,6 +464,36 @@ const program = Effect.gen(function* () {
 
 If you need reactive UI state, use `writeAndTrack` (scoped): it returns a `SubscriptionRef<TxState>` plus an Effect for
 the final `{ hash, receipt, events }`.
+
+### Preflight modes
+
+`ContractPipeline` defaults to strict preflight (`estimate + simulate`, fail on either).
+
+Override per call via `preflight.mode`:
+
+- `strict` (default): safest for create/batch/high-cost writes
+- `best-effort`: continue to wallet submission if preflight fails with `GasEstimationError` or `SimulationFailedError`
+- `none`: skip preflight entirely, submit directly
+
+```typescript
+const result =
+  yield *
+  pipeline.writeAndTrack({
+    chainId: 1,
+    address: tokenAddress,
+    abi: erc20Abi,
+    functionName: "claim",
+    args: [claimId],
+    account: accountAddress,
+    preflight: { mode: "best-effort" }, // "strict" | "best-effort" | "none"
+  });
+```
+
+Recommended defaults:
+
+- Keep `strict` for create flows, batches, and high-value transactions.
+- Consider `best-effort` for low-complexity withdraw/claim flows where wallet-first UX matters.
+- Use `none` sparingly and only when your product explicitly accepts skipping local preflight checks.
 
 ## EIP-7702 (EOA delegation + atomic batching)
 

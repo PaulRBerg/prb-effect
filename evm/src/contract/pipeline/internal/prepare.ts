@@ -20,6 +20,7 @@ import type {
   TxOverrides,
   WriteParams,
 } from "#src/types/index.js";
+import type { PreflightMode } from "../types.js";
 import { applyGasLimitMultiplier } from "./helpers.js";
 
 export type BaseOverrides = TxOverrides & FeeOverrides;
@@ -60,46 +61,87 @@ export const deriveBaseOverrides = (
     } as BaseOverrides;
   });
 
-/**
- * Estimate gas and simulate transaction.
- *
- * Gas estimation is done BEFORE simulation to provide a reasonable gas limit.
- * Some RPC nodes default to max uint64 when no gas limit is provided, which
- * causes "insufficient funds" errors during the balance check.
- */
-export const simulateAndEstimate = <
-  TAbi extends Abi,
-  TFunctionName extends ContractFunctionName<TAbi, "nonpayable" | "payable">,
->(
-  writer: ContractWriterShape,
-  params: WriteParams<TAbi, TFunctionName>,
-  baseOverrides: BaseOverrides,
-  policy: TxPolicy
-): Effect.Effect<
-  { finalGas: bigint; overridesWithGas: BaseOverrides & { gas: bigint } },
+type PreflightError =
   | SimulationFailedError
   | ContractReadError
   | GasEstimationError
   | ClientNotFoundError
   | InsufficientFundsError
   | ResourceExhaustionError
-  | UserRejectedError
+  | UserRejectedError;
+
+export type PreflightWarning = {
+  readonly phase: "estimate" | "simulate";
+  readonly reason?: string;
+  readonly customErrorName?: string;
+};
+
+export type PreflightResult = {
+  readonly finalGas?: bigint;
+  readonly overridesWithGas: BaseOverrides & { gas?: bigint };
+  readonly preflightWarning?: PreflightWarning;
+};
+
+type RunPreflightOptions = {
+  readonly mode?: PreflightMode;
+  readonly onSimulating?: () => Effect.Effect<void>;
+};
+
+function withGas(baseOverrides: BaseOverrides, gas?: bigint): BaseOverrides & { gas?: bigint } {
+  return gas == null ? { ...baseOverrides } : { ...baseOverrides, gas };
+}
+
+function isRecoverablePreflightError(
+  error: PreflightError
+): error is GasEstimationError | SimulationFailedError {
+  if (error._tag === "SimulationFailedError") {
+    return true;
+  }
+
+  if (error._tag !== "GasEstimationError") {
+    return false;
+  }
+
+  // Best-effort should only recover gas estimation failures that look like
+  // contract execution failures (revert/custom error), not generic RPC issues.
+  return error.revertReason != null || error.customErrorName != null || error.revertData != null;
+}
+
+function toPreflightWarning(error: GasEstimationError | SimulationFailedError): PreflightWarning {
+  return {
+    customErrorName: error.customErrorName,
+    phase: error.phase,
+    reason: error.revertReason ?? error.message,
+  };
+}
+
+const simulateAndEstimateStrict = <
+  TAbi extends Abi,
+  TFunctionName extends ContractFunctionName<TAbi, "nonpayable" | "payable">,
+>(
+  writer: ContractWriterShape,
+  params: WriteParams<TAbi, TFunctionName>,
+  baseOverrides: BaseOverrides,
+  policy: TxPolicy,
+  onSimulating?: () => Effect.Effect<void>
+): Effect.Effect<
+  { finalGas: bigint; overridesWithGas: BaseOverrides & { gas: bigint } },
+  PreflightError
 > =>
   Effect.gen(function* () {
-    // Estimate gas first to get a reasonable limit for simulation
     const estimatedGas = yield* writer.estimateGas({
       ...params,
       overrides: baseOverrides,
     });
-    // Apply multiplier to add safety margin; this buffered value is used for
-    // both simulation (balance check) and the final transaction.
-    const derivedGas = applyGasLimitMultiplier(estimatedGas, policy.gasLimitMultiplier);
 
-    // Use explicit gas if provided, otherwise use derived
+    const derivedGas = applyGasLimitMultiplier(estimatedGas, policy.gasLimitMultiplier);
     const explicitGas = params.overrides?.gas ?? params.gas;
     const finalGas = explicitGas ?? derivedGas;
 
-    // Simulate with the gas limit to ensure proper balance checks
+    if (onSimulating) {
+      yield* onSimulating();
+    }
+
     yield* writer.simulate({ ...params, overrides: { ...baseOverrides, gas: finalGas } });
 
     return {
@@ -108,5 +150,94 @@ export const simulateAndEstimate = <
         ...baseOverrides,
         gas: finalGas,
       },
+    };
+  });
+
+/**
+ * Run write preflight according to mode.
+ *
+ * - strict: estimate + simulate, fail on either error.
+ * - best-effort: continue on GasEstimationError / SimulationFailedError.
+ * - none: skip estimate/simulate.
+ */
+export const runPreflight = <
+  TAbi extends Abi,
+  TFunctionName extends ContractFunctionName<TAbi, "nonpayable" | "payable">,
+>(
+  writer: ContractWriterShape,
+  params: WriteParams<TAbi, TFunctionName>,
+  baseOverrides: BaseOverrides,
+  policy: TxPolicy,
+  options: RunPreflightOptions = {}
+): Effect.Effect<PreflightResult, PreflightError> =>
+  Effect.gen(function* () {
+    const mode = options.mode ?? "strict";
+    const explicitGas = params.overrides?.gas ?? params.gas;
+
+    if (mode === "none") {
+      return {
+        finalGas: explicitGas,
+        overridesWithGas: withGas(baseOverrides, explicitGas),
+      };
+    }
+
+    if (mode === "strict") {
+      return yield* simulateAndEstimateStrict(
+        writer,
+        params,
+        baseOverrides,
+        policy,
+        options.onSimulating
+      );
+    }
+
+    const estimateResult = yield* writer
+      .estimateGas({
+        ...params,
+        overrides: baseOverrides,
+      })
+      .pipe(Effect.either);
+
+    if (estimateResult._tag === "Left") {
+      if (isRecoverablePreflightError(estimateResult.left)) {
+        return {
+          finalGas: explicitGas,
+          overridesWithGas: withGas(baseOverrides, explicitGas),
+          preflightWarning: toPreflightWarning(estimateResult.left),
+        };
+      }
+
+      return yield* Effect.fail(estimateResult.left);
+    }
+
+    const derivedGas = applyGasLimitMultiplier(estimateResult.right, policy.gasLimitMultiplier);
+    const finalGas = explicitGas ?? derivedGas;
+
+    if (options.onSimulating) {
+      yield* options.onSimulating();
+    }
+
+    const simulationResult = yield* writer
+      .simulate({
+        ...params,
+        overrides: { ...baseOverrides, gas: finalGas },
+      })
+      .pipe(Effect.either);
+
+    if (simulationResult._tag === "Left") {
+      if (isRecoverablePreflightError(simulationResult.left)) {
+        return {
+          finalGas,
+          overridesWithGas: { ...baseOverrides, gas: finalGas },
+          preflightWarning: toPreflightWarning(simulationResult.left),
+        };
+      }
+
+      return yield* Effect.fail(simulationResult.left);
+    }
+
+    return {
+      finalGas,
+      overridesWithGas: { ...baseOverrides, gas: finalGas },
     };
   });

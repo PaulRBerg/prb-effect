@@ -177,6 +177,7 @@ describe("ERC-20 Allowance Services", () => {
                         address: TEST_ADDRESS,
                         functionName: "approve",
                         message: "revert",
+                        phase: "simulate",
                       })
                     )) as unknown as ContractWriterShape["simulate"],
                   write: (() =>
@@ -344,6 +345,7 @@ describe("ERC-20 Allowance Services", () => {
                         address: TEST_ADDRESS,
                         functionName: "approve",
                         message: "revert",
+                        phase: "simulate",
                       })
                     );
                   }

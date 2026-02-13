@@ -58,6 +58,7 @@ alias bb := bump-beta
 [group("tests")]
 @test-unit +args="":
     na vitest {{ args }}
+alias t := test-unit
 alias tu := test-unit
 
 # Run integration tests for all packages

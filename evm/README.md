@@ -71,6 +71,20 @@ Effect.runPromise(program.pipe(Effect.provide(EvmLayer)));
 - **Browser persistence** — `browser` namespace (localStorage-backed stores)
 - **Testing** — `effect-evm/testing-kit` (mocks + `makeEffectEvmTestLayer`)
 
+## ⚙️ Write Preflight Modes
+
+`ContractPipeline.writeAndTrack` / `writeAndWait` now support per-call preflight strategy:
+
+- `strict` (default): estimate + simulate, fail on either
+- `best-effort`: continue on `GasEstimationError` / `SimulationFailedError`
+- `none`: skip estimate/simulate and submit directly
+
+Recommended usage:
+
+- Keep `strict` for create, batch, or high-cost writes.
+- Consider `best-effort` for simple withdraw/claim flows.
+- Use `none` only when your UX intentionally prefers wallet-first submission.
+
 ## 📖 Documentation
 
 - **Usage and examples**: [DOCS.md](./DOCS.md)

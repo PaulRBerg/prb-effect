@@ -3,7 +3,7 @@ import { Effect, Exit, Layer, Stream } from "effect";
 import type { Abi, Hash, TransactionReceipt } from "viem";
 import { erc20Abi } from "viem";
 import { ContractPipeline, ContractPipelineLive, ContractWriterLive } from "#src/contract/index.js";
-import { ClientNotFoundError, ReceiptTimeoutError } from "#src/core/index.js";
+import { ClientNotFoundError, EventDecodeError, ReceiptTimeoutError } from "#src/core/index.js";
 import type { DecodedEvent } from "#src/events/index.js";
 import { EventStream } from "#src/events/index.js";
 import {
@@ -455,6 +455,135 @@ describe("ContractPipeline", () => {
         )
       );
     });
+
+    it.effect("best-effort mode continues after gas estimation failure", () => {
+      let estimateCalls = 0;
+      let simulateCalls = 0;
+      let writeCalls = 0;
+
+      return Effect.gen(function* () {
+        const pipeline = yield* ContractPipeline;
+
+        const result = yield* pipeline.writeAndWait({
+          abi: erc20Abi,
+          account: TEST_ADDRESS,
+          address: TEST_ADDRESS,
+          args: [TEST_ADDRESS_2, 100n],
+          chainId: TEST_CHAIN_ID,
+          functionName: "transfer",
+          preflight: { mode: "best-effort" },
+        });
+
+        expect(result.hash).toBe(TEST_TX_HASH);
+        expect(estimateCalls).toBe(1);
+        expect(simulateCalls).toBe(0);
+        expect(writeCalls).toBe(1);
+      }).pipe(
+        Effect.provide(
+          makeContractPipelineTestLayer({
+            publicClient: {
+              estimateContractGas: () => {
+                estimateCalls += 1;
+                return Promise.reject(new Error("execution reverted: WithdrawWindowClosed"));
+              },
+              simulateContract: () => {
+                simulateCalls += 1;
+                return Promise.resolve({ request: {}, result: true });
+              },
+            },
+            walletClient: {
+              writeContract: () => {
+                writeCalls += 1;
+                return Promise.resolve(TEST_TX_HASH);
+              },
+            },
+          })
+        )
+      );
+    });
+
+    it.effect("best-effort mode fails on non-execution gas estimation error", () => {
+      let writeCalls = 0;
+
+      return Effect.gen(function* () {
+        const pipeline = yield* ContractPipeline;
+
+        const exit = yield* pipeline
+          .writeAndWait({
+            abi: erc20Abi,
+            account: TEST_ADDRESS,
+            address: TEST_ADDRESS,
+            args: [TEST_ADDRESS_2, 100n],
+            chainId: TEST_CHAIN_ID,
+            functionName: "transfer",
+            preflight: { mode: "best-effort" },
+          })
+          .pipe(Effect.exit);
+
+        expect(Exit.isFailure(exit)).toBe(true);
+        expect(writeCalls).toBe(0);
+      }).pipe(
+        Effect.provide(
+          makeContractPipelineTestLayer({
+            publicClient: {
+              estimateContractGas: () => Promise.reject(new Error("RPC timeout")),
+            },
+            walletClient: {
+              writeContract: () => {
+                writeCalls += 1;
+                return Promise.resolve(TEST_TX_HASH);
+              },
+            },
+          })
+        )
+      );
+    });
+
+    it.effect("none mode skips estimate and simulation", () => {
+      let estimateCalls = 0;
+      let simulateCalls = 0;
+      let writeCalls = 0;
+
+      return Effect.gen(function* () {
+        const pipeline = yield* ContractPipeline;
+
+        const result = yield* pipeline.writeAndWait({
+          abi: erc20Abi,
+          account: TEST_ADDRESS,
+          address: TEST_ADDRESS,
+          args: [TEST_ADDRESS_2, 100n],
+          chainId: TEST_CHAIN_ID,
+          functionName: "transfer",
+          preflight: { mode: "none" },
+        });
+
+        expect(result.hash).toBe(TEST_TX_HASH);
+        expect(estimateCalls).toBe(0);
+        expect(simulateCalls).toBe(0);
+        expect(writeCalls).toBe(1);
+      }).pipe(
+        Effect.provide(
+          makeContractPipelineTestLayer({
+            publicClient: {
+              estimateContractGas: () => {
+                estimateCalls += 1;
+                return Promise.resolve(50000n);
+              },
+              simulateContract: () => {
+                simulateCalls += 1;
+                return Promise.resolve({ request: {}, result: true });
+              },
+            },
+            walletClient: {
+              writeContract: () => {
+                writeCalls += 1;
+                return Promise.resolve(TEST_TX_HASH);
+              },
+            },
+          })
+        )
+      );
+    });
   });
 
   describe("writeAndTrack", () => {
@@ -515,6 +644,345 @@ describe("ContractPipeline", () => {
       }).pipe(
         Effect.provide(
           makeContractPipelineTestLayer({
+            publicClient: {
+              estimateContractGas: () => Promise.resolve(50000n),
+              simulateContract: () => Promise.resolve({ request: {}, result: true }),
+            },
+            walletClient: {
+              writeContract: () => Promise.resolve(TEST_TX_HASH),
+            },
+          })
+        ),
+        Effect.scoped
+      )
+    );
+
+    it.effect("strict preflight fails on gas estimation and marks preflight phase", () => {
+      let writeCalls = 0;
+
+      return Effect.gen(function* () {
+        const pipeline = yield* ContractPipeline;
+
+        const { result, stateRef } = yield* pipeline.writeAndTrack({
+          abi: erc20Abi,
+          account: TEST_ADDRESS,
+          address: TEST_ADDRESS,
+          args: [TEST_ADDRESS_2, 100n],
+          chainId: TEST_CHAIN_ID,
+          functionName: "transfer",
+          preflight: { mode: "strict" },
+        });
+
+        const exit = yield* result.pipe(Effect.exit);
+        expect(Exit.isFailure(exit)).toBe(true);
+        expect(writeCalls).toBe(0);
+
+        const state = yield* stateRef.get;
+        expect(state.status).toBe("failed");
+        if (state.status === "failed") {
+          expect(state.phase).toBe("preflight");
+        }
+      }).pipe(
+        Effect.provide(
+          makeContractPipelineTestLayer({
+            publicClient: {
+              estimateContractGas: () =>
+                Promise.reject(new Error("execution reverted: WithdrawWindowClosed")),
+            },
+            walletClient: {
+              writeContract: () => {
+                writeCalls += 1;
+                return Promise.resolve(TEST_TX_HASH);
+              },
+            },
+          })
+        ),
+        Effect.scoped
+      );
+    });
+
+    it.effect("best-effort continues after gas estimation failure", () => {
+      let estimateCalls = 0;
+      let simulateCalls = 0;
+      let writeCalls = 0;
+
+      return Effect.gen(function* () {
+        const pipeline = yield* ContractPipeline;
+
+        const { result, stateRef } = yield* pipeline.writeAndTrack({
+          abi: erc20Abi,
+          account: TEST_ADDRESS,
+          address: TEST_ADDRESS,
+          args: [TEST_ADDRESS_2, 100n],
+          chainId: TEST_CHAIN_ID,
+          functionName: "transfer",
+          preflight: { mode: "best-effort" },
+        });
+
+        const finalResult = yield* result;
+        expect(finalResult.hash).toBe(TEST_TX_HASH);
+        expect(estimateCalls).toBe(1);
+        expect(simulateCalls).toBe(0);
+        expect(writeCalls).toBe(1);
+
+        const state = yield* stateRef.get;
+        expect(state.status).toBe("mined");
+        if (state.status === "mined") {
+          expect(state.preflightWarning?.phase).toBe("estimate");
+        }
+      }).pipe(
+        Effect.provide(
+          makeContractPipelineTestLayer({
+            publicClient: {
+              estimateContractGas: () => {
+                estimateCalls += 1;
+                return Promise.reject(new Error("execution reverted: WithdrawWindowClosed"));
+              },
+              simulateContract: () => {
+                simulateCalls += 1;
+                return Promise.resolve({ request: {}, result: true });
+              },
+            },
+            walletClient: {
+              writeContract: () => {
+                writeCalls += 1;
+                return Promise.resolve(TEST_TX_HASH);
+              },
+            },
+          })
+        ),
+        Effect.scoped
+      );
+    });
+
+    it.effect("best-effort fails on non-execution gas estimation error", () => {
+      let writeCalls = 0;
+
+      return Effect.gen(function* () {
+        const pipeline = yield* ContractPipeline;
+
+        const { result, stateRef } = yield* pipeline.writeAndTrack({
+          abi: erc20Abi,
+          account: TEST_ADDRESS,
+          address: TEST_ADDRESS,
+          args: [TEST_ADDRESS_2, 100n],
+          chainId: TEST_CHAIN_ID,
+          functionName: "transfer",
+          preflight: { mode: "best-effort" },
+        });
+
+        const exit = yield* result.pipe(Effect.exit);
+        expect(Exit.isFailure(exit)).toBe(true);
+        expect(writeCalls).toBe(0);
+
+        const state = yield* stateRef.get;
+        expect(state.status).toBe("failed");
+        if (state.status === "failed") {
+          expect(state.phase).toBe("preflight");
+        }
+      }).pipe(
+        Effect.provide(
+          makeContractPipelineTestLayer({
+            publicClient: {
+              estimateContractGas: () => Promise.reject(new Error("RPC timeout")),
+            },
+            walletClient: {
+              writeContract: () => {
+                writeCalls += 1;
+                return Promise.resolve(TEST_TX_HASH);
+              },
+            },
+          })
+        ),
+        Effect.scoped
+      );
+    });
+
+    it.effect("best-effort continues after simulation failure", () => {
+      let estimateCalls = 0;
+      let simulateCalls = 0;
+      let writeCalls = 0;
+
+      return Effect.gen(function* () {
+        const pipeline = yield* ContractPipeline;
+
+        const { result, stateRef } = yield* pipeline.writeAndTrack({
+          abi: erc20Abi,
+          account: TEST_ADDRESS,
+          address: TEST_ADDRESS,
+          args: [TEST_ADDRESS_2, 100n],
+          chainId: TEST_CHAIN_ID,
+          functionName: "transfer",
+          preflight: { mode: "best-effort" },
+        });
+
+        const finalResult = yield* result;
+        expect(finalResult.hash).toBe(TEST_TX_HASH);
+        expect(estimateCalls).toBe(1);
+        expect(simulateCalls).toBe(1);
+        expect(writeCalls).toBe(1);
+
+        const state = yield* stateRef.get;
+        expect(state.status).toBe("mined");
+        if (state.status === "mined") {
+          expect(state.preflightWarning?.phase).toBe("simulate");
+          expect(state.preflightWarning?.reason).toContain("allowance");
+        }
+      }).pipe(
+        Effect.provide(
+          makeContractPipelineTestLayer({
+            publicClient: {
+              estimateContractGas: () => {
+                estimateCalls += 1;
+                return Promise.resolve(50000n);
+              },
+              simulateContract: () => {
+                simulateCalls += 1;
+                return Promise.reject(
+                  new Error("execution reverted: ERC20: transfer amount exceeds allowance")
+                );
+              },
+            },
+            walletClient: {
+              writeContract: () => {
+                writeCalls += 1;
+                return Promise.resolve(TEST_TX_HASH);
+              },
+            },
+          })
+        ),
+        Effect.scoped
+      );
+    });
+
+    it.effect("none mode skips estimate and simulation", () => {
+      let estimateCalls = 0;
+      let simulateCalls = 0;
+      let writeCalls = 0;
+
+      return Effect.gen(function* () {
+        const pipeline = yield* ContractPipeline;
+
+        const { result } = yield* pipeline.writeAndTrack({
+          abi: erc20Abi,
+          account: TEST_ADDRESS,
+          address: TEST_ADDRESS,
+          args: [TEST_ADDRESS_2, 100n],
+          chainId: TEST_CHAIN_ID,
+          functionName: "transfer",
+          preflight: { mode: "none" },
+        });
+
+        const finalResult = yield* result;
+        expect(finalResult.hash).toBe(TEST_TX_HASH);
+        expect(estimateCalls).toBe(0);
+        expect(simulateCalls).toBe(0);
+        expect(writeCalls).toBe(1);
+      }).pipe(
+        Effect.provide(
+          makeContractPipelineTestLayer({
+            publicClient: {
+              estimateContractGas: () => {
+                estimateCalls += 1;
+                return Promise.resolve(50000n);
+              },
+              simulateContract: () => {
+                simulateCalls += 1;
+                return Promise.resolve({ request: {}, result: true });
+              },
+            },
+            walletClient: {
+              writeContract: () => {
+                writeCalls += 1;
+                return Promise.resolve(TEST_TX_HASH);
+              },
+            },
+          })
+        ),
+        Effect.scoped
+      );
+    });
+
+    it.effect("marks receipt phase when receipt waiting fails", () =>
+      Effect.gen(function* () {
+        const pipeline = yield* ContractPipeline;
+
+        const { result, stateRef } = yield* pipeline.writeAndTrack({
+          abi: erc20Abi,
+          account: TEST_ADDRESS,
+          address: TEST_ADDRESS,
+          args: [TEST_ADDRESS_2, 100n],
+          chainId: TEST_CHAIN_ID,
+          functionName: "transfer",
+        });
+
+        const exit = yield* result.pipe(Effect.exit);
+        expect(Exit.isFailure(exit)).toBe(true);
+
+        const state = yield* stateRef.get;
+        expect(state.status).toBe("failed");
+        if (state.status === "failed") {
+          expect(state.phase).toBe("receipt");
+        }
+      }).pipe(
+        Effect.provide(
+          makeContractPipelineTestLayer({
+            publicClient: {
+              estimateContractGas: () => Promise.resolve(50000n),
+              simulateContract: () => Promise.resolve({ request: {}, result: true }),
+            },
+            txManager: {
+              waitForReceipt: () =>
+                Effect.fail(
+                  new ReceiptTimeoutError({
+                    hash: TEST_TX_HASH,
+                    message: "Timeout waiting for receipt",
+                    timeout: 120_000,
+                  })
+                ),
+            },
+            walletClient: {
+              writeContract: () => Promise.resolve(TEST_TX_HASH),
+            },
+          })
+        ),
+        Effect.scoped
+      )
+    );
+
+    it.effect("marks event-decode phase when decoding fails", () =>
+      Effect.gen(function* () {
+        const pipeline = yield* ContractPipeline;
+
+        const { result, stateRef } = yield* pipeline.writeAndTrack({
+          abi: erc20Abi,
+          account: TEST_ADDRESS,
+          address: TEST_ADDRESS,
+          args: [TEST_ADDRESS_2, 100n],
+          chainId: TEST_CHAIN_ID,
+          functionName: "transfer",
+        });
+
+        const exit = yield* result.pipe(Effect.exit);
+        expect(Exit.isFailure(exit)).toBe(true);
+
+        const state = yield* stateRef.get;
+        expect(state.status).toBe("failed");
+        if (state.status === "failed") {
+          expect(state.phase).toBe("event-decode");
+        }
+      }).pipe(
+        Effect.provide(
+          makeContractPipelineTestLayer({
+            eventStream: {
+              decodeReceipt: (() =>
+                Effect.fail(
+                  new EventDecodeError({
+                    log: { bad: true },
+                    message: "Failed to decode event",
+                  })
+                )) as unknown as EventStreamShape["decodeReceipt"],
+            },
             publicClient: {
               estimateContractGas: () => Promise.resolve(50000n),
               simulateContract: () => Promise.resolve({ request: {}, result: true }),

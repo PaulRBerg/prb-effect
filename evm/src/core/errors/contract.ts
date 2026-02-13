@@ -15,9 +15,12 @@ export class SimulationFailedError extends Schema.TaggedError<SimulationFailedEr
   {
     address: Schema.String,
     calldata: Schema.optional(Schema.String),
+    customErrorName: Schema.optional(Schema.String),
     functionName: Schema.String,
     message: Schema.String,
+    phase: Schema.Literal("simulate"),
     revertData: Schema.optional(Schema.String),
+    revertReason: Schema.optional(Schema.String),
     sender: Schema.optional(Schema.String),
   }
 ) {}
@@ -28,8 +31,12 @@ export class GasEstimationError extends Schema.TaggedError<GasEstimationError>()
     address: Schema.String,
     calldata: Schema.optional(Schema.String),
     cause: Schema.optional(Schema.Unknown),
+    customErrorName: Schema.optional(Schema.String),
     functionName: Schema.String,
     message: Schema.String,
+    phase: Schema.Literal("estimate"),
+    revertData: Schema.optional(Schema.String),
+    revertReason: Schema.optional(Schema.String),
     sender: Schema.optional(Schema.String),
   }
 ) {}

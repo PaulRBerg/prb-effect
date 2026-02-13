@@ -1,6 +1,7 @@
 import { describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
 import { MIN_TX_GAS } from "#src/constants/index.js";
+import { TxFailedError } from "#src/core/index.js";
 import { TEST_TX_HASH } from "#src/testing-kit/index.js";
 import type { TxState } from "#src/tx/index.js";
 import { initialTxState, makeTxTracker } from "#src/tx/index.js";
@@ -130,6 +131,21 @@ describe("makeTxTracker", () => {
       expect(state.status).toBe("replaced");
       if (state.status === "replaced") {
         expect(state.oldHash).toBe(TEST_TX_HASH);
+      }
+
+      // Test failed
+      yield* tracker.set({
+        error: new TxFailedError({
+          hash: TEST_TX_HASH,
+          message: "Failed to confirm receipt",
+        }),
+        phase: "receipt",
+        status: "failed",
+      });
+      state = yield* tracker.get;
+      expect(state.status).toBe("failed");
+      if (state.status === "failed") {
+        expect(state.phase).toBe("receipt");
       }
     })
   );

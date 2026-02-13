@@ -3,7 +3,6 @@ import {
   ContractFunctionExecutionError,
   ContractFunctionRevertedError,
   BaseError as CoreError,
-  EstimateGasExecutionError,
   TransactionExecutionError,
   UserRejectedRequestError,
   InsufficientFundsError as ViemInsufficientFundsError,
@@ -14,6 +13,10 @@ import {
   GasEstimationError,
   SimulationFailedError,
 } from "#src/core/errors/contract.js";
+import {
+  decodeExecutionFailure,
+  executionFailureReason,
+} from "#src/core/errors/execution-failure.js";
 import {
   InsufficientFundsError,
   isLikelyUserRejectedError,
@@ -30,11 +33,6 @@ import {
   WatchAssetError,
 } from "#src/wallet/index.js";
 
-const REVERT_REASON_RE = /reverted with reason: (.+?)(?:\n|$)/;
-const REVERT_REASON_STRING_RE = /reverted with reason string '(.+?)'/;
-const REVERT_CUSTOM_ERROR_RE = /reverted with custom error '(.+?)'/;
-const EXECUTION_REVERTED_RE = /execution reverted(?::?\s*)(.+?)(?:\n|$)/i;
-const EXECUTION_REVERTED_GENERIC_RE = /execution reverted/i;
 const TX_HASH_RE = /0x[a-fA-F0-9]{64}/;
 
 /**
@@ -94,81 +92,8 @@ export function isResourceExhaustion(error: unknown): boolean {
   return false;
 }
 
-/**
- * Extract revert reason from Viem errors using walk() to traverse the error chain.
- * See: https://github.com/wevm/viem/discussions/3519
- */
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: error extraction requires multiple conditional branches for different error types
 export function extractRevertReason(error: unknown): string | undefined {
-  // Use walk() to traverse to the deepest error in the chain (undocumented but reliable)
-  // This handles nested error structures like ContractFunctionExecutionError wrapping ContractFunctionRevertedError
-  if (error instanceof CoreError) {
-    // First try to find a ContractFunctionRevertedError in the chain
-    const revertError = error.walk(
-      (e) => e instanceof ContractFunctionRevertedError
-    ) as ContractFunctionRevertedError | null;
-
-    if (revertError) {
-      // Try reason property (decoded string revert)
-      if (revertError.reason) {
-        return revertError.reason;
-      }
-      // Try data.errorName for custom errors
-      if (revertError.data?.errorName) {
-        return revertError.data.errorName;
-      }
-      // Try shortMessage which often contains the revert reason
-      if (revertError.shortMessage) {
-        const match = revertError.shortMessage.match(EXECUTION_REVERTED_RE);
-        if (match?.[1]) {
-          return match[1].trim();
-        }
-        return revertError.shortMessage;
-      }
-    }
-
-    // Fall back to the deepest error's shortMessage
-    const deepestError = error.walk();
-    if (deepestError instanceof CoreError && deepestError.shortMessage) {
-      const match = deepestError.shortMessage.match(EXECUTION_REVERTED_RE);
-      if (match?.[1]) {
-        return match[1].trim();
-      }
-    }
-  }
-
-  // Fall back to regex matching on message
-  if (error instanceof Error) {
-    // Try "reason string '...'" format (e.g., "Transaction reverted with reason string 'Insufficient allowance'")
-    const reasonStringMatch = error.message.match(REVERT_REASON_STRING_RE);
-    if (reasonStringMatch?.[1]) {
-      return reasonStringMatch[1];
-    }
-
-    // Try Viem's "execution reverted:" format with a reason
-    const execMatch = error.message.match(EXECUTION_REVERTED_RE);
-    if (execMatch?.[1]) {
-      return execMatch[1].trim();
-    }
-
-    // Try legacy formats
-    const revertMatch = error.message.match(REVERT_REASON_RE);
-    if (revertMatch?.[1]) {
-      return revertMatch[1];
-    }
-
-    const customMatch = error.message.match(REVERT_CUSTOM_ERROR_RE);
-    if (customMatch?.[1]) {
-      return customMatch[1];
-    }
-
-    // Check for generic "execution reverted" without specific reason
-    if (EXECUTION_REVERTED_GENERIC_RE.test(error.message)) {
-      return "execution reverted";
-    }
-  }
-
-  return undefined;
+  return executionFailureReason(decodeExecutionFailure(error, "simulate"));
 }
 
 /**
@@ -260,17 +185,24 @@ export function classifyContractError(
   }
 
   // Check for contract function execution errors (reverts)
+  const executionFailure = decodeExecutionFailure(error, "simulate");
   if (
     error instanceof ContractFunctionExecutionError ||
-    error instanceof ContractFunctionRevertedError
+    error instanceof ContractFunctionRevertedError ||
+    executionFailure
   ) {
-    const revertReason = extractRevertReason(error);
+    const resolvedExecutionFailure = executionFailure ?? ({ phase: "simulate" } as const);
+    const reason = executionFailureReason(resolvedExecutionFailure);
+
     return new SimulationFailedError({
       address: context.address,
       calldata: context.calldata,
+      customErrorName: resolvedExecutionFailure.customErrorName,
       functionName: context.functionName,
-      message: `Failed to simulate ${context.functionName} on ${context.address}${revertReason ? `: ${revertReason}` : ""}`,
-      revertData: revertReason,
+      message: `Failed to simulate ${context.functionName} on ${context.address}${reason ? `: ${reason}` : ""}`,
+      phase: "simulate",
+      revertData: resolvedExecutionFailure.revertData,
+      revertReason: resolvedExecutionFailure.revertReason,
       sender: context.sender,
     });
   }
@@ -353,26 +285,21 @@ export function classifyGasEstimationError(
     });
   }
 
-  // Check for viem's EstimateGasExecutionError
-  if (error instanceof EstimateGasExecutionError) {
-    const revertReason = extractRevertReason(error.cause);
-    return new GasEstimationError({
-      address: context.address,
-      calldata: context.calldata,
-      cause: error,
-      functionName: context.functionName,
-      message: `Failed to estimate gas for ${context.functionName} on ${context.address}${revertReason ? `: ${revertReason}` : ""}`,
-      sender: context.sender,
-    });
-  }
+  const executionFailure =
+    decodeExecutionFailure(error, "estimate") ?? ({ phase: "estimate" } as const);
+  const reason = executionFailureReason(executionFailure);
 
   // Default: return generic gas estimation error
   return new GasEstimationError({
     address: context.address,
     calldata: context.calldata,
     cause: error,
+    customErrorName: executionFailure.customErrorName,
     functionName: context.functionName,
-    message: `Failed to estimate gas for ${context.functionName} on ${context.address}`,
+    message: `Failed to estimate gas for ${context.functionName} on ${context.address}${reason ? `: ${reason}` : ""}`,
+    phase: "estimate",
+    revertData: executionFailure.revertData,
+    revertReason: executionFailure.revertReason,
     sender: context.sender,
   });
 }

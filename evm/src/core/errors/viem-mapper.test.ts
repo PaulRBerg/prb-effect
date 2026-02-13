@@ -1,6 +1,8 @@
 import { UnknownRpcError } from "viem";
 import { describe, expect, it } from "vitest";
 import {
+  classifyContractError,
+  classifyGasEstimationError,
   extractRevertReason,
   isInsufficientFunds,
   isResourceExhaustion,
@@ -115,7 +117,7 @@ describe("viem error classification", () => {
     it("extracts custom error name", () => {
       const error = new Error("Transaction reverted with custom error 'InsufficientBalance()'");
       const reason = extractRevertReason(error);
-      expect(reason).toBe("InsufficientBalance()");
+      expect(reason).toBe("InsufficientBalance");
     });
 
     it("detects generic execution reverted", () => {
@@ -146,6 +148,52 @@ describe("viem error classification", () => {
       const error = new Error("execution reverted: SablierLockup_DepositAmountZero");
       const reason = extractRevertReason(error);
       expect(reason).toBe("SablierLockup_DepositAmountZero");
+    });
+  });
+
+  describe("classifyContractError", () => {
+    it("returns SimulationFailedError with structured execution payload", () => {
+      const error = classifyContractError(
+        new Error("execution reverted: ERC20: transfer amount exceeds allowance"),
+        {
+          address: "0x1234567890123456789012345678901234567890",
+          functionName: "transfer",
+        }
+      );
+
+      expect(error._tag).toBe("SimulationFailedError");
+      if (error._tag === "SimulationFailedError") {
+        expect(error.phase).toBe("simulate");
+        expect(error.revertReason).toBe("ERC20: transfer amount exceeds allowance");
+        expect(error.customErrorName).toBeUndefined();
+      }
+    });
+
+    it("returns ContractReadError for non-execution failures", () => {
+      const error = classifyContractError(new Error("Network timeout"), {
+        address: "0x1234567890123456789012345678901234567890",
+        functionName: "transfer",
+      });
+
+      expect(error._tag).toBe("ContractReadError");
+    });
+  });
+
+  describe("classifyGasEstimationError", () => {
+    it("returns GasEstimationError with structured execution payload", () => {
+      const error = classifyGasEstimationError(
+        new Error("execution reverted: SablierLockup_DepositAmountZero"),
+        {
+          address: "0x1234567890123456789012345678901234567890",
+          functionName: "withdraw",
+        }
+      );
+
+      expect(error._tag).toBe("GasEstimationError");
+      if (error._tag === "GasEstimationError") {
+        expect(error.phase).toBe("estimate");
+        expect(error.customErrorName).toBe("SablierLockup_DepositAmountZero");
+      }
     });
   });
 });

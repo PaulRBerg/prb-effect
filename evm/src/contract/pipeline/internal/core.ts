@@ -23,10 +23,10 @@ import type { GasPriceUnavailableError, GasServiceShape } from "#src/gas/index.j
 import type { NonceServiceShape } from "#src/nonce/index.js";
 import type { TxManagerShape, TxPolicy } from "#src/tx/index.js";
 import { defaultPolicy } from "#src/tx/index.js";
-import type { ContractFunctionName, WriteParams } from "#src/types/index.js";
-import type { PipelineHooks, WriteAndTrackResult } from "../types.js";
+import type { ContractFunctionName } from "#src/types/index.js";
+import type { PipelineHooks, WriteAndTrackParams, WriteAndTrackResult } from "../types.js";
 import { confirmNonce, withNonceReservation } from "./nonce.js";
-import { deriveBaseOverrides, simulateAndEstimate } from "./prepare.js";
+import { deriveBaseOverrides, runPreflight } from "./prepare.js";
 import { waitForReceiptFollowingReplacements } from "./receipt.js";
 
 /**
@@ -62,8 +62,7 @@ type CorePipelineError =
  *
  * Steps:
  * 1. Derive base overrides (tx type + fees)
- * 2. Simulate transaction
- * 3. Estimate gas
+ * 2. Run preflight (strict | best-effort | none)
  * 4. Reserve nonce
  * 5. Write transaction
  * 6. Wait for receipt (following replacements)
@@ -74,7 +73,7 @@ export const runCorePipeline = <
   TFunctionName extends ContractFunctionName<TAbi, "nonpayable" | "payable">,
 >(
   deps: CorePipelineDeps,
-  params: WriteParams<TAbi, TFunctionName>,
+  params: WriteAndTrackParams<TAbi, TFunctionName>,
   policy: TxPolicy,
   hooks: PipelineHooks = {}
 ): Effect.Effect<WriteAndTrackResult<TAbi>, CorePipelineError, Scope.Scope> =>
@@ -89,16 +88,16 @@ export const runCorePipeline = <
       userOverrides: params.overrides,
     });
 
-    // Step 2 & 3: Simulate and estimate gas
-    if (hooks.onSimulating) {
-      yield* hooks.onSimulating();
-    }
-
-    const { finalGas, overridesWithGas } = yield* simulateAndEstimate(
+    // Step 2: Run preflight
+    const { finalGas, overridesWithGas } = yield* runPreflight(
       writer,
       params,
       baseOverrides,
-      mergedPolicy
+      mergedPolicy,
+      {
+        mode: params.preflight?.mode,
+        onSimulating: hooks.onSimulating,
+      }
     );
 
     // Step 4: Reserve nonce
@@ -114,7 +113,7 @@ export const runCorePipeline = <
       nonce: nonceReservation.nonce,
     };
 
-    if (hooks.onEstimated) {
+    if (hooks.onEstimated && finalGas != null) {
       yield* hooks.onEstimated(finalGas, nonceReservation.nonce);
     }
 

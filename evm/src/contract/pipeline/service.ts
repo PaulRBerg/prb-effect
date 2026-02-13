@@ -13,7 +13,7 @@ import type { WriteAndTrackError, WriteAndTrackParams, WriteAndTrackResult } fro
 
 export type ContractPipelineShape = {
   /**
-   * Full write pipeline: simulate -> estimate -> write -> track -> decode events
+   * Full write pipeline: preflight -> write -> track -> decode events
    * Returns reactive state ref for UI updates
    */
   readonly writeAndTrack: <

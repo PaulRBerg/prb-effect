@@ -26,38 +26,52 @@ export type TxRequestMeta = {
   readonly type?: TransactionType | undefined;
 };
 
+export type TxFailedPhase = "preflight" | "submission" | "receipt" | "event-decode";
+
+export type TxPreflightWarning = {
+  readonly phase: "estimate" | "simulate";
+  readonly reason?: string | undefined;
+  readonly customErrorName?: string | undefined;
+};
+
+type TxStateBase = {
+  readonly tx?: TxRequestMeta | undefined;
+  readonly preflightWarning?: TxPreflightWarning | undefined;
+};
+
 export type TxState =
-  | ({ readonly tx?: TxRequestMeta | undefined } & { status: "idle" })
-  | ({ readonly tx?: TxRequestMeta | undefined } & { status: "simulating" })
-  | ({ readonly tx?: TxRequestMeta | undefined } & {
+  | (TxStateBase & { status: "idle" })
+  | (TxStateBase & { status: "simulating" })
+  | (TxStateBase & {
       status: "estimated";
       gas: bigint;
     })
-  | ({ readonly tx?: TxRequestMeta | undefined } & { status: "signing" })
-  | ({ readonly tx?: TxRequestMeta | undefined } & {
+  | (TxStateBase & { status: "signing" })
+  | (TxStateBase & {
       status: "submitted";
       hash: Hash;
     })
-  | ({ readonly tx?: TxRequestMeta | undefined } & {
+  | (TxStateBase & {
       status: "pending";
       hash: Hash;
       confirmations: number;
     })
-  | ({ readonly tx?: TxRequestMeta | undefined } & {
+  | (TxStateBase & {
       status: "mined";
       hash: Hash;
       receipt: TransactionReceipt;
       effectiveGasPrice?: bigint | undefined;
     })
-  | ({ readonly tx?: TxRequestMeta | undefined } & {
+  | (TxStateBase & {
       status: "replaced";
       oldHash: Hash;
       newHash: Hash;
       reason: TxReplacementReason;
     })
-  | ({ readonly tx?: TxRequestMeta | undefined } & {
+  | (TxStateBase & {
       status: "failed";
       error: TxFailedError;
+      phase: TxFailedPhase;
     });
 
 export const initialTxState: TxState = { status: "idle" };

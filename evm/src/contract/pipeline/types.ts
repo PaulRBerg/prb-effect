@@ -22,11 +22,18 @@ import type { GasPriceUnavailableError } from "#src/gas/index.js";
 import type { TxPolicy, TxState } from "#src/tx/index.js";
 import type { ContractEventName, ContractFunctionName, WriteParams } from "#src/types/index.js";
 
+export type PreflightMode = "strict" | "best-effort" | "none";
+
+export type PreflightConfig = {
+  readonly mode?: PreflightMode;
+};
+
 export type WriteAndTrackParams<
   TAbi extends Abi,
   TFunctionName extends ContractFunctionName<TAbi, "nonpayable" | "payable">,
 > = WriteParams<TAbi, TFunctionName> & {
   policy?: TxPolicy;
+  preflight?: PreflightConfig;
 };
 
 export type WriteAndTrackResult<TAbi extends Abi> = {
@@ -86,7 +93,7 @@ export type NonceReservation = {
  */
 export type PreparedOverrides = {
   readonly type?: "legacy" | "eip1559" | "eip2930" | "eip4844" | "eip7702";
-  readonly gas: bigint;
+  readonly gas?: bigint;
   readonly nonce: number | bigint;
   readonly gasPrice?: bigint;
   readonly maxFeePerGas?: bigint;
@@ -102,6 +109,6 @@ export type PreparedOverrides = {
  */
 export type PrepareResult = {
   readonly baseOverrides: PreparedOverrides;
-  readonly finalGas: bigint;
+  readonly finalGas?: bigint;
   readonly txPreview: TxState["tx"];
 };

@@ -3,15 +3,23 @@ import type { Abi, Hash, PublicClient } from "viem";
 import { DEFAULT_STUCK_TX_MS } from "#src/constants/index.js";
 import type { ContractWriterShape } from "#src/contract/index.js";
 import type { PublicClientServiceShape } from "#src/core/index.js";
+import { TxFailedError } from "#src/core/index.js";
 import type { EventStreamShape } from "#src/events/index.js";
 import type { GasServiceShape } from "#src/gas/index.js";
 import type { NonceServiceShape } from "#src/nonce/index.js";
-import type { TxManagerShape, TxPolicy, TxReplacementShape, TxState } from "#src/tx/index.js";
+import type {
+  TxFailedPhase,
+  TxManagerShape,
+  TxPolicy,
+  TxPreflightWarning,
+  TxReplacementShape,
+  TxState,
+} from "#src/tx/index.js";
 import { defaultPolicy, makeTxTracker } from "#src/tx/index.js";
 import type { ContractFunctionName } from "#src/types/index.js";
-import { applyGasLimitMultiplier, nonceToBigInt } from "./internal/helpers.js";
+import { nonceToBigInt } from "./internal/helpers.js";
 import { withNonceReservation } from "./internal/nonce.js";
-import { deriveBaseOverrides } from "./internal/prepare.js";
+import { deriveBaseOverrides, runPreflight } from "./internal/prepare.js";
 import type { WriteAndTrackError, WriteAndTrackParams, WriteAndTrackResult } from "./types.js";
 
 /**
@@ -26,6 +34,18 @@ export type WriteAndTrackDeps = {
   readonly publicClientService: PublicClientServiceShape;
   readonly gasService: GasServiceShape;
 };
+
+function toTxFailedError(error: WriteAndTrackError, hash: Hash | null): TxFailedError {
+  if (error._tag === "TxFailedError") {
+    return error;
+  }
+
+  return new TxFailedError({
+    cause: error,
+    hash: hash ?? "unknown",
+    message: error.message,
+  });
+}
 
 /**
  * Create the writeAndTrack implementation with full tracking orchestration
@@ -54,80 +74,102 @@ export const makeWriteAndTrack = (deps: WriteAndTrackDeps) =>
     const autoReplacingRef = yield* Ref.make(false);
 
     const resultDeferred = yield* Deferred.make<WriteAndTrackResult<TAbi>, WriteAndTrackError>();
+    const preflightMode = params.preflight?.mode ?? "strict";
+    let failurePhase: TxFailedPhase = "preflight";
+    let preflightWarning: TxPreflightWarning | undefined;
+
+    const setSubmittedState = (hash: Hash) =>
+      tracker.update(
+        (prev) =>
+          ({
+            hash,
+            preflightWarning: prev.preflightWarning,
+            status: "submitted",
+            tx: prev.tx,
+          }) as TxState
+      );
+
+    const setReplacedState = (
+      oldHash: Hash,
+      newHash: Hash,
+      reason: "cancelled" | "replaced" | "repriced"
+    ) =>
+      tracker.update(
+        (prev) =>
+          ({
+            newHash,
+            oldHash,
+            preflightWarning: prev.preflightWarning,
+            reason,
+            status: "replaced",
+            tx: prev.tx,
+          }) as TxState
+      );
 
     const run = Effect.gen(function* () {
-      // Step 1: Derive base overrides
       const baseOverrides = yield* deriveBaseOverrides(gasService, {
         chainId: params.chainId,
         policy,
         userOverrides: params.overrides,
       });
 
-      // Step 2: Estimate gas first to provide a reasonable limit for simulation.
-      // Some RPC nodes default to max uint64 when no gas limit is provided,
-      // causing "insufficient funds" errors during the balance check.
-      const estimatedGas = yield* writer.estimateGas({
-        ...params,
-        overrides: baseOverrides,
+      const preflight = yield* runPreflight(writer, params, baseOverrides, policy, {
+        mode: preflightMode,
+        onSimulating: () => tracker.set({ status: "simulating" }),
       });
-      // Apply multiplier to add safety margin; this buffered value is used for
-      // both simulation (balance check) and the final transaction.
-      const derivedGas = applyGasLimitMultiplier(estimatedGas, policy.gasLimitMultiplier);
+      preflightWarning = preflight.preflightWarning;
 
-      const explicitGas = params.overrides?.gas ?? params.gas;
-      const finalGas = explicitGas ?? derivedGas;
-
-      // Step 3: Simulate with the gas limit to ensure proper balance checks
-      yield* tracker.set({ status: "simulating" });
-      yield* writer.simulate({ ...params, overrides: { ...baseOverrides, gas: finalGas } });
       const explicitNonce = params.overrides?.nonce;
-
-      // Step 4: Reserve nonce
       const nonceReservation = yield* withNonceReservation(nonceService, {
         account: params.account,
         chainId: params.chainId,
         explicitNonce,
       });
 
-      const nonce = nonceReservation.nonce;
-
       const overridesWithGasAndNonce = {
-        ...baseOverrides,
-        gas: finalGas,
-        nonce,
+        ...preflight.overridesWithGas,
+        nonce: nonceReservation.nonce,
       };
 
+      const txPreview = {
+        accessList: overridesWithGasAndNonce.accessList,
+        gas: overridesWithGasAndNonce.gas,
+        gasPrice: overridesWithGasAndNonce.gasPrice,
+        maxFeePerGas: overridesWithGasAndNonce.maxFeePerGas,
+        maxPriorityFeePerGas: overridesWithGasAndNonce.maxPriorityFeePerGas,
+        nonce: nonceReservation.nonce,
+        type: overridesWithGasAndNonce.type,
+      } as const;
+
+      if (preflight.finalGas != null) {
+        yield* tracker.set({
+          gas: preflight.finalGas,
+          preflightWarning,
+          status: "estimated",
+          tx: txPreview,
+        });
+      }
+
       yield* tracker.set({
-        gas: finalGas,
-        status: "estimated",
-        tx: {
-          accessList: overridesWithGasAndNonce.accessList,
-          gas: finalGas,
-          gasPrice: overridesWithGasAndNonce.gasPrice,
-          maxFeePerGas: overridesWithGasAndNonce.maxFeePerGas,
-          maxPriorityFeePerGas: overridesWithGasAndNonce.maxPriorityFeePerGas,
-          nonce,
-          type: overridesWithGasAndNonce.type,
-        },
+        preflightWarning,
+        status: "signing",
+        tx: txPreview,
       });
 
-      // Step 5: Signing
-      yield* tracker.update((prev) => ({ status: "signing", tx: prev.tx }) as TxState);
-
-      // Step 6: Write transaction
+      failurePhase = "submission";
       const hash = yield* writer.write({
         ...params,
         overrides: overridesWithGasAndNonce,
       });
+
       yield* nonceReservation.markSubmitted;
       yield* Ref.set(currentHashRef, hash);
       yield* Ref.set(blocksElapsedRef, 0);
       yield* Ref.set(autoAttemptsRef, 0);
       yield* Ref.set(autoReplacingRef, false);
       yield* Ref.set(startedAtMsRef, yield* Clock.currentTimeMillis);
-      yield* tracker.update((prev) => ({ hash, status: "submitted", tx: prev.tx }) as TxState);
+      yield* setSubmittedState(hash);
 
-      // Set up block watcher for pending state updates
       const publicClient: PublicClient = yield* publicClientService.get(params.chainId);
       const replacementStrategy =
         policy.replacement?.strategy ?? policy.replacementStrategy ?? "none";
@@ -142,9 +184,11 @@ export const makeWriteAndTrack = (deps: WriteAndTrackDeps) =>
             if (prev.status === "mined" || prev.status === "failed") {
               return prev;
             }
+
             return {
               confirmations: blocksElapsed,
               hash: currentHash,
+              preflightWarning: prev.preflightWarning,
               status: "pending",
               tx: prev.tx,
             } as TxState;
@@ -173,24 +217,12 @@ export const makeWriteAndTrack = (deps: WriteAndTrackDeps) =>
                   Ref.set(blocksElapsedRef, 0),
                   Ref.set(startedAtMsRef, now),
                   Ref.update(autoAttemptsRef, (n) => n + 1),
-                  tracker.update(
-                    (prev) =>
-                      ({
-                        newHash,
-                        oldHash: currentHash,
-                        reason: replacementStrategy === "cancel" ? "cancelled" : "repriced",
-                        status: "replaced",
-                        tx: prev.tx,
-                      }) as TxState
+                  setReplacedState(
+                    currentHash,
+                    newHash,
+                    replacementStrategy === "cancel" ? "cancelled" : "repriced"
                   ),
-                  tracker.update(
-                    (prev) =>
-                      ({
-                        hash: newHash,
-                        status: "submitted",
-                        tx: prev.tx,
-                      }) as TxState
-                  ),
+                  setSubmittedState(newHash),
                 ]).pipe(Effect.asVoid);
               })
             )
@@ -242,7 +274,7 @@ export const makeWriteAndTrack = (deps: WriteAndTrackDeps) =>
         () => onPendingBlock
       ).pipe(Effect.forkScoped);
 
-      // Step 7: Wait for receipt (follow replacements)
+      failurePhase = "receipt";
       const receipt = yield* Effect.gen(function* () {
         let waitHash = hash;
 
@@ -263,24 +295,8 @@ export const makeWriteAndTrack = (deps: WriteAndTrackDeps) =>
             yield* Ref.set(currentHashRef, newHash);
             yield* Ref.set(blocksElapsedRef, 0);
             yield* Ref.set(startedAtMsRef, now);
-            yield* tracker.update(
-              (prev) =>
-                ({
-                  newHash,
-                  oldHash: error.oldHash as Hash,
-                  reason: error.reason,
-                  status: "replaced",
-                  tx: prev.tx,
-                }) as TxState
-            );
-            yield* tracker.update(
-              (prev) =>
-                ({
-                  hash: newHash,
-                  status: "submitted",
-                  tx: prev.tx,
-                }) as TxState
-            );
+            yield* setReplacedState(error.oldHash as Hash, newHash, error.reason);
+            yield* setSubmittedState(newHash);
 
             waitHash = newHash;
             continue;
@@ -290,12 +306,12 @@ export const makeWriteAndTrack = (deps: WriteAndTrackDeps) =>
         }
       }).pipe(Effect.ensuring(Fiber.interrupt(pendingFiber)));
 
-      // Step 8: Update to mined state
       yield* tracker.update(
         (prev) =>
           ({
             effectiveGasPrice: receipt.effectiveGasPrice,
             hash: receipt.transactionHash as Hash,
+            preflightWarning: prev.preflightWarning,
             receipt,
             status: "mined",
             tx: prev.tx,
@@ -310,7 +326,7 @@ export const makeWriteAndTrack = (deps: WriteAndTrackDeps) =>
         });
       }
 
-      // Step 9: Decode events
+      failurePhase = "event-decode";
       const events = (yield* eventStream.decodeReceipt(
         receipt,
         params.abi
@@ -321,7 +337,27 @@ export const makeWriteAndTrack = (deps: WriteAndTrackDeps) =>
         hash: receipt.transactionHash as Hash,
         receipt,
       } as WriteAndTrackResult<TAbi>;
-    });
+    }).pipe(
+      Effect.catchAll((error) =>
+        Effect.gen(function* () {
+          const currentHash = yield* Ref.get(currentHashRef);
+          const failedError = toTxFailedError(error, currentHash);
+
+          yield* tracker.update(
+            (prev) =>
+              ({
+                error: failedError,
+                phase: failurePhase,
+                preflightWarning: prev.preflightWarning ?? preflightWarning,
+                status: "failed",
+                tx: prev.tx,
+              }) as TxState
+          );
+
+          return yield* Effect.fail(error);
+        })
+      )
+    );
 
     yield* run.pipe(
       Effect.either,
@@ -349,24 +385,8 @@ export const makeWriteAndTrack = (deps: WriteAndTrackDeps) =>
             yield* Ref.set(currentHashRef, newHash);
             yield* Ref.set(blocksElapsedRef, 0);
             yield* Ref.set(startedAtMsRef, now);
-            yield* tracker.update(
-              (prev) =>
-                ({
-                  newHash,
-                  oldHash: currentHash,
-                  reason: "cancelled",
-                  status: "replaced",
-                  tx: prev.tx,
-                }) as TxState
-            );
-            yield* tracker.update(
-              (prev) =>
-                ({
-                  hash: newHash,
-                  status: "submitted",
-                  tx: prev.tx,
-                }) as TxState
-            );
+            yield* setReplacedState(currentHash, newHash, "cancelled");
+            yield* setSubmittedState(newHash);
 
             return newHash;
           }),
@@ -385,24 +405,8 @@ export const makeWriteAndTrack = (deps: WriteAndTrackDeps) =>
             yield* Ref.set(currentHashRef, newHash);
             yield* Ref.set(blocksElapsedRef, 0);
             yield* Ref.set(startedAtMsRef, now);
-            yield* tracker.update(
-              (prev) =>
-                ({
-                  newHash,
-                  oldHash: currentHash,
-                  reason: "repriced",
-                  status: "replaced",
-                  tx: prev.tx,
-                }) as TxState
-            );
-            yield* tracker.update(
-              (prev) =>
-                ({
-                  hash: newHash,
-                  status: "submitted",
-                  tx: prev.tx,
-                }) as TxState
-            );
+            yield* setReplacedState(currentHash, newHash, "repriced");
+            yield* setSubmittedState(newHash);
 
             return newHash;
           }),

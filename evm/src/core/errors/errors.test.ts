@@ -153,6 +153,7 @@ describe("SimulationFailedError", () => {
       address: "0x1234",
       functionName: "transfer",
       message: "Simulation failed",
+      phase: "simulate",
     });
     expect(error._tag).toBe("SimulationFailedError");
   });
@@ -160,14 +161,20 @@ describe("SimulationFailedError", () => {
   it("stores address, functionName, message, and optional revertData", () => {
     const error = new SimulationFailedError({
       address: "0x1234",
+      customErrorName: "InsufficientAllowance",
       functionName: "transfer",
       message: "Simulation failed",
+      phase: "simulate",
       revertData: "0xabcd",
+      revertReason: "insufficient allowance",
     });
     expect(error.address).toBe("0x1234");
+    expect(error.customErrorName).toBe("InsufficientAllowance");
     expect(error.functionName).toBe("transfer");
     expect(error.message).toBe("Simulation failed");
+    expect(error.phase).toBe("simulate");
     expect(error.revertData).toBe("0xabcd");
+    expect(error.revertReason).toBe("insufficient allowance");
   });
 
   it.effect("can be caught with catchTag", () =>
@@ -177,6 +184,7 @@ describe("SimulationFailedError", () => {
           address: "0x1234",
           functionName: "transfer",
           message: "test",
+          phase: "simulate",
         })
       ).pipe(Effect.catchTag("SimulationFailedError", (e) => Effect.succeed(e)));
       expect(caught.address).toBe("0x1234");
@@ -191,6 +199,7 @@ describe("GasEstimationError", () => {
       address: "0x1234",
       functionName: "transfer",
       message: "Gas estimation failed",
+      phase: "estimate",
     });
     expect(error._tag).toBe("GasEstimationError");
   });
@@ -200,12 +209,20 @@ describe("GasEstimationError", () => {
     const error = new GasEstimationError({
       address: "0x1234",
       cause,
+      customErrorName: "WithdrawWindowClosed",
       functionName: "transfer",
       message: "Gas estimation failed",
+      phase: "estimate",
+      revertData: "0xdeadbeef",
+      revertReason: "withdraw window closed",
     });
     expect(error.address).toBe("0x1234");
+    expect(error.customErrorName).toBe("WithdrawWindowClosed");
     expect(error.functionName).toBe("transfer");
     expect(error.message).toBe("Gas estimation failed");
+    expect(error.phase).toBe("estimate");
+    expect(error.revertData).toBe("0xdeadbeef");
+    expect(error.revertReason).toBe("withdraw window closed");
     expect(error.cause).toBe(cause);
   });
 
@@ -216,6 +233,7 @@ describe("GasEstimationError", () => {
           address: "0x1234",
           functionName: "transfer",
           message: "test",
+          phase: "estimate",
         })
       ).pipe(Effect.catchTag("GasEstimationError", (e) => Effect.succeed(e)));
       expect(caught.address).toBe("0x1234");

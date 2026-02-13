@@ -170,6 +170,7 @@ function handleReceiptFailure(params: {
       hash,
       message: failure instanceof Error ? failure.message : String(failure),
     }),
+    phase: "receipt",
     status: "failed",
   });
 }
