@@ -79,6 +79,8 @@ Effect.runPromise(program.pipe(Effect.provide(EvmLayer)));
 - `best-effort`: continue on `GasEstimationError` / `SimulationFailedError`
 - `none`: skip estimate/simulate and submit directly
 
+`best-effort` only relaxes preflight; submission/receipt/decode errors still fail normally.
+
 Recommended usage:
 
 - Keep `strict` for create, batch, or high-cost writes.

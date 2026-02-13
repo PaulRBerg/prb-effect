@@ -502,26 +502,24 @@ describe("ContractPipeline", () => {
       );
     });
 
-    it.effect("best-effort mode fails on non-execution gas estimation error", () => {
+    it.effect("best-effort mode continues on non-execution gas estimation error", () => {
       let writeCalls = 0;
 
       return Effect.gen(function* () {
         const pipeline = yield* ContractPipeline;
 
-        const exit = yield* pipeline
-          .writeAndWait({
-            abi: erc20Abi,
-            account: TEST_ADDRESS,
-            address: TEST_ADDRESS,
-            args: [TEST_ADDRESS_2, 100n],
-            chainId: TEST_CHAIN_ID,
-            functionName: "transfer",
-            preflight: { mode: "best-effort" },
-          })
-          .pipe(Effect.exit);
+        const result = yield* pipeline.writeAndWait({
+          abi: erc20Abi,
+          account: TEST_ADDRESS,
+          address: TEST_ADDRESS,
+          args: [TEST_ADDRESS_2, 100n],
+          chainId: TEST_CHAIN_ID,
+          functionName: "transfer",
+          preflight: { mode: "best-effort" },
+        });
 
-        expect(Exit.isFailure(exit)).toBe(true);
-        expect(writeCalls).toBe(0);
+        expect(result.hash).toBe(TEST_TX_HASH);
+        expect(writeCalls).toBe(1);
       }).pipe(
         Effect.provide(
           makeContractPipelineTestLayer({
@@ -755,7 +753,7 @@ describe("ContractPipeline", () => {
       );
     });
 
-    it.effect("best-effort fails on non-execution gas estimation error", () => {
+    it.effect("best-effort continues on non-execution gas estimation error", () => {
       let writeCalls = 0;
 
       return Effect.gen(function* () {
@@ -771,14 +769,15 @@ describe("ContractPipeline", () => {
           preflight: { mode: "best-effort" },
         });
 
-        const exit = yield* result.pipe(Effect.exit);
-        expect(Exit.isFailure(exit)).toBe(true);
-        expect(writeCalls).toBe(0);
+        const finalResult = yield* result;
+        expect(finalResult.hash).toBe(TEST_TX_HASH);
+        expect(writeCalls).toBe(1);
 
         const state = yield* stateRef.get;
-        expect(state.status).toBe("failed");
-        if (state.status === "failed") {
-          expect(state.phase).toBe("preflight");
+        expect(state.status).toBe("mined");
+        if (state.status === "mined") {
+          expect(state.preflightWarning?.phase).toBe("estimate");
+          expect(state.preflightWarning?.reason).toContain("Failed to estimate gas");
         }
       }).pipe(
         Effect.provide(

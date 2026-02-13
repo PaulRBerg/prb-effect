@@ -475,6 +475,8 @@ Override per call via `preflight.mode`:
 - `best-effort`: continue to wallet submission if preflight fails with `GasEstimationError` or `SimulationFailedError`
 - `none`: skip preflight entirely, submit directly
 
+`best-effort` only relaxes preflight; submission/receipt/event decoding failures still fail normally.
+
 ```typescript
 const result =
   yield *

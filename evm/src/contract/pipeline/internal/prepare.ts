@@ -94,17 +94,7 @@ function withGas(baseOverrides: BaseOverrides, gas?: bigint): BaseOverrides & { 
 function isRecoverablePreflightError(
   error: PreflightError
 ): error is GasEstimationError | SimulationFailedError {
-  if (error._tag === "SimulationFailedError") {
-    return true;
-  }
-
-  if (error._tag !== "GasEstimationError") {
-    return false;
-  }
-
-  // Best-effort should only recover gas estimation failures that look like
-  // contract execution failures (revert/custom error), not generic RPC issues.
-  return error.revertReason != null || error.customErrorName != null || error.revertData != null;
+  return error._tag === "SimulationFailedError" || error._tag === "GasEstimationError";
 }
 
 function toPreflightWarning(error: GasEstimationError | SimulationFailedError): PreflightWarning {
