@@ -4,6 +4,7 @@ import { defineConfig, mergeConfig } from "vitest/config";
 import configShared from "../vitest.shared.js";
 
 const CI = Boolean(process.env.CI);
+const rootDir = fileURLToPath(new URL("..", import.meta.url));
 const srcDir = fileURLToPath(new URL("./src", import.meta.url));
 
 export default mergeConfig(
@@ -13,10 +14,11 @@ export default mergeConfig(
       alias: { "#src": srcDir },
     },
     test: {
-      exclude: ["src/**/*.test.integration.ts"],
-      include: ["src/**/*.test.ts"],
+      exclude: ["evm-safe/src/**/*.test.integration.ts"],
+      include: ["evm-safe/src/**/*.test.ts"],
       name: "evm-safe",
       retry: CI ? 3 : 0,
+      root: rootDir,
     },
   })
 );
