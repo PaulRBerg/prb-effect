@@ -13,11 +13,11 @@ import type {
   ResourceExhaustionError,
   SimulationFailedError,
   TransportError,
-  TxFailedError,
   UserRejectedError,
   WalletNotConnectedError,
   WrongNetworkError,
 } from "#src/core/index.js";
+import { TxFailedError } from "#src/core/index.js";
 import type { EventStreamShape } from "#src/events/index.js";
 import type { GasPriceUnavailableError, GasServiceShape } from "#src/gas/index.js";
 import type { NonceServiceShape } from "#src/nonce/index.js";
@@ -139,6 +139,16 @@ export const runCorePipeline = <
         : undefined,
       policy: mergedPolicy,
     });
+
+    // Fail if the transaction was mined but reverted
+    if (receipt.status === "reverted") {
+      return yield* Effect.fail(
+        new TxFailedError({
+          hash: receipt.transactionHash as Hash,
+          message: `Transaction ${receipt.transactionHash} reverted onchain`,
+        })
+      );
+    }
 
     if (hooks.onMined) {
       yield* hooks.onMined(receipt);

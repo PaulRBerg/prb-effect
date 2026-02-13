@@ -456,6 +456,19 @@ export function makeTxManagerLive(
                 tracker,
               });
 
+              // Fail if the transaction was mined but reverted
+              if (receipt.status === "reverted") {
+                yield* tracker.set({
+                  error: new TxFailedError({
+                    hash: receipt.transactionHash,
+                    message: `Transaction ${receipt.transactionHash} reverted onchain`,
+                  }),
+                  phase: "receipt",
+                  status: "failed",
+                });
+                return;
+              }
+
               yield* tracker.set({
                 effectiveGasPrice: receipt.effectiveGasPrice,
                 hash: receipt.transactionHash,

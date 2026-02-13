@@ -306,6 +306,16 @@ export const makeWriteAndTrack = (deps: WriteAndTrackDeps) =>
         }
       }).pipe(Effect.ensuring(Fiber.interrupt(pendingFiber)));
 
+      // Fail if the transaction was mined but reverted
+      if (receipt.status === "reverted") {
+        return yield* Effect.fail(
+          new TxFailedError({
+            hash: receipt.transactionHash as Hash,
+            message: `Transaction ${receipt.transactionHash} reverted onchain`,
+          })
+        );
+      }
+
       yield* tracker.update(
         (prev) =>
           ({
