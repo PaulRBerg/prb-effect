@@ -3,9 +3,7 @@ import "server-only";
 /**
  * Request-Scoped Effect Cache
  *
- * Re-exports `reactCache` from @mcrovero/effect-react-cache for use in
- * Server Components and server actions. This utility wraps Effect-returning
- * functions with React's `cache` primitive to:
+ * Wraps Effect-returning functions with React's `cache` primitive to:
  *
  * 1. **Deduplicate concurrent calls** within a request
  * 2. **Memoize by argument tuple** (same args → same result)
@@ -25,4 +23,41 @@ import "server-only";
  *
  * @see https://react.dev/reference/react/cache
  */
-export * from "@mcrovero/effect-react-cache/ReactCache";
+
+import type { Exit } from "effect";
+import { Effect, Runtime } from "effect";
+import type * as Scope from "effect/Scope";
+import { cache } from "react";
+
+type NoScope<R> = [Extract<R, Scope.Scope>] extends [never]
+  ? R
+  : [
+      "⛔ reactCache: Effects requiring Scope cannot be cached.",
+      "Move resource acquisition outside, or memoize with a Layer instead.",
+    ];
+
+const runEffectCachedFn = cache(
+  <A, E, R, Args extends unknown[]>(
+    effect: (...args: Args) => Effect.Effect<A, E, NoScope<R>>,
+    ...args: Args
+  ) => {
+    let promise: Promise<Exit.Exit<A, E>>;
+    return (runtime: Runtime.Runtime<NoScope<R>>) => {
+      if (!promise) {
+        promise = Runtime.runPromiseExit(runtime, effect(...args));
+      }
+      return promise;
+    };
+  }
+);
+
+export function reactCache<A, E, R, Args extends unknown[]>(
+  effect: (...args: Args) => Effect.Effect<A, E, NoScope<R>>
+) {
+  return (...args: Args): Effect.Effect<A, E, NoScope<R>> =>
+    Effect.gen(function* () {
+      const runtime = yield* Effect.runtime<NoScope<R>>();
+      const exit = yield* Effect.promise(() => runEffectCachedFn(effect, ...args)(runtime));
+      return yield* exit;
+    });
+}

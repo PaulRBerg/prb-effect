@@ -29,7 +29,6 @@ bun add @prb/effect-next effect @effect/platform
 
 ### Optional Dependencies
 
-- `@mcrovero/effect-react-cache` for `effect-next/react-cache`
 - `@effect/opentelemetry` for `effect-next/telemetry/otel`
 
 ## Quick Start

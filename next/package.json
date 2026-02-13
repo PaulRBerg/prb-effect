@@ -29,7 +29,6 @@
     "@effect/opentelemetry": "^0.60.0",
     "@effect/platform": "catalog:effect",
     "@effect/vitest": "catalog:dev",
-    "@mcrovero/effect-react-cache": "^0.2.3",
     "@sablier/devkit": "catalog:dev",
     "@types/node": "catalog:dev",
     "@types/react": "catalog:dev",
@@ -74,7 +73,6 @@
   "peerDependencies": {
     "@effect/opentelemetry": "^0.60.0",
     "@effect/platform": "catalog:peers",
-    "@mcrovero/effect-react-cache": "^0.2.3",
     "effect": "catalog:peers",
     "next": "catalog:peers",
     "react": "catalog:peers",
@@ -85,9 +83,6 @@
       "optional": true
     },
     "@effect/platform": {
-      "optional": true
-    },
-    "@mcrovero/effect-react-cache": {
       "optional": true
     },
     "react": {
