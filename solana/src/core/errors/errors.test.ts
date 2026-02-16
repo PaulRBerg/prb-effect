@@ -4,6 +4,8 @@ import {
   InstructionBuildError,
   InstructionNotFoundError,
   ProgramCreationError,
+  ProgramReadError,
+  ViewNotSupportedError,
 } from "#src/program/index.js";
 import {
   BlockhashExpiredError,
@@ -231,21 +233,33 @@ describe("SignatureError", () => {
 
 describe("InstructionNotFoundError", () => {
   it("has correct _tag", () => {
-    const error = new InstructionNotFoundError("transfer", "spl-token");
+    const error = new InstructionNotFoundError({
+      idlName: "spl-token",
+      message: 'Instruction "transfer" not found in IDL "spl-token"',
+      method: "transfer",
+    });
     expect(error._tag).toBe("InstructionNotFoundError");
   });
 
   it("stores method and idlName", () => {
-    const error = new InstructionNotFoundError("transfer", "spl-token");
+    const error = new InstructionNotFoundError({
+      idlName: "spl-token",
+      message: 'Instruction "transfer" not found in IDL "spl-token"',
+      method: "transfer",
+    });
     expect(error.method).toBe("transfer");
     expect(error.idlName).toBe("spl-token");
   });
 
   it.effect("can be caught with catchTag", () =>
     Effect.gen(function* () {
-      const caught = yield* Effect.fail(new InstructionNotFoundError("mint", "my-program")).pipe(
-        Effect.catchTag("InstructionNotFoundError", (e) => Effect.succeed(e))
-      );
+      const caught = yield* Effect.fail(
+        new InstructionNotFoundError({
+          idlName: "my-program",
+          message: 'Instruction "mint" not found in IDL "my-program"',
+          method: "mint",
+        })
+      ).pipe(Effect.catchTag("InstructionNotFoundError", (e) => Effect.succeed(e)));
       expect(caught.method).toBe("mint");
       expect(caught.idlName).toBe("my-program");
     })
@@ -254,21 +268,30 @@ describe("InstructionNotFoundError", () => {
 
 describe("ProgramCreationError", () => {
   it("has correct _tag", () => {
-    const error = new ProgramCreationError(new Error("Invalid IDL"));
+    const error = new ProgramCreationError({
+      cause: new Error("Invalid IDL"),
+      message: "Failed to create Anchor program",
+    });
     expect(error._tag).toBe("ProgramCreationError");
   });
 
   it("stores cause", () => {
     const cause = new Error("Invalid IDL");
-    const error = new ProgramCreationError(cause);
+    const error = new ProgramCreationError({
+      cause,
+      message: "Failed to create Anchor program",
+    });
     expect(error.cause).toBe(cause);
   });
 
   it.effect("can be caught with catchTag", () =>
     Effect.gen(function* () {
-      const caught = yield* Effect.fail(new ProgramCreationError(null)).pipe(
-        Effect.catchTag("ProgramCreationError", (e) => Effect.succeed(e))
-      );
+      const caught = yield* Effect.fail(
+        new ProgramCreationError({
+          cause: null,
+          message: "Failed to create Anchor program",
+        })
+      ).pipe(Effect.catchTag("ProgramCreationError", (e) => Effect.succeed(e)));
       expect(caught._tag).toBe("ProgramCreationError");
     })
   );
@@ -276,23 +299,105 @@ describe("ProgramCreationError", () => {
 
 describe("InstructionBuildError", () => {
   it("has correct _tag", () => {
-    const error = new InstructionBuildError("transfer", new Error("Build failed"));
+    const error = new InstructionBuildError({
+      cause: new Error("Build failed"),
+      message: 'Failed to build instruction "transfer"',
+      method: "transfer",
+    });
     expect(error._tag).toBe("InstructionBuildError");
   });
 
   it("stores method and cause", () => {
     const cause = new Error("Build failed");
-    const error = new InstructionBuildError("transfer", cause);
+    const error = new InstructionBuildError({
+      cause,
+      message: 'Failed to build instruction "transfer"',
+      method: "transfer",
+    });
     expect(error.method).toBe("transfer");
     expect(error.cause).toBe(cause);
   });
 
   it.effect("can be caught with catchTag", () =>
     Effect.gen(function* () {
-      const caught = yield* Effect.fail(new InstructionBuildError("mint", null)).pipe(
-        Effect.catchTag("InstructionBuildError", (e) => Effect.succeed(e))
-      );
+      const caught = yield* Effect.fail(
+        new InstructionBuildError({
+          cause: null,
+          message: 'Failed to build instruction "mint"',
+          method: "mint",
+        })
+      ).pipe(Effect.catchTag("InstructionBuildError", (e) => Effect.succeed(e)));
       expect(caught.method).toBe("mint");
+    })
+  );
+});
+
+describe("ProgramReadError", () => {
+  it("has correct _tag", () => {
+    const error = new ProgramReadError({
+      cause: new Error("View failed"),
+      message: 'Failed to read "withdrawableAmountOf" via .view()',
+      method: "withdrawableAmountOf",
+    });
+    expect(error._tag).toBe("ProgramReadError");
+  });
+
+  it("stores method and cause", () => {
+    const cause = new Error("View failed");
+    const error = new ProgramReadError({
+      cause,
+      message: 'Failed to read "withdrawableAmountOf" via .view()',
+      method: "withdrawableAmountOf",
+    });
+    expect(error.method).toBe("withdrawableAmountOf");
+    expect(error.cause).toBe(cause);
+  });
+
+  it.effect("can be caught with catchTag", () =>
+    Effect.gen(function* () {
+      const caught = yield* Effect.fail(
+        new ProgramReadError({
+          cause: null,
+          message: 'Failed to read "hasClaimed" via .view()',
+          method: "hasClaimed",
+        })
+      ).pipe(Effect.catchTag("ProgramReadError", (e) => Effect.succeed(e)));
+      expect(caught.method).toBe("hasClaimed");
+    })
+  );
+});
+
+describe("ViewNotSupportedError", () => {
+  it("has correct _tag", () => {
+    const error = new ViewNotSupportedError({
+      idlName: "sablier-lockup",
+      message: 'Method "withdraw" in IDL "sablier-lockup" does not support .view()',
+      method: "withdraw",
+    });
+    expect(error._tag).toBe("ViewNotSupportedError");
+  });
+
+  it("stores method and idlName", () => {
+    const error = new ViewNotSupportedError({
+      idlName: "sablier-lockup",
+      message: 'Method "withdraw" in IDL "sablier-lockup" does not support .view()',
+      method: "withdraw",
+    });
+    expect(error.method).toBe("withdraw");
+    expect(error.idlName).toBe("sablier-lockup");
+  });
+
+  it.effect("can be caught with catchTag", () =>
+    Effect.gen(function* () {
+      const caught = yield* Effect.fail(
+        new ViewNotSupportedError({
+          idlName: "sablier-lockup",
+          message: 'Method "withdraw" in IDL "sablier-lockup" does not support .view()',
+          method: "withdraw",
+        })
+      ).pipe(Effect.catchTag("ViewNotSupportedError", (e) => Effect.succeed(e)));
+      expect(caught.idlName).toBe("sablier-lockup");
+      expect(caught.method).toBe("withdraw");
     })
   );
 });

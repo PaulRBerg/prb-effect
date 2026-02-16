@@ -42,8 +42,12 @@ export const SpanNames = {
   PROGRAM_BUILD: "esol.program.build",
   PROGRAM_BUILD_INSTRUCTION: "esol.program.buildInstruction",
   PROGRAM_CREATE: "esol.program.create",
-  RPC_GET_ACCOUNT_INFO: "esol.rpc.getAccountInfo",
+  PROGRAM_CREATE_FOR_READ: "esol.program.createForRead",
+  PROGRAM_VIEW: "esol.program.view",
+  PROGRAM_VIEW_WITH_PROGRAM: "esol.program.viewWithProgram",
+
   // RPC Operations
+  RPC_GET_ACCOUNT_INFO: "esol.rpc.getAccountInfo",
   RPC_GET_BALANCE: "esol.rpc.getBalance",
   RPC_GET_BLOCK: "esol.rpc.getBlock",
   RPC_GET_BLOCK_HEIGHT: "esol.rpc.getBlockHeight",

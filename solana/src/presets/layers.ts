@@ -3,8 +3,8 @@ import type { BalanceService } from "#src/balance/index.js";
 import { BalanceServiceLive } from "#src/balance/index.js";
 import type { PdaService } from "#src/pda/index.js";
 import { PdaServiceLive } from "#src/pda/index.js";
-import type { ProgramWriter } from "#src/program/index.js";
-import { ProgramWriterLive } from "#src/program/index.js";
+import type { ProgramReader, ProgramWriter } from "#src/program/index.js";
+import { ProgramReaderLive, ProgramWriterLive } from "#src/program/index.js";
 import type { RpcService } from "#src/rpc/index.js";
 import { makeRpcServiceLive } from "#src/rpc/index.js";
 import type { SignerService, WalletAdapter } from "#src/signer/index.js";
@@ -90,7 +90,7 @@ export function makeRpcLayer(config: SolanaClusterConfig): Layer.Layer<RpcServic
 }
 
 /**
- * Compose all application services (Balance, Token, Transaction, PDA, ProgramWriter).
+ * Compose all application services (Balance, Token, Transaction, PDA, ProgramReader, ProgramWriter).
  * Requires RpcService and SignerService to be provided.
  *
  * @category Layers
@@ -114,6 +114,7 @@ export const effectSolanaServices = Layer.mergeAll(
   TokenServiceLive,
   TransactionServiceLive,
   PdaServiceLive,
+  ProgramReaderLive,
   ProgramWriterLive
 );
 
@@ -188,6 +189,7 @@ export function makeSolanaLayer(
   | TokenService
   | TransactionService
   | PdaService
+  | ProgramReader
   | ProgramWriter
 > {
   const rpcLayer = makeRpcLayer(config);

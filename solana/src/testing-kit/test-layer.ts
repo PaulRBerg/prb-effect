@@ -3,6 +3,13 @@ import type { BalanceService } from "#src/balance/index.js";
 import { BalanceServiceLive } from "#src/balance/index.js";
 import type { PdaService } from "#src/pda/index.js";
 import { PdaServiceLive } from "#src/pda/index.js";
+import type { ProgramReaderShape, ProgramWriterShape } from "#src/program/index.js";
+import {
+  ProgramReader,
+  ProgramReaderLive,
+  ProgramWriter,
+  ProgramWriterLive,
+} from "#src/program/index.js";
 import type { RpcService } from "#src/rpc/index.js";
 import type { SignerService } from "#src/signer/index.js";
 import type { TokenService } from "#src/token/index.js";
@@ -70,6 +77,16 @@ export type TestLayerConfig = {
    * Configuration overrides for the mock PdaService
    */
   pdaService?: MockPdaServiceConfig;
+
+  /**
+   * Configuration overrides for ProgramReader.
+   */
+  programReaderService?: ProgramReaderShape;
+
+  /**
+   * Configuration overrides for ProgramWriter.
+   */
+  programWriterService?: ProgramWriterShape;
 };
 
 /**
@@ -84,7 +101,9 @@ const applicationServices = Layer.mergeAll(
   BalanceServiceLive,
   TokenServiceLive,
   TransactionServiceLive,
-  PdaServiceLive
+  PdaServiceLive,
+  ProgramReaderLive,
+  ProgramWriterLive
 );
 
 /**
@@ -127,7 +146,14 @@ const applicationServices = Layer.mergeAll(
 export function makeEffectSolanaTestLayer(
   config: TestLayerConfig = {}
 ): Layer.Layer<
-  RpcService | SignerService | BalanceService | TokenService | TransactionService | PdaService
+  | RpcService
+  | SignerService
+  | BalanceService
+  | TokenService
+  | TransactionService
+  | PdaService
+  | ProgramReader
+  | ProgramWriter
 > {
   // Create boundary mocks - use real services if no config provided
   const boundaryLayers = Layer.mergeAll(
@@ -159,11 +185,30 @@ export function makeEffectSolanaTestLayer(
   if (config.pdaService) {
     serviceMockLayer = Layer.merge(serviceMockLayer, makeMockPdaServiceLayer(config.pdaService));
   }
+  if (config.programReaderService) {
+    serviceMockLayer = Layer.merge(
+      serviceMockLayer,
+      Layer.succeed(ProgramReader, ProgramReader.of(config.programReaderService))
+    );
+  }
+  if (config.programWriterService) {
+    serviceMockLayer = Layer.merge(
+      serviceMockLayer,
+      Layer.succeed(ProgramWriter, ProgramWriter.of(config.programWriterService))
+    );
+  }
 
   // Provide boundary mocks and service mocks to application services
   const baseLayer = Layer.provideMerge(applicationServices, boundaryLayers);
 
   return Layer.merge(baseLayer, serviceMockLayer) as Layer.Layer<
-    RpcService | SignerService | BalanceService | TokenService | TransactionService | PdaService
+    | RpcService
+    | SignerService
+    | BalanceService
+    | TokenService
+    | TransactionService
+    | PdaService
+    | ProgramReader
+    | ProgramWriter
   >;
 }

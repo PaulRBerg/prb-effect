@@ -214,6 +214,40 @@ const program = Effect.gen(function* () {
 });
 ```
 
+### ProgramReader
+
+Read on-chain state via Anchor's `.view()` (signer-path reads).
+
+`.view()` requires a connected wallet — Anchor uses the signer's publicKey as the payer for the simulated transaction.
+For disconnected or low-balance wallets, use the simulator fallback path at the application level.
+
+```typescript
+import { Effect } from "effect";
+import { ProgramReader } from "@prb/effect-solana";
+import type { Idl } from "@prb/effect-solana";
+
+const program = Effect.gen(function* () {
+  const reader = yield* ProgramReader;
+
+  // Single read
+  const result = yield* reader.view({
+    idl,
+    method: "getWithdrawableAmount",
+    args: [streamId],
+    accounts: { stream, streamRecipient },
+    programId,
+  });
+
+  // Batched reads (reuse the program instance)
+  const anchorProgram = yield* reader.createProgram({ idl, programId });
+  const amount = yield* reader.viewWithProgram(anchorProgram, {
+    method: "getWithdrawableAmount",
+    args: [streamId],
+    accounts: { stream, streamRecipient },
+  });
+});
+```
+
 ### PdaService
 
 Program Derived Address utilities.
@@ -248,6 +282,8 @@ const signerLayer = makeSignerLayer(() => walletAdapter);
 import { Layer } from "effect";
 import {
   BalanceServiceLive,
+  PdaServiceLive,
+  ProgramReaderLive,
   RpcService,
   SignerService,
   TokenServiceLive,
@@ -267,9 +303,14 @@ const MySignerLayer = Layer.succeed(SignerService, {
 });
 
 // Compose layers
-const AppLayer = Layer.mergeAll(BalanceServiceLive, TokenServiceLive, TransactionServiceLive, ProgramWriterLive).pipe(
-  Layer.provide(Layer.merge(MyRpcLayer, MySignerLayer)),
-);
+const AppLayer = Layer.mergeAll(
+  BalanceServiceLive,
+  TokenServiceLive,
+  TransactionServiceLive,
+  PdaServiceLive,
+  ProgramReaderLive,
+  ProgramWriterLive,
+).pipe(Layer.provide(Layer.merge(MyRpcLayer, MySignerLayer)));
 ```
 
 ## ⚛️ React Integration
