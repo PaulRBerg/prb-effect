@@ -1,5 +1,6 @@
 # prb-effect
 
+[![CI](https://github.com/PaulRBerg/prb-effect/actions/workflows/evm.ci.yml/badge.svg)](https://github.com/PaulRBerg/prb-effect/actions)
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Effect](https://img.shields.io/badge/Effect-v3-7C3AED)](https://effect.website)
 [![Biome](https://img.shields.io/badge/Linted_with-Biome-60a5fa?style=flat&logo=biome)](https://biomejs.dev)
@@ -10,7 +11,7 @@
 
 A Bun-powered monorepo for Effect-TS libraries.
 
-## Packages
+## 📦 Packages
 
 | Package                              | Description                      |
 | ------------------------------------ | -------------------------------- |
@@ -20,7 +21,7 @@ A Bun-powered monorepo for Effect-TS libraries.
 | [`@prb/effect-solana`](./solana)     | Effect integration for Solana    |
 | [`@prb/effect-xstate`](./xstate)     | xState v5 workflow utilities     |
 
-## Tech Stack
+## 🛠️ Tech Stack
 
 - **Effect**: Effect-TS v3.x
 - **Language**: TypeScript v5.9+
@@ -29,7 +30,7 @@ A Bun-powered monorepo for Effect-TS libraries.
 - **Linting & Formatting**: Biome (JS/TS/JSON), Prettier (Markdown/YAML)
 - **Testing**: Vitest with @effect/vitest
 
-## Development
+## 🚀 Development
 
 **Install dependencies:**
 
@@ -40,13 +41,16 @@ bun install
 **Run quality checks:**
 
 ```bash
-just full-check      # runs prettier, biome, and type check
-just tu              # run unit tests
+just full-check      # prettier + biome + type check
+just tu              # unit tests
+just ti              # integration tests
+just type-check      # TypeScript only
 ```
 
 **Build packages:**
 
 ```bash
+just build           # all packages
 just evm::build
 just evm-safe::build
 just next::build
@@ -54,7 +58,13 @@ just solana::build
 just xstate::build
 ```
 
-## Project Structure
+**Cleanup:**
+
+```bash
+just clean           # remove dist, tsbuildinfo, tgz
+```
+
+## 📁 Project Structure
 
 ```
 prb-effect/
@@ -67,6 +77,6 @@ prb-effect/
 └── package.json         # Root workspace with catalogs
 ```
 
-## License
+## 📄 License
 
 MIT

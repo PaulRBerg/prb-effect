@@ -36,8 +36,12 @@ prb-effect/
 ## Commands
 
 ```bash
-just full-check          # Run all code checks
+just full-check          # Run all code checks (prettier + biome + type check)
 just tu                  # Run unit tests
+just ti                  # Run integration tests
+just type-check          # TypeScript type check all packages
+just build               # Build all packages
+just clean               # Clean dist, tsbuildinfo, tgz artifacts
 just evm::build          # Build @prb/effect-evm
 just evm-safe::build     # Build @prb/effect-evm-safe
 just next::build         # Build @prb/effect-next
