@@ -13,10 +13,19 @@ AI agents working on prb-effect MUST follow these guidelines.
 
 ## Lint Rules
 
-After generating code, run these commands **in order**:
+After generating code, run these commands **in order**.
 
-1. **`na biome lint <files>`** — lint JS/TS/JSON (skip if none changed)
-2. **`na tsgo --noEmit`** — verify TypeScript types
+**Command sequence:**
+
+1. **Biome lint** — if JS/TS/JSON files changed
+   - `na biome lint <files>`
+
+2. **TypeScript check** — if TS files changed
+   - Changed code in a single package? → `just type-check <package>`
+   - Changed code across packages? → `just type-check-all`
+
+3. **Run related tests** — if test files or test-related files changed
+   - `na vitest <test-files>` — only run tests related to your changes, not the entire suite
 
 If any command fails, fix errors before continuing.
 
@@ -37,10 +46,12 @@ prb-effect/
 
 ```bash
 just full-check          # Run all code checks (prettier + biome + type check)
+just build <package>     # Build a single package (e.g., just build evm)
+just build-all           # Build all packages (.tgz)
+just type-check <package> # TypeScript type check a single package
+just type-check-all      # TypeScript type check all packages
 just tu                  # Run unit tests
 just ti                  # Run integration tests
-just type-check          # TypeScript type check all packages
-just build               # Build all packages
 just clean               # Clean dist, tsbuildinfo, tgz artifacts
 just evm::build          # Build @prb/effect-evm
 just evm-safe::build     # Build @prb/effect-evm-safe
