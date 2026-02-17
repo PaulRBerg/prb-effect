@@ -153,6 +153,28 @@ describe("machines/tx", () => {
       expect(snapshot.context.result).toEqual({ hash: "0x123", receipt: { status: "success" } });
     });
 
+    it("allows gasCheck to return gasLimit undefined", async () => {
+      const services = createMockServices({
+        onGasCheck: vi.fn((_input: { payload: TestPayload; preprocess: TestPreprocess }) =>
+          Effect.succeed({ gasLimit: undefined })
+        ) as NonNullable<TestServices["onGasCheck"]>,
+      });
+      const machine = createTestMachine({ services });
+      const actor = createActor(machine).start();
+
+      actor.send({ payload: { amount: 100, isSafe: false }, type: "SUBMIT" });
+
+      const snapshot = await waitFor(actor, (s) => s.value === "success", { timeout: 2000 });
+
+      expect(services.onGasCheck).toHaveBeenCalledTimes(1);
+      expect(services.onSign).toHaveBeenCalledWith({
+        gasLimit: undefined,
+        payload: { amount: 100, isSafe: false },
+        preprocess: { normalizedAmount: 100n, validated: true },
+      });
+      expect(snapshot.context.gasLimit).toBe(undefined);
+    });
+
     it("caches preprocess and gasLimit at each stage", async () => {
       const services = createMockServices();
       const machine = createTestMachine({ services });

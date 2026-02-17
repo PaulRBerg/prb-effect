@@ -47,6 +47,13 @@ type TxMachineContext<TPayload, TPreprocess, TSignResult, TResult> = {
 type TxMachineEvents<TPayload> = { type: "SUBMIT"; payload: TPayload } | { type: "RESET" };
 
 /**
+ * Result of gas check service.
+ *
+ * `gasLimit: undefined` explicitly means "continue without injecting a gas limit".
+ */
+type GasCheckResult = { gasLimit: bigint | undefined } | { overflow: GasLimitOverflow };
+
+/**
  * Services configuration for transaction machine.
  *
  * All service functions receive plain values and return Effects with no requirements.
@@ -59,7 +66,7 @@ type TxMachineServices<TPayload, TPreprocess, TSignResult, TResult> = {
   onGasCheck?: (input: {
     payload: TPayload;
     preprocess: TPreprocess;
-  }) => Effect.Effect<{ gasLimit: bigint } | { overflow: GasLimitOverflow }, Error>;
+  }) => Effect.Effect<GasCheckResult, Error>;
   /** Simulation for Safe wallets - may return overflow */
   onSimulate?: (input: {
     payload: TPayload;
