@@ -36,15 +36,7 @@ type TestServices = TxMachineServices<TestPayload, TestPreprocess, TestSignResul
 // Mock Services Factory
 // =============================================================================
 
-function createMockServices(
-  overrides: Partial<{
-    onValidate: ReturnType<typeof vi.fn>;
-    onGasCheck: ReturnType<typeof vi.fn>;
-    onSimulate: ReturnType<typeof vi.fn>;
-    onSign: ReturnType<typeof vi.fn>;
-    onConfirm: ReturnType<typeof vi.fn>;
-  }> = {}
-): TestServices {
+function createMockServices(overrides: Partial<TestServices> = {}): TestServices {
   const base: TestServices = {
     onConfirm: vi.fn((_input: { payload: TestPayload; signResult: TestSignResult }) =>
       Effect.succeed({ hash: "0x123", receipt: { status: "success" } } satisfies TestResult)
