@@ -227,10 +227,19 @@ export const SafeAppsServiceLive = (config?: SafeAppsServiceConfig) =>
         );
 
         const txHash = tx.txHash ? yield* validateHash(tx.txHash, "getTx") : null;
+        const executionInfo = tx.detailedExecutionInfo;
+        const hasMultisigExecutionInfo =
+          executionInfo !== undefined &&
+          executionInfo !== null &&
+          executionInfo.type === "MULTISIG";
 
         return {
+          confirmations: hasMultisigExecutionInfo ? executionInfo.confirmations.length : null,
+          confirmationsRequired: hasMultisigExecutionInfo
+            ? executionInfo.confirmationsRequired
+            : null,
+          onchainHash: txHash ? Option.some(txHash) : Option.none<Hash>(),
           status: tx.txStatus ?? "AWAITING_CONFIRMATIONS",
-          txHash: txHash ? Option.some(txHash) : Option.none<Hash>(),
         };
       });
 
@@ -265,7 +274,7 @@ export const SafeAppsServiceLive = (config?: SafeAppsServiceConfig) =>
           Effect.gen(function* () {
             const tx = yield* getTx(safeTxHash);
             lastStatus = tx.status;
-            return tx.txHash;
+            return tx.onchainHash;
           }),
           { interval: pollInterval, timeout: executionTimeout },
           (timeout) =>

@@ -4,7 +4,7 @@ import { TEST_ADDRESS, TEST_CHAIN_ID, TEST_TX_HASH } from "@prb/effect-evm/testi
 import { Effect, Layer, Option } from "effect";
 import type { Hash, Hex, TransactionReceipt } from "viem";
 import { SafeAppsService } from "./service.js";
-import type { SafeMultisigInfo } from "./types.js";
+import type { SafeMultisigInfo, SafeMultisigTxInfo } from "./types.js";
 
 // Test fixtures
 const TEST_SAFE_ADDRESS = TEST_ADDRESS;
@@ -35,7 +35,7 @@ const TEST_RECEIPT: TransactionReceipt = {
 const makeMockSafeAppsService = (config: {
   getInfoResult?: SafeMultisigInfo;
   sendTxResult?: { safeTxHash: Hash };
-  getTxResult?: { txHash: Option.Option<Hash>; status: string };
+  getTxResult?: SafeMultisigTxInfo;
   signTypedDataResult?:
     | { _tag: "Offchain"; messageHash: Hex }
     | { _tag: "Onchain"; safeTxHash: Hash };
@@ -55,8 +55,10 @@ const makeMockSafeAppsService = (config: {
       getTx: () =>
         Effect.succeed(
           config.getTxResult ?? {
+            confirmations: 1,
+            confirmationsRequired: 2,
+            onchainHash: Option.some(TEST_TX_HASH),
             status: "AWAITING_EXECUTION",
-            txHash: Option.some(TEST_TX_HASH),
           }
         ),
       pollOffchainSignature: (messageHash) =>
@@ -118,26 +120,32 @@ describe("SafeAppsService", () => {
         const service = yield* SafeAppsService;
         const result = yield* service.getTx(TEST_SAFE_TX_HASH);
 
-        expect(Option.isSome(result.txHash)).toBe(true);
-        if (Option.isSome(result.txHash)) {
-          expect(result.txHash.value).toBe(TEST_TX_HASH);
+        expect(Option.isSome(result.onchainHash)).toBe(true);
+        expect(result.confirmations).toBe(1);
+        expect(result.confirmationsRequired).toBe(2);
+        if (Option.isSome(result.onchainHash)) {
+          expect(result.onchainHash.value).toBe(TEST_TX_HASH);
         }
       }).pipe(Effect.provide(makeMockSafeAppsService({})))
     );
 
-    it.effect("returns Option.none when not yet executed", () =>
+    it.effect("returns Option.none on onchainHash when not yet executed", () =>
       Effect.gen(function* () {
         const service = yield* SafeAppsService;
         const result = yield* service.getTx(TEST_SAFE_TX_HASH);
 
-        expect(Option.isNone(result.txHash)).toBe(true);
+        expect(Option.isNone(result.onchainHash)).toBe(true);
+        expect(result.confirmations).toBe(0);
+        expect(result.confirmationsRequired).toBe(3);
         expect(result.status).toBe("AWAITING_CONFIRMATIONS");
       }).pipe(
         Effect.provide(
           makeMockSafeAppsService({
             getTxResult: {
+              confirmations: 0,
+              confirmationsRequired: 3,
+              onchainHash: Option.none(),
               status: "AWAITING_CONFIRMATIONS",
-              txHash: Option.none(),
             },
           })
         )

@@ -37,6 +37,8 @@ export {
   type SafeMultisigWaitResult,
   waitForSafeMultisigTx,
 } from "./tx-lifecycle.js";
+// Safe URL helpers
+export { type GetSafeMultisigTxUrlParams, getSafeMultisigTxUrl } from "./tx-url.js";
 // Types
 export type {
   EIP712TypedData,
@@ -44,6 +46,7 @@ export type {
   OffchainSignatureResult,
   SafeMultisigInfo,
   SafeMultisigTx,
+  SafeMultisigTxInfo,
   SafeMultisigTxResult,
   SafeMultisigTxSubmission,
   SafeWaitPolicy,

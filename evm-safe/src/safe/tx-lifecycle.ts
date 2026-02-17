@@ -12,6 +12,7 @@ import { Duration, Effect, Option } from "effect";
 import type { Hash, TransactionReceipt } from "viem";
 import type { SafeMultisigTxLookupError } from "./errors.js";
 import { SafeAppsService } from "./service.js";
+import type { SafeMultisigTxInfo } from "./types.js";
 
 // ---------------------------------------------------------------------------
 // Configuration defaults
@@ -33,10 +34,20 @@ export type SafeMultisigWaitOptions = {
 };
 
 export type SafeMultisigWaitResult =
-  | { readonly _tag: "success"; readonly hash: Hash; readonly receipt: TransactionReceipt }
-  | { readonly _tag: "queued"; readonly safeTxHash: Hash }
-  | { readonly _tag: "cancelled" }
-  | { readonly _tag: "failed"; readonly error: string };
+  | {
+      readonly _tag: "success";
+      readonly onchainHash: Hash;
+      readonly receipt: TransactionReceipt;
+      readonly safeTxHash: Hash;
+    }
+  | { readonly _tag: "queued"; readonly onchainHash: null; readonly safeTxHash: Hash }
+  | { readonly _tag: "cancelled"; readonly onchainHash: null; readonly safeTxHash: Hash }
+  | {
+      readonly _tag: "failed";
+      readonly error: string;
+      readonly onchainHash: null;
+      readonly safeTxHash: Hash;
+    };
 
 export type SafeMultisigTxStatus =
   | "awaiting_confirmations"
@@ -57,8 +68,8 @@ export type SafeMultisigTxStatus =
  * transactions that stay queued because other signers haven't signed yet.
  *
  * Terminal states: success (on-chain), cancelled, failed.
- * On timeout the safeTxHash is returned as "queued" so callers can persist it
- * for later resolution.
+ * On timeout this returns a "queued" result with `onchainHash: null` and the
+ * original `safeTxHash` so callers can persist and resume tracking later.
  *
  * @param safeTxHash  - The Safe transaction hash returned by `sendTxs`
  * @param getReceipt  - Caller-provided effect to fetch an on-chain receipt
@@ -86,7 +97,7 @@ export const waitForSafeMultisigTx = Effect.fn("waitForSafeMultisigTx")(function
         if (error.retryable) {
           return Effect.logWarning("Retryable error polling Safe tx").pipe(
             Effect.annotateLogs({ attempt, error: error.message, safeTxHash }),
-            Effect.as(Option.none<{ txHash: Option.Option<Hash>; status: string }>())
+            Effect.as(Option.none<SafeMultisigTxInfo>())
           );
         }
         // Terminal lookup error — stop polling immediately
@@ -103,7 +114,7 @@ export const waitForSafeMultisigTx = Effect.fn("waitForSafeMultisigTx")(function
     yield* Effect.logDebug("Safe tx poll status").pipe(
       Effect.annotateLogs({
         attempt,
-        hash: Option.isSome(queued.txHash) ? queued.txHash.value : "pending",
+        hash: Option.isSome(queued.onchainHash) ? queued.onchainHash.value : "pending",
         safeTxHash,
         status: queued.status,
       })
@@ -112,29 +123,38 @@ export const waitForSafeMultisigTx = Effect.fn("waitForSafeMultisigTx")(function
     // --- Terminal states ---
 
     if (queued.status === "CANCELLED") {
-      return { _tag: "cancelled" as const } satisfies SafeMultisigWaitResult;
+      return {
+        _tag: "cancelled" as const,
+        onchainHash: null,
+        safeTxHash,
+      } satisfies SafeMultisigWaitResult;
     }
 
     if (queued.status === "FAILED") {
       return {
         _tag: "failed" as const,
         error: "Safe transaction failed",
+        onchainHash: null,
+        safeTxHash,
       } satisfies SafeMultisigWaitResult;
     }
 
     if (queued.status === "SUCCESS") {
-      if (Option.isNone(queued.txHash)) {
+      if (Option.isNone(queued.onchainHash)) {
         return {
           _tag: "failed" as const,
           error: "Safe transaction succeeded but no on-chain hash available",
+          onchainHash: null,
+          safeTxHash,
         } satisfies SafeMultisigWaitResult;
       }
-      const txHash = queued.txHash.value as Hash;
+      const txHash = queued.onchainHash.value as Hash;
       const receipt = yield* getReceipt(txHash);
       return {
         _tag: "success" as const,
-        hash: txHash,
+        onchainHash: txHash,
         receipt,
+        safeTxHash,
       } satisfies SafeMultisigWaitResult;
     }
 
@@ -151,7 +171,11 @@ export const waitForSafeMultisigTx = Effect.fn("waitForSafeMultisigTx")(function
     })
   );
 
-  return { _tag: "queued" as const, safeTxHash } satisfies SafeMultisigWaitResult;
+  return {
+    _tag: "queued" as const,
+    onchainHash: null,
+    safeTxHash,
+  } satisfies SafeMultisigWaitResult;
 });
 
 // ---------------------------------------------------------------------------

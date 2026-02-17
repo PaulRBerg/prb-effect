@@ -1,3 +1,4 @@
+import type { Option } from "effect";
 import type { Address, Hash, Hex, TransactionReceipt } from "viem";
 
 /** Safe multisig info returned from SDK */
@@ -18,6 +19,18 @@ export type SafeMultisigTxSubmission = {
   chainId: number;
   safeAddress: Address;
   safeTxHash: Hash;
+};
+
+/** Safe transaction info returned by `SafeAppsService.getTx`. */
+export type SafeMultisigTxInfo = {
+  /** Current Safe status string (e.g. AWAITING_CONFIRMATIONS, SUCCESS). */
+  status: string;
+  /** On-chain hash when the Safe tx has executed. */
+  onchainHash: Option.Option<Hash>;
+  /** Number of collected confirmations, when available. */
+  confirmations: number | null;
+  /** Number of required confirmations, when available. */
+  confirmationsRequired: number | null;
 };
 
 /** Result from waitForTxReceipt */
