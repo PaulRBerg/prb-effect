@@ -8,6 +8,13 @@ The format is based on [Common Changelog](https://common-changelog.org/).
 [1.0.1]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-xstate%401.0.1
 [2.0.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-xstate%402.0.0
 [2.0.1]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-xstate%402.0.1
+[2.0.2]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-xstate%402.0.2
+
+## [2.0.2] - 2026-02-17
+
+### Fixed
+
+- Allow `gasLimit` to be `undefined` in gas check result
 
 ## [2.0.1] - 2026-02-17
 
