@@ -25,8 +25,9 @@ type TestSignResult = {
 };
 
 type TestResult = {
-  hash: string;
-  receipt: { status: "success" };
+  hash: string | null;
+  isQueued?: boolean;
+  receipt?: { status: "success" };
 };
 
 type TestServices = TxMachineServices<TestPayload, TestPreprocess, TestSignResult, TestResult>;
@@ -214,6 +215,56 @@ describe("machines/tx", () => {
       expect(snapshot.context.error).toBe(null);
       expect(snapshot.context.hash).toBe("0x123");
       expect(snapshot.context.result).toEqual({ hash: "0x123", receipt: { status: "success" } });
+    });
+
+    it("promotes confirm hash over sign hash", async () => {
+      const services = createMockServices({
+        onConfirm: vi.fn((_input: { payload: TestPayload; signResult: TestSignResult }) =>
+          Effect.succeed({
+            hash: "0xonchain",
+            receipt: { status: "success" },
+          } satisfies TestResult)
+        ),
+        onSign: vi.fn(
+          (_input: { payload: TestPayload; preprocess: TestPreprocess; gasLimit?: bigint }) =>
+            Effect.succeed({ hash: "0xsafe" } satisfies TestSignResult)
+        ),
+      });
+      const machine = createTestMachine({ services });
+      const actor = createActor(machine).start();
+
+      actor.send({ payload: { amount: 200, isSafe: true }, type: "SUBMIT" });
+
+      const snapshot = await waitFor(actor, (s) => s.value === "success", { timeout: 2000 });
+
+      expect(snapshot.context.signResult).toEqual({ hash: "0xsafe" });
+      expect(snapshot.context.hash).toBe("0xonchain");
+      expect(snapshot.context.result).toEqual({
+        hash: "0xonchain",
+        receipt: { status: "success" },
+      });
+    });
+
+    it("clears sign hash when confirm returns hash null", async () => {
+      const services = createMockServices({
+        onConfirm: vi.fn((_input: { payload: TestPayload; signResult: TestSignResult }) =>
+          Effect.succeed({ hash: null, isQueued: true } satisfies TestResult)
+        ),
+        onSign: vi.fn(
+          (_input: { payload: TestPayload; preprocess: TestPreprocess; gasLimit?: bigint }) =>
+            Effect.succeed({ hash: "0xsafe" } satisfies TestSignResult)
+        ),
+      });
+      const machine = createTestMachine({ services });
+      const actor = createActor(machine).start();
+
+      actor.send({ payload: { amount: 200, isSafe: true }, type: "SUBMIT" });
+
+      const snapshot = await waitFor(actor, (s) => s.value === "success", { timeout: 2000 });
+
+      expect(snapshot.context.signResult).toEqual({ hash: "0xsafe" });
+      expect(snapshot.context.hash).toBe(null);
+      expect(snapshot.context.result).toEqual({ hash: null, isQueued: true });
     });
 
     it("branches correctly based on isSafe flag", async () => {

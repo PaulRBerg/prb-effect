@@ -219,6 +219,15 @@ function createTxMachine<TPayload, TPreprocess, TSignResult, TResult>({
         signResult: () => null,
       }),
       doResult: assign({
+        hash: ({ context, event }) => {
+          if ("output" in event && event.output && typeof event.output === "object") {
+            const output = event.output as { hash?: unknown };
+            if ("hash" in output && (typeof output.hash === "string" || output.hash === null)) {
+              return output.hash;
+            }
+          }
+          return context.hash;
+        },
         result: ({ event }) => {
           if ("output" in event) {
             return event.output as TResult;
