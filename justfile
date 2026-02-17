@@ -55,8 +55,8 @@ alias bb := bump-beta
         "**/*.tgz"
 
 # Run Claude to bump release, push git changes, and publish to npm with env loaded from .envrc
-@release:
-    zsh -ic 'ccbump'
+@release package:
+    zsh -ic 'ccbump {{ package }}'
     git push origin
     eval "$(direnv export zsh)"
     npm publish
