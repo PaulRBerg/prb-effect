@@ -39,8 +39,8 @@ export type { MockSignerServiceConfig } from "./mock-signer-service.js";
 export { makeMockSignerServiceLayer } from "./mock-signer-service.js";
 export type { MockTokenServiceConfig } from "./mock-token-service.js";
 export { makeMockTokenServiceLayer } from "./mock-token-service.js";
-export type { MockTransactionServiceConfig } from "./mock-transaction-service.js";
-export { makeMockTransactionServiceLayer } from "./mock-transaction-service.js";
+export type { MockTransactionServiceConfig } from "./mock-tx-service.js";
+export { makeMockTransactionServiceLayer } from "./mock-tx-service.js";
 
 // Test layer composer
 export type { TestLayerConfig } from "./test-layer.js";

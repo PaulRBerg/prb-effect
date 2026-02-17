@@ -9,7 +9,7 @@ import {
   TransactionFailedError,
   TransactionSendError,
   UserRejectedError,
-} from "./transaction.js";
+} from "./tx.js";
 import { SignatureError, WalletNotConnectedError } from "./wallet.js";
 
 // =============================================================================

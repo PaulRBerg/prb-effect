@@ -14,7 +14,7 @@ import {
   TransactionSendError,
   TransactionTimeoutError,
   UserRejectedError,
-} from "./transaction.js";
+} from "./tx.js";
 import { SignatureError, WalletNotConnectedError } from "./wallet.js";
 
 describe("UserRejectedError", () => {

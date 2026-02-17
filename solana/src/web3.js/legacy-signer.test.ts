@@ -5,7 +5,7 @@ import { SignerService } from "#src/signer/index.js";
 import { expectTaggedFailure } from "#src/testing-kit/index.js";
 import { createLegacyTransaction } from "./_fixtures.js";
 import { makeSignerServiceFromLegacyAdapter } from "./legacy-signer.js";
-import { fromWeb3Transaction } from "./transaction-bridge.js";
+import { fromWeb3Transaction } from "./tx-bridge.js";
 import type { LegacyWalletAdapter } from "./types.js";
 
 describe("legacy-signer (compat)", () => {

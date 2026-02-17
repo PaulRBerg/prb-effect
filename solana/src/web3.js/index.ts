@@ -27,5 +27,5 @@
 
 export * from "./layers.js";
 export * from "./legacy-signer.js";
-export * from "./transaction-bridge.js";
+export * from "./tx-bridge.js";
 export * from "./types.js";

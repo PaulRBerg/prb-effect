@@ -87,7 +87,3 @@ just xstate::build       # Build @prb/effect-xstate
 
 - Tag errors with `_tag` for discriminated unions
 - Use `Effect.fail` for expected errors, `Effect.die` for bugs
-
-## No Backward Compatibility
-
-These libraries do NOT require backward compatibility. Make breaking changes freely.

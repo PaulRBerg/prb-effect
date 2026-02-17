@@ -7,9 +7,9 @@ import {
   VersionedTransaction,
 } from "@solana/web3.js";
 import { createLegacyTransaction } from "./_fixtures.js";
-import { fromWeb3Transaction, toWeb3Transaction } from "./transaction-bridge.js";
+import { fromWeb3Transaction, toWeb3Transaction } from "./tx-bridge.js";
 
-describe("transaction-bridge (compat)", () => {
+describe("tx-bridge (compat)", () => {
   const createLegacyTx = createLegacyTransaction;
 
   describe("fromWeb3Transaction", () => {
@@ -82,7 +82,7 @@ describe("transaction-bridge (compat)", () => {
       // biome-ignore lint/suspicious/noBitwiseOperators: Testing version bit detection
       expect((versionedFirstByte[0] & 0x80) !== 0).toBe(true);
 
-      // The isVersionedMessage function in transaction-bridge.ts checks for this bit
+      // The isVersionedMessage function in tx-bridge.ts checks for this bit
       // Transactions with version bit set (0x80) should be deserialized as VersionedTransaction
       // Transactions without it should be parsed as legacy Transaction
     });

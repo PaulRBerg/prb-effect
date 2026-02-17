@@ -26,8 +26,8 @@ import type { MockSignerServiceConfig } from "./mock-signer-service.js";
 import { makeMockSignerServiceLayer } from "./mock-signer-service.js";
 import type { MockTokenServiceConfig } from "./mock-token-service.js";
 import { makeMockTokenServiceLayer } from "./mock-token-service.js";
-import type { MockTransactionServiceConfig } from "./mock-transaction-service.js";
-import { makeMockTransactionServiceLayer } from "./mock-transaction-service.js";
+import type { MockTransactionServiceConfig } from "./mock-tx-service.js";
+import { makeMockTransactionServiceLayer } from "./mock-tx-service.js";
 
 /**
  * Configuration for the test layer composer
