@@ -16,8 +16,12 @@ mod xstate "xstate"
 default:
     just --list
 
+build package:
+    cd {{ package }} && just build
+alias b := build
+
 # Build all packages (.tgz)
-@build:
+@build-all:
     cd evm && just build
     echo ""
 
@@ -34,7 +38,7 @@ default:
     echo ""
 
     echo '{{ GREEN }}✓ All packages built{{ NORMAL }}'
-alias b := build
+alias ba := build
 
 # Bump beta version using jq (e.g., just bump-beta evm)
 @bump-beta app:
@@ -50,18 +54,26 @@ alias bb := bump-beta
         "**/*.tsbuildinfo" \
         "**/*.tgz"
 
+# Run Claude to bump release, push git changes, and publish to npm with env loaded from .envrc
+@release:
+    zsh -ic 'ccbump'
+    git push origin
+    eval "$(direnv export zsh)"
+    npm publish
+alias rel := release
+
 # ---------------------------------------------------------------------------- #
 #                                     TESTS                                    #
 # ---------------------------------------------------------------------------- #
 
-# Run unit tests for all packages
+# Run unit tests
 [group("tests")]
 @test-unit +args="":
     na vitest {{ args }}
 alias t := test-unit
 alias tu := test-unit
 
-# Run integration tests for all packages
+# Run integration tests
 [group("tests")]
 @test-integration +args="":
     na vitest run '.integration.' {{ args }}
@@ -71,9 +83,17 @@ alias ti := test-integration
 #                                    TYPE CHECK                                #
 # ---------------------------------------------------------------------------- #
 
+[group("checks")]
+@type-check package="":
+    {{ if package == "" {
+        "just type-check-all"
+    } else {
+        "cd " + package + " && na tsgo --noEmit"
+    } }}
+
 # Run TypeScript check for all packages
 [group("checks")]
-@type-check:
+@type-check-all:
     echo "🔍 Type checking effect-evm..."
     cd evm && na tsgo --noEmit
 
