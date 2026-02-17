@@ -8,6 +8,21 @@ The format is based on [Common Changelog](https://common-changelog.org/).
 [1.0.1]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-evm-safe%401.0.1
 [1.1.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-evm-safe%401.1.0
 [1.1.1]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-evm-safe%401.1.1
+[2.0.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-evm-safe%402.0.0
+
+## [2.0.0] - 2026-02-17
+
+### Changed
+
+- Rename `txHash` to `onchainHash` in `SafeAppsService.getTx` return type
+- Rename `hash` to `onchainHash` in `SafeMultisigWaitResult` success variant
+- Include `safeTxHash` in all `SafeMultisigWaitResult` variants
+- Return `SafeMultisigTxInfo` type from `getTx` with confirmation metadata
+
+### Added
+
+- Add `SafeMultisigTxInfo` type with `confirmations` and `confirmationsRequired` fields
+- Add `getSafeMultisigTxUrl` utility to build Safe web UI transaction URLs
 
 ## [1.1.1] - 2026-02-10
 
