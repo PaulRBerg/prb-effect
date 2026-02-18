@@ -12,6 +12,22 @@ The format is based on [Common Changelog](https://common-changelog.org/).
 [1.2.1]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-evm%401.2.1
 [1.3.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-evm%401.3.0
 [1.3.1]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-evm%401.3.1
+[1.4.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-evm%401.4.0
+
+## [1.4.0] - 2026-02-18
+
+### Changed
+
+- Route `ContractPipeline.writeAndTrack` through optional `WriteExecutionAdapter` implementations before falling back to
+  the default EOA flow
+- Expose `WriteAndTrackExecution` and `WriteAndTrackActions` types for adapter implementations
+
+### Added
+
+- Add `WriteExecutionAdapter` service tag for pluggable wallet execution strategies
+- Add `TxStore.changes` and `TxStore.watchInFlight()` streams with `TxStoreChange` events
+- Add `useTxStoreChanges` and `useInFlightTxs` React hooks for realtime tx-store subscriptions
+- Add `toUserFacingTxError` to normalize transaction failures into stable UI categories
 
 ## [1.3.1] - 2026-02-13
 
