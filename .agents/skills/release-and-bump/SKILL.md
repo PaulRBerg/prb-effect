@@ -29,17 +29,26 @@ package to release using `AskUserQuestion` with these options:
 
 Then `cd` into the package directory before continuing.
 
-## Step 2: Run `just release <package-name>`
+## Step 2: Run release commands (publish from package directory)
 
-Execute from the **package directory**:
+Run the release bump + push flow first:
 
 ```bash
-just release <package-name>
+zsh -ic 'ccbump <package-name>'
+git push origin
 ```
 
-This runs: `ccbump` (AI version bump + changelog + commit + tag) → `git push origin` → `npm publish`.
+Then run `npm publish` from within the released package's directory:
 
-If the command exits with a non-zero code, **stop and report the error**. Do not proceed.
+```bash
+cd <package-directory>
+eval "$(direnv export zsh)"
+npm publish
+```
+
+`npm publish` MUST run from the package directory (e.g., `evm-safe/` for `@prb/effect-evm-safe`), not the monorepo root.
+
+If any command exits with a non-zero code, **stop and report the error**. Do not proceed.
 
 ## Step 3: Verify npm Publication
 
