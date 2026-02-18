@@ -4,4 +4,5 @@ export * from "./erc20.js";
 export * from "./event.js";
 export * from "./predicates.js";
 export * from "./transaction.js";
+export * from "./user-facing.js";
 export * from "./viem-mapper.js";

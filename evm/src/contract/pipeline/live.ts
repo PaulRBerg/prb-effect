@@ -1,10 +1,12 @@
-import { Effect, Layer } from "effect";
+import { Effect, Layer, Option } from "effect";
 import { ContractWriter } from "#src/contract/index.js";
 import { PublicClientService } from "#src/core/index.js";
 import { EventStream } from "#src/events/index.js";
 import { GasService } from "#src/gas/index.js";
 import { NonceService } from "#src/nonce/index.js";
 import { TxManager, TxReplacement } from "#src/tx/index.js";
+import { WriteExecutionAdapter } from "./adapter.js";
+import type { ContractPipelineShape } from "./service.js";
 import { ContractPipeline } from "./service.js";
 import { makeWriteAndTrack } from "./write-and-track.js";
 import { makeWriteAndWait } from "./write-and-wait.js";
@@ -19,6 +21,7 @@ export const ContractPipelineLive = Layer.effect(
     const txReplacement = yield* TxReplacement;
     const publicClientService = yield* PublicClientService;
     const gasService = yield* GasService;
+    const adapterOption = yield* Effect.serviceOption(WriteExecutionAdapter);
 
     const writeAndTrackDeps = {
       eventStream,
@@ -38,8 +41,22 @@ export const ContractPipelineLive = Layer.effect(
       writer,
     };
 
+    const defaultWriteAndTrack = makeWriteAndTrack(writeAndTrackDeps);
+
+    const writeAndTrack: ContractPipelineShape["writeAndTrack"] = (params) =>
+      Effect.gen(function* () {
+        if (Option.isNone(adapterOption)) {
+          return yield* defaultWriteAndTrack(params);
+        }
+
+        const canHandle = yield* adapterOption.value.canHandle(params);
+        return canHandle
+          ? yield* adapterOption.value.writeAndTrack(params)
+          : yield* defaultWriteAndTrack(params);
+      });
+
     return ContractPipeline.of({
-      writeAndTrack: makeWriteAndTrack(writeAndTrackDeps),
+      writeAndTrack,
       writeAndWait: makeWriteAndWait(writeAndWaitDeps),
     });
   })

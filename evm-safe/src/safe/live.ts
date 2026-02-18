@@ -21,6 +21,7 @@ import {
   SafeMultisigTxLookupError,
   SafeMultisigTxSubmissionError,
   SignTypedDataError,
+  toSafeMultisigTxLookupError,
 } from "./errors.js";
 import { pollUntil } from "./internal/poll.js";
 import { SafeAppsService } from "./service.js";
@@ -208,22 +209,10 @@ export const SafeAppsServiceLive = (config?: SafeAppsServiceConfig) =>
           getSdk,
           (s) =>
             Effect.tryPromise({
-              catch: (cause) =>
-                new SafeMultisigTxLookupError({
-                  cause,
-                  message: `Failed to lookup Safe tx ${safeTxHash}`,
-                  retryable: true,
-                  safeTxHash,
-                }),
+              catch: (cause) => toSafeMultisigTxLookupError(safeTxHash, cause, true),
               try: () => s.txs.getBySafeTxHash(safeTxHash),
             }),
-          (e) =>
-            new SafeMultisigTxLookupError({
-              cause: e,
-              message: e.message,
-              retryable: false,
-              safeTxHash,
-            })
+          (e) => toSafeMultisigTxLookupError(safeTxHash, e, false)
         );
 
         const txHash = tx.txHash ? yield* validateHash(tx.txHash, "getTx") : null;
@@ -253,14 +242,7 @@ export const SafeAppsServiceLive = (config?: SafeAppsServiceConfig) =>
       ) {
         const info = yield* getInfo().pipe(
           Effect.catchTag("SafeMultisigInfoUnavailableError", (error) =>
-            Effect.fail(
-              new SafeMultisigTxLookupError({
-                cause: error,
-                message: "Failed to get Safe info for receipt waiting",
-                retryable: true,
-                safeTxHash,
-              })
-            )
+            Effect.fail(toSafeMultisigTxLookupError(safeTxHash, error, true))
           )
         );
 
@@ -291,14 +273,7 @@ export const SafeAppsServiceLive = (config?: SafeAppsServiceConfig) =>
           .waitForReceipt(info.chainId, onchainHash, policy.receiptPolicy)
           .pipe(
             Effect.catchTag("TxReplacedError", (error) =>
-              Effect.fail(
-                new SafeMultisigTxLookupError({
-                  cause: error,
-                  message: `Transaction was replaced: ${error.message}`,
-                  retryable: false,
-                  safeTxHash,
-                })
-              )
+              Effect.fail(toSafeMultisigTxLookupError(safeTxHash, error, false))
             )
           );
 
@@ -350,22 +325,10 @@ export const SafeAppsServiceLive = (config?: SafeAppsServiceConfig) =>
           getSdk,
           (s) =>
             Effect.tryPromise({
-              catch: (cause) =>
-                new SafeMultisigTxLookupError({
-                  cause,
-                  message: `Failed to get off-chain signature for ${messageHash}`,
-                  retryable: true,
-                  safeTxHash: messageHash,
-                }),
+              catch: (cause) => toSafeMultisigTxLookupError(messageHash, cause, true),
               try: () => s.safe.getOffChainSignature(messageHash),
             }),
-          (e) =>
-            new SafeMultisigTxLookupError({
-              cause: e,
-              message: e.message,
-              retryable: false,
-              safeTxHash: messageHash,
-            })
+          (e) => toSafeMultisigTxLookupError(messageHash, e, false)
         );
 
         // Empty string or "0x" means signature not yet available

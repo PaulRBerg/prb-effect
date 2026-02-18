@@ -1,4 +1,4 @@
-import type { Effect } from "effect";
+import type { Effect, SubscriptionRef } from "effect";
 import type { Abi, Address, Hash, Hex, TransactionReceipt } from "viem";
 import type {
   ClientNotFoundError,
@@ -40,6 +40,27 @@ export type WriteAndTrackResult<TAbi extends Abi> = {
   hash: Hash;
   receipt: TransactionReceipt;
   events: DecodedEvent<TAbi, ContractEventName<TAbi>>[];
+};
+
+export type WriteAndTrackActions = {
+  readonly speedup: (
+    policy?: TxPolicy
+  ) => Effect.Effect<
+    Hash,
+    TxFailedError | WalletNotConnectedError | ClientNotFoundError | GasPriceUnavailableError | Error
+  >;
+  readonly cancel: (
+    policy?: TxPolicy
+  ) => Effect.Effect<
+    Hash,
+    TxFailedError | WalletNotConnectedError | ClientNotFoundError | GasPriceUnavailableError | Error
+  >;
+};
+
+export type WriteAndTrackExecution<TAbi extends Abi> = {
+  stateRef: SubscriptionRef.SubscriptionRef<TxState>;
+  actions: WriteAndTrackActions;
+  result: Effect.Effect<WriteAndTrackResult<TAbi>, WriteAndTrackError>;
 };
 
 export type WriteAndTrackError =

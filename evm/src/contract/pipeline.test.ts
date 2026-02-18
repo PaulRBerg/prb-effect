@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@effect/vitest";
-import { Effect, Exit, Layer, Stream } from "effect";
+import { Effect, Exit, Layer, Stream, SubscriptionRef } from "effect";
 import type { Abi, Hash, TransactionReceipt } from "viem";
 import { erc20Abi } from "viem";
 import { ContractPipeline, ContractPipelineLive, ContractWriterLive } from "#src/contract/index.js";
@@ -18,6 +18,8 @@ import {
 } from "#src/testing-kit/index.js";
 import { TxManager, TxReplacement } from "#src/tx/index.js";
 import type { ContractEventName } from "#src/types/index.js";
+import type { WriteExecutionAdapterShape } from "./pipeline/adapter.js";
+import { WriteExecutionAdapter } from "./pipeline/adapter.js";
 
 const commonServices = Layer.mergeAll(
   makeMockGasServiceLayer({}, TEST_CHAIN_ID),
@@ -63,6 +65,10 @@ type PipelineTestConfig = {
   walletClient?: Parameters<typeof makeMockWalletClientLayer>[0];
   txManager?: Partial<TxManagerShape>;
   eventStream?: Partial<EventStreamShape>;
+  adapter?: {
+    canHandle: boolean;
+    writeAndTrack?: WriteExecutionAdapterShape["writeAndTrack"];
+  };
 };
 
 const DEFAULT_RECEIPT: TransactionReceipt = {
@@ -119,7 +125,35 @@ const makeContractPipelineTestLayer = (config: PipelineTestConfig = {}) =>
             (<_TAbi extends Abi>() => Effect.succeed([] as any)),
           watch: config.eventStream?.watch ?? (() => Effect.succeed(Stream.empty as any)),
         } as any)
-      )
+      ),
+      config.adapter
+        ? Layer.succeed(
+            WriteExecutionAdapter,
+            WriteExecutionAdapter.of({
+              canHandle: () => Effect.succeed(config.adapter?.canHandle ?? false),
+              writeAndTrack: (params) =>
+                config.adapter?.writeAndTrack
+                  ? config.adapter.writeAndTrack(params)
+                  : Effect.gen(function* () {
+                      const stateRef = yield* SubscriptionRef.make({
+                        status: "idle",
+                      } as any);
+                      return {
+                        actions: {
+                          cancel: () => Effect.succeed(TEST_TX_HASH),
+                          speedup: () => Effect.succeed(TEST_TX_HASH),
+                        },
+                        result: Effect.succeed({
+                          events: [],
+                          hash: TEST_TX_HASH,
+                          receipt: DEFAULT_RECEIPT,
+                        }),
+                        stateRef,
+                      };
+                    }),
+            })
+          )
+        : Layer.empty
     )
   );
 
@@ -981,6 +1015,75 @@ describe("ContractPipeline", () => {
                     message: "Failed to decode event",
                   })
                 )) as unknown as EventStreamShape["decodeReceipt"],
+            },
+            publicClient: {
+              estimateContractGas: () => Promise.resolve(50000n),
+              simulateContract: () => Promise.resolve({ request: {}, result: true }),
+            },
+            walletClient: {
+              writeContract: () => Promise.resolve(TEST_TX_HASH),
+            },
+          })
+        ),
+        Effect.scoped
+      )
+    );
+  });
+
+  describe("adapter routing", () => {
+    it.effect("uses execution adapter when it can handle params", () =>
+      Effect.gen(function* () {
+        const pipeline = yield* ContractPipeline;
+
+        const { result, stateRef } = yield* pipeline.writeAndTrack({
+          abi: erc20Abi,
+          account: TEST_ADDRESS,
+          address: TEST_ADDRESS,
+          args: [TEST_ADDRESS_2, 100n],
+          chainId: TEST_CHAIN_ID,
+          functionName: "transfer",
+        });
+
+        const final = yield* result;
+        const current = yield* stateRef.get;
+
+        expect(final.hash).toBe(TEST_TX_HASH);
+        expect(current.status).toBe("idle");
+      }).pipe(
+        Effect.provide(
+          makeContractPipelineTestLayer({
+            adapter: {
+              canHandle: true,
+            },
+            walletClient: {
+              writeContract: () => Promise.reject(new Error("Should not hit default write path")),
+            },
+          })
+        ),
+        Effect.scoped
+      )
+    );
+
+    it.effect("falls back to default write path when adapter declines", () =>
+      Effect.gen(function* () {
+        const pipeline = yield* ContractPipeline;
+
+        const { result } = yield* pipeline.writeAndTrack({
+          abi: erc20Abi,
+          account: TEST_ADDRESS,
+          address: TEST_ADDRESS,
+          args: [TEST_ADDRESS_2, 100n],
+          chainId: TEST_CHAIN_ID,
+          functionName: "transfer",
+        });
+
+        const final = yield* result;
+        expect(final.hash).toBe(TEST_TX_HASH);
+      }).pipe(
+        Effect.provide(
+          makeContractPipelineTestLayer({
+            adapter: {
+              canHandle: false,
             },
             publicClient: {
               estimateContractGas: () => Promise.resolve(50000n),

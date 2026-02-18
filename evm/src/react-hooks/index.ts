@@ -29,3 +29,4 @@ export {
 } from "#src/integrations/react-hooks/provider.js";
 export type { WalletProviderRefActions } from "#src/integrations/react-hooks/wallet-provider-ref.js";
 export { useWalletProviderRef } from "#src/integrations/react-hooks/wallet-provider-ref.js";
+export { useInFlightTxs, useTxStoreChanges } from "#src/react-hooks/tx-store.js";

@@ -142,6 +142,24 @@ export type PersistedTx = {
   tags?: string[];
 };
 
+export type TxStoreChange =
+  | {
+      readonly _tag: "upsert";
+      readonly at: number;
+      readonly next: PersistedTx;
+      readonly previous: PersistedTx | null;
+    }
+  | {
+      readonly _tag: "delete";
+      readonly at: number;
+      readonly id: string;
+      readonly previous: PersistedTx | null;
+    };
+
+export function isInFlightPersistedTx(tx: PersistedTx): boolean {
+  return tx.status === "submitted" || tx.status === "pending";
+}
+
 /**
  * Generate a unique transaction ID from chain ID and root hash.
  *

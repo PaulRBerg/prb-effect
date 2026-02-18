@@ -61,6 +61,7 @@ export type SafeMultisigTxStatus =
   | "awaiting_execution"
   | "pending"
   | "success"
+  | "cancelled"
   | "failed";
 
 function mapStatus(raw: string | undefined): SafeMultisigTxStatus {
@@ -72,6 +73,7 @@ function mapStatus(raw: string | undefined): SafeMultisigTxStatus {
     case "SUCCESS":
       return "success";
     case "CANCELLED":
+      return "cancelled";
     case "FAILED":
       return "failed";
     default:

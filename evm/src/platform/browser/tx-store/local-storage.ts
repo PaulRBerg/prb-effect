@@ -1,8 +1,9 @@
-import { Effect, Layer } from "effect";
+import { Effect, Layer, Option, Stream, SubscriptionRef } from "effect";
 import { BrowserStorage } from "../storage/index.js";
 import type { TxStoreError } from "./errors.js";
 import { TxStore } from "./store.js";
-import type { PersistedTx } from "./types.js";
+import type { PersistedTx, TxStoreChange } from "./types.js";
+import { isInFlightPersistedTx } from "./types.js";
 
 /**
  * Configuration for LocalStorageTxStore.
@@ -167,7 +168,7 @@ function pruneIfNeeded(
     }
 
     // Separate in-flight from terminal
-    const inFlight = txs.filter((tx) => tx.status === "submitted" || tx.status === "pending");
+    const inFlight = txs.filter(isInFlightPersistedTx);
     const terminal = txs.filter((tx) => tx.status === "mined" || tx.status === "failed");
 
     // Sort terminal by updatedAt (oldest first)
@@ -195,7 +196,7 @@ function pruneIfNeeded(
  */
 export const makeLocalStorageTxStoreLive = (
   config: LocalStorageTxStoreConfig = {}
-): Layer.Layer<TxStore, never, BrowserStorage> => {
+): Layer.Layer<TxStore, TxStoreError, BrowserStorage> => {
   const finalConfig = { ...DEFAULT_CONFIG, ...config };
 
   return Layer.effect(
@@ -203,9 +204,46 @@ export const makeLocalStorageTxStoreLive = (
     Effect.gen(function* () {
       const storage = yield* BrowserStorage;
 
+      const loadAllTxs = Effect.gen(function* () {
+        const index = yield* readIndex(storage);
+        const txs: PersistedTx[] = [];
+
+        for (const id of index) {
+          const tx = yield* readTx(storage, id);
+          if (tx !== null) {
+            txs.push(tx);
+          }
+        }
+
+        const validIds = txs.map((tx) => tx.id);
+        if (validIds.length !== index.length) {
+          yield* writeIndex(storage, validIds);
+        }
+
+        return txs;
+      });
+
+      const initialInFlight = yield* loadAllTxs.pipe(
+        Effect.map((txs) => txs.filter(isInFlightPersistedTx))
+      );
+      const inFlightRef = yield* SubscriptionRef.make(initialInFlight);
+      const changesRef = yield* SubscriptionRef.make<Option.Option<TxStoreChange>>(Option.none());
+
+      const refreshInFlight = loadAllTxs.pipe(
+        Effect.map((txs) => txs.filter(isInFlightPersistedTx)),
+        Effect.flatMap((txs) => SubscriptionRef.set(inFlightRef, txs))
+      );
+
+      const publishChange = (change: TxStoreChange) =>
+        SubscriptionRef.set(changesRef, Option.some(change));
+
       return TxStore.of({
+        changes: Stream.filterMap(changesRef.changes, (change) => change),
+
         delete: (id: string) =>
           Effect.gen(function* () {
+            const previous = yield* readTx(storage, id);
+
             // Delete the transaction
             yield* deleteTx(storage, id);
 
@@ -213,47 +251,25 @@ export const makeLocalStorageTxStoreLive = (
             const index = yield* readIndex(storage);
             const newIndex = index.filter((txId) => txId !== id);
             yield* writeIndex(storage, newIndex);
+
+            yield* refreshInFlight;
+            yield* publishChange({
+              _tag: "delete",
+              at: Date.now(),
+              id,
+              previous,
+            });
           }),
 
         get: (id: string) => readTx(storage, id),
-        getAll: () =>
-          Effect.gen(function* () {
-            const index = yield* readIndex(storage);
-            const txs: PersistedTx[] = [];
+        getAll: () => loadAllTxs,
 
-            for (const id of index) {
-              const tx = yield* readTx(storage, id);
-              if (tx !== null) {
-                txs.push(tx);
-              }
-            }
-
-            // Update index to remove any IDs that failed to load
-            const validIds = txs.map((tx) => tx.id);
-            if (validIds.length !== index.length) {
-              yield* writeIndex(storage, validIds);
-            }
-
-            return txs;
-          }),
-
-        getInFlight: () =>
-          Effect.gen(function* () {
-            const index = yield* readIndex(storage);
-            const inFlight: PersistedTx[] = [];
-
-            for (const id of index) {
-              const tx = yield* readTx(storage, id);
-              if (tx !== null && (tx.status === "submitted" || tx.status === "pending")) {
-                inFlight.push(tx);
-              }
-            }
-
-            return inFlight;
-          }),
+        getInFlight: () => loadAllTxs.pipe(Effect.map((txs) => txs.filter(isInFlightPersistedTx))),
 
         upsert: (tx: PersistedTx) =>
           Effect.gen(function* () {
+            const previous = yield* readTx(storage, tx.id);
+
             // Write the transaction
             yield* writeTx(storage, tx);
 
@@ -261,16 +277,11 @@ export const makeLocalStorageTxStoreLive = (
             const index = yield* readIndex(storage);
             if (!index.includes(tx.id)) {
               index.push(tx.id);
+              yield* writeIndex(storage, index);
             }
 
             // Load all transactions for pruning
-            const allTxs: PersistedTx[] = [];
-            for (const id of index) {
-              const loadedTx = yield* readTx(storage, id);
-              if (loadedTx !== null) {
-                allTxs.push(loadedTx);
-              }
-            }
+            const allTxs = yield* loadAllTxs;
 
             // Prune if needed
             const prunedTxs = yield* pruneIfNeeded(storage, allTxs, finalConfig.maxTxs);
@@ -278,7 +289,20 @@ export const makeLocalStorageTxStoreLive = (
 
             // Write updated index
             yield* writeIndex(storage, prunedIds);
+
+            yield* SubscriptionRef.set(
+              inFlightRef,
+              prunedTxs.filter((persistedTx) => isInFlightPersistedTx(persistedTx))
+            );
+            yield* publishChange({
+              _tag: "upsert",
+              at: Date.now(),
+              next: tx,
+              previous,
+            });
           }),
+
+        watchInFlight: () => inFlightRef.changes,
       });
     })
   );

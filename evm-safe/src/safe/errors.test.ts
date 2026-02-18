@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getSafeErrorMessage } from "./errors.js";
+import { getSafeErrorMessage, toSafeMultisigTxLookupError } from "./errors.js";
 
 describe("getSafeErrorMessage", () => {
   it("returns message from standard Error", () => {
@@ -42,5 +42,14 @@ describe("getSafeErrorMessage", () => {
 
   it("returns undefined when no message-like fields are present", () => {
     expect(getSafeErrorMessage({ foo: "bar" })).toBeUndefined();
+  });
+
+  it("builds canonical lookup errors with detail", () => {
+    const safeTxHash = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
+    const error = toSafeMultisigTxLookupError(safeTxHash, { message: "Gateway timeout" });
+
+    expect(error.safeTxHash).toBe(safeTxHash);
+    expect(error.retryable).toBe(true);
+    expect(error.message).toContain("Gateway timeout");
   });
 });

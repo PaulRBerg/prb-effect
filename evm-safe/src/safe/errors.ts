@@ -1,4 +1,5 @@
 import { Schema } from "effect";
+import type { Hash, Hex } from "viem";
 
 // SDK availability errors
 export class SafeAppsSdkUnavailableError extends Schema.TaggedError<SafeAppsSdkUnavailableError>()(
@@ -179,6 +180,25 @@ function getSafeErrorMessageInternal(error: unknown, depth: number): string | un
  */
 export function getSafeErrorMessage(error: unknown): string | undefined {
   return getSafeErrorMessageInternal(error, 0);
+}
+
+/**
+ * Canonical constructor for Safe tx lookup errors.
+ */
+export function toSafeMultisigTxLookupError(
+  safeTxHash: Hash | Hex,
+  cause: unknown,
+  retryable = true
+): SafeMultisigTxLookupError {
+  const detail = getSafeErrorMessage(cause);
+  return new SafeMultisigTxLookupError({
+    cause,
+    message: detail
+      ? `Failed to lookup Safe tx ${safeTxHash}: ${detail}`
+      : `Failed to lookup Safe tx ${safeTxHash}`,
+    retryable,
+    safeTxHash,
+  });
 }
 
 /**

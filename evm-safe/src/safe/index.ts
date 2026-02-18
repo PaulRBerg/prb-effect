@@ -2,6 +2,7 @@
 export {
   buildSafeApproveTx,
   type SafeMultisigAllowAndWriteParams,
+  type SafeMultisigAllowAndWriteResult,
   type SafeMultisigApproveTxParams,
   safeMultisigAllowAndWrite,
 } from "./allowance.js";
@@ -23,9 +24,11 @@ export {
   SafeMultisigTxLookupError,
   SafeMultisigTxSubmissionError,
   SignTypedDataError,
+  toSafeMultisigTxLookupError,
 } from "./errors.js";
 // Service and layer
 export { type SafeAppsServiceConfig, SafeAppsServiceLive } from "./live.js";
+export { SafeWriteExecutionAdapterLive } from "./pipeline-adapter.js";
 export { SafeAppsService, type SafeAppsServiceShape } from "./service.js";
 // Simulation
 export * from "./simulation/index.js";
@@ -52,3 +55,10 @@ export type {
   SafeWaitPolicy,
   SignTypedDataResult,
 } from "./types.js";
+export {
+  type SafeWriteAndTrackError,
+  type SafeWriteAndTrackParams,
+  type SafeWriteAndTrackResult,
+  type SafeWriteAndTrackState,
+  safeWriteAndTrack,
+} from "./write-and-track.js";

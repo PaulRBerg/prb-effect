@@ -9,9 +9,10 @@
  */
 
 import { Effect } from "effect";
-import type { Address } from "viem";
+import type { Address, Hash } from "viem";
 import { encodeFunctionData, erc20Abi } from "viem";
 import { safeMultisigBatchWrite } from "./batch.js";
+import { SafeMultiSendUnavailableError } from "./errors.js";
 import type { SafeMultisigTx } from "./types.js";
 
 // ---------------------------------------------------------------------------
@@ -31,7 +32,24 @@ export type SafeMultisigAllowAndWriteParams = {
   };
   /** Approval amount (e.g. MaxUint256 or a computed amount). */
   readonly amount: bigint;
+  /**
+   * MultiSend behavior:
+   * - "require": fail if MultiSend is unavailable
+   * - "fallback-required-approval": submit separate Safe proposals for approve and main tx
+   */
+  readonly multiSendStrategy?: "require" | "fallback-required-approval";
 };
+
+export type SafeMultisigAllowAndWriteResult =
+  | {
+      readonly _tag: "batched";
+      readonly safeTxHash: Hash;
+    }
+  | {
+      readonly _tag: "fallback-required-approval";
+      readonly approveSafeTxHash: Hash;
+      readonly mainSafeTxHash: Hash;
+    };
 
 /** Parameters for building a standalone ERC-20 approve tx. */
 export type SafeMultisigApproveTxParams = {
@@ -80,6 +98,7 @@ export const safeMultisigAllowAndWrite = Effect.fn("safeMultisigAllowAndWrite")(
   params: SafeMultisigAllowAndWriteParams
 ) {
   const { amount, mainTransaction, spender, token } = params;
+  const strategy = params.multiSendStrategy ?? "require";
 
   const approveTx = buildSafeApproveTx({
     amount,
@@ -88,5 +107,30 @@ export const safeMultisigAllowAndWrite = Effect.fn("safeMultisigAllowAndWrite")(
   });
 
   // Approve first, then main transaction
-  return yield* safeMultisigBatchWrite([approveTx, mainTransaction], token.chainId);
+  const batched = yield* safeMultisigBatchWrite([approveTx, mainTransaction], token.chainId).pipe(
+    Effect.either
+  );
+
+  if (batched._tag === "Right") {
+    return {
+      _tag: "batched",
+      safeTxHash: batched.right,
+    } satisfies SafeMultisigAllowAndWriteResult;
+  }
+
+  const error = batched.left;
+
+  if (!(error instanceof SafeMultiSendUnavailableError) || strategy === "require") {
+    return yield* Effect.fail(error);
+  }
+
+  // Fallback for chains without MultiSend: submit two standalone Safe tx proposals.
+  const approveSafeTxHash = yield* safeMultisigBatchWrite([approveTx], token.chainId);
+  const mainSafeTxHash = yield* safeMultisigBatchWrite([mainTransaction], token.chainId);
+
+  return {
+    _tag: "fallback-required-approval",
+    approveSafeTxHash,
+    mainSafeTxHash,
+  } satisfies SafeMultisigAllowAndWriteResult;
 });
