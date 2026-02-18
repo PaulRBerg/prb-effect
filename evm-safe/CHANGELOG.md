@@ -11,6 +11,23 @@ The format is based on [Common Changelog](https://common-changelog.org/).
 [2.0.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-evm-safe%402.0.0
 [2.0.1]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-evm-safe%402.0.1
 [2.0.2]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-evm-safe%402.0.2
+[2.1.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-evm-safe%402.1.0
+
+## [2.1.0] - 2026-02-18
+
+### Changed
+
+- Add optional `multiSendStrategy: "fallback-required-approval"` to `safeMultisigAllowAndWrite` for chains without
+  MultiSend
+- Normalize Safe lookup failures via shared `toSafeMultisigTxLookupError` constructor
+
+### Added
+
+- Add `safeWriteAndTrack` with lifecycle callbacks and streamed Safe state transitions
+- Add `SafeWriteExecutionAdapterLive` to bridge Safe execution into `@prb/effect-evm` `ContractPipeline`
+- Add `useWalletExecution` hook for Safe-versus-EOA routing across context, connector, origin, and owners probe
+- Add `cancelled` status support to `SafeMultisigTxStatus`
+- Export `SafeMultisigAllowAndWriteResult` and Safe write-and-track types from `safe` module
 
 ## [2.0.2] - 2026-02-18
 
