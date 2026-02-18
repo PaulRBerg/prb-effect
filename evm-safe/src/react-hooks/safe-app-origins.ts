@@ -20,16 +20,15 @@ const ORIGIN_PROTOCOL_PATTERN = /^[a-z]+:\/\//i;
 let safeAppOrigins = normalizeOrigins(DEFAULT_SAFE_APP_ORIGINS);
 let safeAppOriginSet = new Set(safeAppOrigins);
 const safeAppOriginListeners = new Set<() => void>();
-let safeAppOriginsConfigured = false;
 
-/** Replace the Safe App origins list (one-time configuration). */
+/** Replace the Safe App origins list. */
 export function setSafeAppOrigins(origins: readonly string[]) {
-  configureSafeAppOrigins(normalizeOrigins(origins));
+  updateSafeAppOrigins(normalizeOrigins(origins));
 }
 
-/** Extend the Safe App origins list (one-time configuration). */
+/** Extend the Safe App origins list. */
 export function extendSafeAppOrigins(origins: readonly string[]) {
-  configureSafeAppOrigins(normalizeOrigins([...safeAppOrigins, ...origins]));
+  updateSafeAppOrigins(normalizeOrigins([...safeAppOrigins, ...origins]));
 }
 
 /** Read the currently configured Safe App origins list. */
@@ -95,15 +94,6 @@ function updateSafeAppOrigins(nextOrigins: string[]) {
   safeAppOrigins = nextOrigins;
   safeAppOriginSet = new Set(safeAppOrigins);
   notifySafeAppOriginListeners();
-}
-
-function configureSafeAppOrigins(nextOrigins: string[]) {
-  if (safeAppOriginsConfigured) {
-    throw new Error("Safe App origins already configured.");
-  }
-
-  safeAppOriginsConfigured = true;
-  updateSafeAppOrigins(nextOrigins);
 }
 
 function notifySafeAppOriginListeners() {

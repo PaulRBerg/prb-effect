@@ -19,29 +19,54 @@ describe("safe-app-origins", () => {
     expect(getSafeAppOrigins()).toEqual(["https://safe.global"]);
   });
 
-  it("is configurable only once", async () => {
-    const { extendSafeAppOrigins, setSafeAppOrigins } = await loadSafeAppOrigins();
+  it("allows replacing origins multiple times", async () => {
+    const { getSafeAppOrigins, setSafeAppOrigins } = await loadSafeAppOrigins();
 
     setSafeAppOrigins(["https://safe.global"]);
+    setSafeAppOrigins(["https://app.safe.global"]);
 
-    expect(() => setSafeAppOrigins(["https://app.safe.global"])).toThrow(
-      "Safe App origins already configured."
-    );
-    expect(() => extendSafeAppOrigins(["https://app.safe.global"])).toThrow(
-      "Safe App origins already configured."
-    );
+    expect(getSafeAppOrigins()).toEqual(["https://app.safe.global"]);
+  });
+
+  it("allows extending origins multiple times", async () => {
+    const { extendSafeAppOrigins, getSafeAppOrigins, setSafeAppOrigins } =
+      await loadSafeAppOrigins();
+
+    setSafeAppOrigins(["https://safe.global"]);
+    extendSafeAppOrigins(["https://safe.custom"]);
+    extendSafeAppOrigins(["https://safe.custom", "https://safe.extra"]);
+
+    expect(getSafeAppOrigins()).toEqual([
+      "https://safe.global",
+      "https://safe.custom",
+      "https://safe.extra",
+    ]);
   });
 
   it("notifies subscribers on configuration", async () => {
     const { setSafeAppOrigins, subscribeSafeAppOrigins } = await loadSafeAppOrigins();
-    const calls: number[] = [];
-    const unsubscribe = subscribeSafeAppOrigins(() => {
-      calls.push(1);
-    });
+    const listener = vi.fn();
+    const unsubscribe = subscribeSafeAppOrigins(listener);
 
     setSafeAppOrigins(["https://safe.custom"]);
 
-    expect(calls).toHaveLength(1);
+    expect(listener).toHaveBeenCalledTimes(1);
+    unsubscribe();
+  });
+
+  it("does not notify subscribers on no-op updates", async () => {
+    const { extendSafeAppOrigins, setSafeAppOrigins, subscribeSafeAppOrigins } =
+      await loadSafeAppOrigins();
+    const listener = vi.fn();
+    const unsubscribe = subscribeSafeAppOrigins(listener);
+
+    setSafeAppOrigins(["https://safe.global"]);
+    expect(listener).toHaveBeenCalledTimes(1);
+
+    extendSafeAppOrigins([" safe.global ", "https://safe.global/"]);
+    setSafeAppOrigins(["https://safe.global"]);
+    expect(listener).toHaveBeenCalledTimes(1);
+
     unsubscribe();
   });
 });
