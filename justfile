@@ -59,6 +59,7 @@ alias bb := bump-beta
     zsh -ic 'ccbump {{ package }}'
     git push origin
     eval "$(direnv export zsh)"
+    cd {{ package }}
     npm publish
 alias rel := release
 
