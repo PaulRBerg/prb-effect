@@ -76,13 +76,16 @@ describe("waitForSafeMultisigTx", () => {
         TEST_SAFE_TX_HASH,
         () => Effect.succeed(TEST_RECEIPT),
         {
-          interval: "100 millis",
-          maxWait: "500 millis",
+          interval: "1 second",
+          maxWait: "1 second",
         }
       );
 
       expect(result).toEqual({
         _tag: "queued",
+        confirmations: 1,
+        confirmationsRequired: 2,
+        lastStatus: "awaiting_confirmations",
         onchainHash: null,
         safeTxHash: TEST_SAFE_TX_HASH,
       });
@@ -94,6 +97,39 @@ describe("waitForSafeMultisigTx", () => {
             confirmationsRequired: 2,
             onchainHash: Option.none(),
             status: "AWAITING_CONFIRMATIONS",
+          })
+        )
+      )
+    )
+  );
+
+  it.effect("returns queued awaiting execution progress on timeout", () =>
+    Effect.gen(function* () {
+      const result = yield* waitForSafeMultisigTx(
+        TEST_SAFE_TX_HASH,
+        () => Effect.succeed(TEST_RECEIPT),
+        {
+          interval: "1 second",
+          maxWait: "1 second",
+        }
+      );
+
+      expect(result).toEqual({
+        _tag: "queued",
+        confirmations: 2,
+        confirmationsRequired: 2,
+        lastStatus: "awaiting_execution",
+        onchainHash: null,
+        safeTxHash: TEST_SAFE_TX_HASH,
+      });
+    }).pipe(
+      Effect.provide(
+        makeSafeAppsServiceLayer(() =>
+          Effect.succeed({
+            confirmations: 2,
+            confirmationsRequired: 2,
+            onchainHash: Option.none(),
+            status: "AWAITING_EXECUTION",
           })
         )
       )

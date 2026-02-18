@@ -9,6 +9,16 @@ The format is based on [Common Changelog](https://common-changelog.org/).
 [1.1.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-evm-safe%401.1.0
 [1.1.1]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-evm-safe%401.1.1
 [2.0.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-evm-safe%402.0.0
+[2.0.1]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-evm-safe%402.0.1
+
+## [2.0.1] - 2026-02-18
+
+### Changed
+
+- Enrich `waitForSafeMultisigTx` timeout `queued` result with confirmation progress: `confirmations`,
+  `confirmationsRequired`, and normalized `lastStatus`
+- Preserve last known Safe API status during polling so timeout responses include actionable state
+- Reuse shared status mapping between `waitForSafeMultisigTx` and `getSafeMultisigTxStatus`
 
 ## [2.0.0] - 2026-02-17
 

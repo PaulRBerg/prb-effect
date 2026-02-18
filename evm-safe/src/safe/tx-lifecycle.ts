@@ -40,7 +40,14 @@ export type SafeMultisigWaitResult =
       readonly receipt: TransactionReceipt;
       readonly safeTxHash: Hash;
     }
-  | { readonly _tag: "queued"; readonly onchainHash: null; readonly safeTxHash: Hash }
+  | {
+      readonly _tag: "queued";
+      readonly confirmations: number | null;
+      readonly confirmationsRequired: number | null;
+      readonly lastStatus: SafeMultisigTxStatus;
+      readonly onchainHash: null;
+      readonly safeTxHash: Hash;
+    }
   | { readonly _tag: "cancelled"; readonly onchainHash: null; readonly safeTxHash: Hash }
   | {
       readonly _tag: "failed";
@@ -55,6 +62,73 @@ export type SafeMultisigTxStatus =
   | "pending"
   | "success"
   | "failed";
+
+function mapStatus(raw: string | undefined): SafeMultisigTxStatus {
+  switch (raw) {
+    case "AWAITING_CONFIRMATIONS":
+      return "awaiting_confirmations";
+    case "AWAITING_EXECUTION":
+      return "awaiting_execution";
+    case "SUCCESS":
+      return "success";
+    case "CANCELLED":
+    case "FAILED":
+      return "failed";
+    default:
+      return "pending";
+  }
+}
+
+function resolveTerminalWaitResult(
+  queued: SafeMultisigTxInfo,
+  safeTxHash: Hash,
+  getReceipt: (hash: Hash) => Effect.Effect<TransactionReceipt, SafeMultisigTxLookupError>
+): Effect.Effect<Option.Option<SafeMultisigWaitResult>, SafeMultisigTxLookupError> {
+  switch (queued.status) {
+    case "CANCELLED":
+      return Effect.succeed(
+        Option.some({
+          _tag: "cancelled" as const,
+          onchainHash: null,
+          safeTxHash,
+        } satisfies SafeMultisigWaitResult)
+      );
+    case "FAILED":
+      return Effect.succeed(
+        Option.some({
+          _tag: "failed" as const,
+          error: "Safe transaction failed",
+          onchainHash: null,
+          safeTxHash,
+        } satisfies SafeMultisigWaitResult)
+      );
+    case "SUCCESS": {
+      if (Option.isNone(queued.onchainHash)) {
+        return Effect.succeed(
+          Option.some({
+            _tag: "failed" as const,
+            error: "Safe transaction succeeded but no on-chain hash available",
+            onchainHash: null,
+            safeTxHash,
+          } satisfies SafeMultisigWaitResult)
+        );
+      }
+      const txHash = queued.onchainHash.value as Hash;
+      return getReceipt(txHash).pipe(
+        Effect.map((receipt) =>
+          Option.some({
+            _tag: "success" as const,
+            onchainHash: txHash,
+            receipt,
+            safeTxHash,
+          } satisfies SafeMultisigWaitResult)
+        )
+      );
+    }
+    default:
+      return Effect.succeed(Option.none());
+  }
+}
 
 // ---------------------------------------------------------------------------
 // waitForSafeMultisigTx
@@ -88,6 +162,7 @@ export const waitForSafeMultisigTx = Effect.fn("waitForSafeMultisigTx")(function
   const maxAttempts = Math.floor(Duration.toMillis(maxWait) / Duration.toMillis(interval));
 
   const safeApps = yield* SafeAppsService;
+  let lastInfo: SafeMultisigTxInfo | null = null;
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     // --- Fetch tx status, classifying errors ---
@@ -106,11 +181,14 @@ export const waitForSafeMultisigTx = Effect.fn("waitForSafeMultisigTx")(function
     );
 
     if (Option.isNone(queuedResult)) {
-      yield* Effect.sleep(interval);
+      if (attempt < maxAttempts - 1) {
+        yield* Effect.sleep(interval);
+      }
       continue;
     }
 
     const queued = queuedResult.value;
+    lastInfo = queued;
     yield* Effect.logDebug("Safe tx poll status").pipe(
       Effect.annotateLogs({
         attempt,
@@ -120,46 +198,15 @@ export const waitForSafeMultisigTx = Effect.fn("waitForSafeMultisigTx")(function
       })
     );
 
-    // --- Terminal states ---
-
-    if (queued.status === "CANCELLED") {
-      return {
-        _tag: "cancelled" as const,
-        onchainHash: null,
-        safeTxHash,
-      } satisfies SafeMultisigWaitResult;
-    }
-
-    if (queued.status === "FAILED") {
-      return {
-        _tag: "failed" as const,
-        error: "Safe transaction failed",
-        onchainHash: null,
-        safeTxHash,
-      } satisfies SafeMultisigWaitResult;
-    }
-
-    if (queued.status === "SUCCESS") {
-      if (Option.isNone(queued.onchainHash)) {
-        return {
-          _tag: "failed" as const,
-          error: "Safe transaction succeeded but no on-chain hash available",
-          onchainHash: null,
-          safeTxHash,
-        } satisfies SafeMultisigWaitResult;
-      }
-      const txHash = queued.onchainHash.value as Hash;
-      const receipt = yield* getReceipt(txHash);
-      return {
-        _tag: "success" as const,
-        onchainHash: txHash,
-        receipt,
-        safeTxHash,
-      } satisfies SafeMultisigWaitResult;
+    const terminalResult = yield* resolveTerminalWaitResult(queued, safeTxHash, getReceipt);
+    if (Option.isSome(terminalResult)) {
+      return terminalResult.value;
     }
 
     // Still pending — keep polling
-    yield* Effect.sleep(interval);
+    if (attempt < maxAttempts - 1) {
+      yield* Effect.sleep(interval);
+    }
   }
 
   // Timed out without reaching a terminal state
@@ -173,6 +220,9 @@ export const waitForSafeMultisigTx = Effect.fn("waitForSafeMultisigTx")(function
 
   return {
     _tag: "queued" as const,
+    confirmations: lastInfo?.confirmations ?? null,
+    confirmationsRequired: lastInfo?.confirmationsRequired ?? null,
+    lastStatus: mapStatus(lastInfo?.status),
     onchainHash: null,
     safeTxHash,
   } satisfies SafeMultisigWaitResult;
@@ -194,19 +244,5 @@ export const getSafeMultisigTxStatus = Effect.fn("getSafeMultisigTxStatus")(func
 ) {
   const safeApps = yield* SafeAppsService;
   const queued = yield* safeApps.getTx(safeTxHash);
-
-  switch (queued.status) {
-    case "AWAITING_CONFIRMATIONS":
-      return "awaiting_confirmations";
-    case "AWAITING_EXECUTION":
-      return "awaiting_execution";
-    case "SUCCESS":
-      return "success";
-    // Both map to "failed" — use waitForSafeMultisigTx to distinguish cancelled vs failed
-    case "CANCELLED":
-    case "FAILED":
-      return "failed";
-    default:
-      return "pending";
-  }
+  return mapStatus(queued.status);
 });
