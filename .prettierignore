@@ -1,4 +1,5 @@
 # directories
+.ai/
 .claude/
 node_modules/
 dist/
