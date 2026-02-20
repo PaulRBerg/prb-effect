@@ -13,7 +13,14 @@ The format is based on [Common Changelog](https://common-changelog.org/).
 [1.3.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-evm%401.3.0
 [1.3.1]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-evm%401.3.1
 [1.4.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-evm%401.4.0
+[1.4.1]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-evm%401.4.1
 
+## [1.4.1] - 2026-02-20
+
+### Fixed
+
+- Guard `CoreError.details` access in `isResourceExhaustion` to handle non-string/null values without throwing
+- Prevent secondary `TypeError` crashes while classifying gas estimation failures from viem
 ## [1.4.0] - 2026-02-18
 
 ### Changed
