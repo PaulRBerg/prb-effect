@@ -286,7 +286,7 @@ const { status, value, error } = useWatchContractRead({
 });
 
 // Write with reactive transaction state
-const { send, state, result, actions } = useWriteAndTrack({
+const { send, state, terminal, actions } = useWriteAndTrack({
   chainId: 1,
   address: tokenAddress,
   abi: erc20Abi,
@@ -451,7 +451,7 @@ import { ContractPipeline, erc20Abi } from "effect-evm";
 const program = Effect.gen(function* () {
   const pipeline = yield* ContractPipeline;
 
-  return yield* pipeline.writeAndWait({
+  const terminal = yield* pipeline.writeAndWait({
     chainId: 1,
     address: tokenAddress,
     abi: erc20Abi,
@@ -459,11 +459,23 @@ const program = Effect.gen(function* () {
     args: [recipient, amount],
     account: accountAddress,
   });
+
+  if (terminal._tag !== "success") {
+    return terminal;
+  }
+
+  return terminal.hash;
 });
 ```
 
+`writeAndWait` and `writeAndTrack(...).terminal` now resolve to a terminal union:
+
+- `success` with `{ hash, receipt, events }`
+- `queued` with a reference/reason/details payload
+- `cancelled` with a reference/reason payload
+
 If you need reactive UI state, use `writeAndTrack` (scoped): it returns a `SubscriptionRef<TxState>` plus an Effect for
-the final `{ hash, receipt, events }`.
+the final terminal union.
 
 ### Preflight modes
 
@@ -478,7 +490,7 @@ Override per call via `preflight.mode`:
 `best-effort` only relaxes preflight; submission/receipt/event decoding failures still fail normally.
 
 ```typescript
-const result =
+const execution =
   yield *
   pipeline.writeAndTrack({
     chainId: 1,
@@ -489,6 +501,8 @@ const result =
     account: accountAddress,
     preflight: { mode: "best-effort" }, // "strict" | "best-effort" | "none"
   });
+
+const terminal = yield * execution.terminal;
 ```
 
 Recommended defaults:

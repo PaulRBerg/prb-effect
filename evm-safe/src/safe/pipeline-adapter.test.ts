@@ -2,18 +2,38 @@ import { describe, expect, it } from "@effect/vitest";
 import { WriteExecutionAdapter } from "@prb/effect-evm/contract/pipeline";
 import type { TxState } from "@prb/effect-evm/tx";
 import { TxManager } from "@prb/effect-evm/tx";
-import { Effect, Exit, Fiber, Layer, Option, Stream } from "effect";
+import { Effect, Exit, Fiber, Layer, Option, Stream, SubscriptionRef } from "effect";
 import type { Hash, Hex, TransactionReceipt } from "viem";
 import { erc20Abi } from "viem";
-import { vi } from "vitest";
+import { afterEach, vi } from "vitest";
 import { SafeWriteExecutionAdapterLive } from "./pipeline-adapter.js";
 import type { SafeAppsServiceShape } from "./service.js";
 import { SafeAppsService } from "./service.js";
+import type { SafeWriteAndTrackResult, SafeWriteAndTrackState } from "./write-and-track.js";
 
 vi.mock(
   "@prb/effect-evm/contract/pipeline",
   async () => import("../../../evm/src/contract/pipeline/adapter.js")
 );
+
+const safeWriteAndTrackOverride = vi.hoisted(() => ({
+  impl: null as
+    | null
+    | ((params: unknown) => Effect.Effect<SafeWriteAndTrackResult, unknown, unknown>),
+}));
+
+vi.mock("./write-and-track.js", async () => {
+  const actual =
+    await vi.importActual<typeof import("./write-and-track.js")>("./write-and-track.js");
+
+  return {
+    ...actual,
+    safeWriteAndTrack: (params: Parameters<typeof actual.safeWriteAndTrack>[0]) =>
+      safeWriteAndTrackOverride.impl
+        ? safeWriteAndTrackOverride.impl(params)
+        : actual.safeWriteAndTrack(params),
+  };
+});
 
 vi.mock("@prb/effect-evm/tx", async () => {
   const { Context } = await import("effect");
@@ -120,6 +140,10 @@ const makeAdapterRuntimeLayer = (
     Layer.mergeAll(txManagerLayer, makeSafeAppsServiceLayer(getTx))
   );
 
+afterEach(() => {
+  safeWriteAndTrackOverride.impl = null;
+});
+
 describe("SafeWriteExecutionAdapterLive", () => {
   it.effect("canHandle resolves by Safe chain metadata", () =>
     Effect.gen(function* () {
@@ -179,13 +203,172 @@ describe("SafeWriteExecutionAdapterLive", () => {
         )
       ).pipe(Effect.forkScoped);
 
-      const final = yield* execution.result;
+      const terminal = yield* execution.terminal;
       const mined = yield* Fiber.join(minedFiber);
 
-      expect(final.hash).toBe(TEST_ONCHAIN_HASH);
+      expect(terminal._tag).toBe("success");
+      if (terminal._tag === "success") {
+        expect(terminal.hash).toBe(TEST_ONCHAIN_HASH);
+      }
+
       expect(Option.isSome(mined)).toBe(true);
       if (Option.isSome(mined)) {
         expect(mined.value.hash).toBe(TEST_ONCHAIN_HASH);
+      }
+    }).pipe(
+      Effect.provide(
+        makeAdapterRuntimeLayer(() =>
+          Effect.succeed({
+            confirmations: 2,
+            confirmationsRequired: 2,
+            onchainHash: Option.some(TEST_ONCHAIN_HASH),
+            status: "SUCCESS",
+          })
+        )
+      ),
+      Effect.scoped
+    )
+  );
+
+  it.effect("returns queued terminal and queued TxState", () =>
+    Effect.gen(function* () {
+      safeWriteAndTrackOverride.impl = () =>
+        Effect.gen(function* () {
+          const stateRef = yield* SubscriptionRef.make<SafeWriteAndTrackState>({
+            confirmations: 1,
+            confirmationsRequired: 2,
+            lastStatus: "awaiting_confirmations",
+            safeTxHash: TEST_SAFE_TX_HASH,
+            status: "queued",
+          });
+
+          return {
+            result: Effect.succeed({
+              _tag: "queued" as const,
+              confirmations: 1,
+              confirmationsRequired: 2,
+              lastStatus: "awaiting_confirmations" as const,
+              onchainHash: null,
+              safeTxHash: TEST_SAFE_TX_HASH,
+            }),
+            stateRef,
+          } satisfies SafeWriteAndTrackResult;
+        });
+
+      const adapter = yield* WriteExecutionAdapter;
+
+      const execution = yield* adapter.writeAndTrack({
+        abi: erc20Abi,
+        account: TEST_ACCOUNT,
+        address: TEST_CONTRACT,
+        args: [TEST_RECIPIENT, 100n],
+        chainId: TEST_CHAIN_ID,
+        functionName: "transfer",
+      });
+
+      const queuedFiber = yield* Stream.runHead(
+        Stream.filter(
+          execution.stateRef.changes,
+          (state): state is Extract<TxState, { status: "queued" }> => state.status === "queued"
+        )
+      ).pipe(Effect.forkScoped);
+
+      const terminal = yield* execution.terminal;
+      const queued = yield* Fiber.join(queuedFiber);
+
+      expect(terminal).toEqual({
+        _tag: "queued",
+        details: {
+          confirmations: 1,
+          confirmationsRequired: 2,
+          lastStatus: "awaiting_confirmations",
+        },
+        reason: "awaiting-safe-confirmations",
+        reference: TEST_SAFE_TX_HASH,
+      });
+
+      expect(Option.isSome(queued)).toBe(true);
+      if (Option.isSome(queued)) {
+        expect(queued.value).toEqual({
+          details: {
+            confirmations: 1,
+            confirmationsRequired: 2,
+            lastStatus: "awaiting_confirmations",
+          },
+          reason: "awaiting-safe-confirmations",
+          reference: TEST_SAFE_TX_HASH,
+          status: "queued",
+        });
+      }
+    }).pipe(
+      Effect.provide(
+        makeAdapterRuntimeLayer(() =>
+          Effect.succeed({
+            confirmations: 2,
+            confirmationsRequired: 2,
+            onchainHash: Option.some(TEST_ONCHAIN_HASH),
+            status: "SUCCESS",
+          })
+        )
+      ),
+      Effect.scoped
+    )
+  );
+
+  it.effect("returns cancelled terminal and cancelled TxState", () =>
+    Effect.gen(function* () {
+      safeWriteAndTrackOverride.impl = () =>
+        Effect.gen(function* () {
+          const stateRef = yield* SubscriptionRef.make<SafeWriteAndTrackState>({
+            safeTxHash: TEST_SAFE_TX_HASH,
+            status: "cancelled",
+          });
+
+          return {
+            result: Effect.succeed({
+              _tag: "cancelled" as const,
+              onchainHash: null,
+              safeTxHash: TEST_SAFE_TX_HASH,
+            }),
+            stateRef,
+          } satisfies SafeWriteAndTrackResult;
+        });
+
+      const adapter = yield* WriteExecutionAdapter;
+
+      const execution = yield* adapter.writeAndTrack({
+        abi: erc20Abi,
+        account: TEST_ACCOUNT,
+        address: TEST_CONTRACT,
+        args: [TEST_RECIPIENT, 100n],
+        chainId: TEST_CHAIN_ID,
+        functionName: "transfer",
+      });
+
+      const cancelledFiber = yield* Stream.runHead(
+        Stream.filter(
+          execution.stateRef.changes,
+          (state): state is Extract<TxState, { status: "cancelled" }> =>
+            state.status === "cancelled"
+        )
+      ).pipe(Effect.forkScoped);
+
+      const terminal = yield* execution.terminal;
+      const cancelled = yield* Fiber.join(cancelledFiber);
+
+      expect(terminal).toEqual({
+        _tag: "cancelled",
+        reason: "safe-cancelled",
+        reference: TEST_SAFE_TX_HASH,
+      });
+
+      expect(Option.isSome(cancelled)).toBe(true);
+      if (Option.isSome(cancelled)) {
+        expect(cancelled.value).toEqual({
+          reason: "safe-cancelled",
+          reference: TEST_SAFE_TX_HASH,
+          status: "cancelled",
+        });
       }
     }).pipe(
       Effect.provide(
@@ -215,7 +398,7 @@ describe("SafeWriteExecutionAdapterLive", () => {
         functionName: "transfer",
       });
 
-      const exit = yield* execution.result.pipe(Effect.exit);
+      const exit = yield* execution.terminal.pipe(Effect.exit);
       const state = yield* execution.stateRef.get;
 
       expect(Exit.isFailure(exit)).toBe(true);

@@ -10,7 +10,7 @@ import type * as Abi_ from "viem";
 import type {
   WriteAndTrackError,
   WriteAndTrackParams,
-  WriteAndTrackResult,
+  WriteAndTrackTerminal,
 } from "#src/contract/index.js";
 import { ContractPipeline } from "#src/contract/index.js";
 import { ContractQuery } from "#src/query/index.js";
@@ -110,7 +110,7 @@ export type UseWriteAndTrackActions = {
 
 export type UseWriteAndTrackResult<TAbi extends Abi_.Abi> = {
   readonly actions?: UseWriteAndTrackActions | undefined;
-  readonly result: UseEffectResult<WriteAndTrackResult<TAbi>, WriteAndTrackError>;
+  readonly terminal: UseEffectResult<WriteAndTrackTerminal<TAbi>, WriteAndTrackError>;
   readonly send: () => void;
   readonly state: TxState;
 };
@@ -127,8 +127,8 @@ export const useWriteAndTrack = <
   const runIdRef = React.useRef(0);
 
   const [actions, setActions] = React.useState<UseWriteAndTrackActions>();
-  const [result, setResult] = React.useState<
-    UseEffectResult<WriteAndTrackResult<TAbi>, WriteAndTrackError>
+  const [terminal, setTerminal] = React.useState<
+    UseEffectResult<WriteAndTrackTerminal<TAbi>, WriteAndTrackError>
   >({ status: "idle" });
   const [stateRef, setStateRef] = React.useState<
     import("effect/SubscriptionRef").SubscriptionRef<TxState> | null
@@ -148,7 +148,7 @@ export const useWriteAndTrack = <
     closeRef.current?.();
     closeRef.current = null;
 
-    setResult({ status: "loading" });
+    setTerminal({ status: "loading" });
 
     (async () => {
       const scoped = await makeScopedRun(runtime);
@@ -175,7 +175,7 @@ export const useWriteAndTrack = <
         },
       });
 
-      const fiber = scoped.fork(Effect.exit(started.result));
+      const fiber = scoped.fork(Effect.exit(started.terminal));
       const exit = await runtime.runPromise(Fiber.join(fiber));
 
       if (runIdRef.current !== runId) {
@@ -184,18 +184,18 @@ export const useWriteAndTrack = <
       }
 
       if (exit._tag === "Success") {
-        setResult({
-          data: exit.value as WriteAndTrackResult<TAbi>,
+        setTerminal({
+          data: exit.value as WriteAndTrackTerminal<TAbi>,
           status: "success",
         });
       } else {
-        setResult({
+        setTerminal({
           error: fromCause(exit.cause),
           status: "error",
         });
       }
     })().catch((cause) => {
-      setResult({
+      setTerminal({
         error: fromUnknown(cause) as unknown as WriteAndTrackError,
         status: "error",
       });
@@ -209,5 +209,5 @@ export const useWriteAndTrack = <
   const streamState = useStream(stateStream, { initial: initialTxState });
   const state = streamState.status === "running" ? streamState.value : initialTxState;
 
-  return { actions, result, send, state };
+  return { actions, send, state, terminal };
 };

@@ -87,6 +87,16 @@ Recommended usage:
 - Consider `best-effort` for simple withdraw/claim flows.
 - Use `none` only when your UX intentionally prefers wallet-first submission.
 
+## 🧾 Terminal Outcomes
+
+`ContractPipeline.writeAndWait` and `writeAndTrack(...).terminal` now return a terminal union:
+
+- `{ _tag: "success", hash, receipt, events }`
+- `{ _tag: "queued", reference?, reason?, details? }`
+- `{ _tag: "cancelled", reference?, reason?, details? }`
+
+Only operational errors (preflight/submission/receipt/decode) use `Effect.fail`.
+
 ## 📖 Documentation
 
 - **Usage and examples**: [DOCS.md](./DOCS.md)

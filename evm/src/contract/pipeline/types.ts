@@ -42,6 +42,21 @@ export type WriteAndTrackResult<TAbi extends Abi> = {
   events: DecodedEvent<TAbi, ContractEventName<TAbi>>[];
 };
 
+export type WriteAndTrackTerminal<TAbi extends Abi> =
+  | ({ readonly _tag: "success" } & WriteAndTrackResult<TAbi>)
+  | {
+      readonly _tag: "queued";
+      readonly reference?: string;
+      readonly reason?: string;
+      readonly details?: Readonly<Record<string, unknown>>;
+    }
+  | {
+      readonly _tag: "cancelled";
+      readonly reference?: string;
+      readonly reason?: string;
+      readonly details?: Readonly<Record<string, unknown>>;
+    };
+
 export type WriteAndTrackActions = {
   readonly speedup: (
     policy?: TxPolicy
@@ -60,7 +75,7 @@ export type WriteAndTrackActions = {
 export type WriteAndTrackExecution<TAbi extends Abi> = {
   stateRef: SubscriptionRef.SubscriptionRef<TxState>;
   actions: WriteAndTrackActions;
-  result: Effect.Effect<WriteAndTrackResult<TAbi>, WriteAndTrackError>;
+  terminal: Effect.Effect<WriteAndTrackTerminal<TAbi>, WriteAndTrackError>;
 };
 
 export type WriteAndTrackError =

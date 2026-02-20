@@ -16,10 +16,12 @@ import {
   TEST_CHAIN_ID,
   TEST_TX_HASH,
 } from "#src/testing-kit/index.js";
+import type { TxState } from "#src/tx/index.js";
 import { TxManager, TxReplacement } from "#src/tx/index.js";
 import type { ContractEventName } from "#src/types/index.js";
 import type { WriteExecutionAdapterShape } from "./pipeline/adapter.js";
 import { WriteExecutionAdapter } from "./pipeline/adapter.js";
+import type { WriteAndTrackTerminal } from "./pipeline/types.js";
 
 const commonServices = Layer.mergeAll(
   makeMockGasServiceLayer({}, TEST_CHAIN_ID),
@@ -88,6 +90,16 @@ const DEFAULT_RECEIPT: TransactionReceipt = {
   type: "eip1559",
 };
 
+function expectSuccessTerminal<TAbi extends Abi>(
+  terminal: WriteAndTrackTerminal<TAbi>
+): Extract<WriteAndTrackTerminal<TAbi>, { _tag: "success" }> {
+  expect(terminal._tag).toBe("success");
+  if (terminal._tag !== "success") {
+    throw new Error(`Expected success terminal, got ${terminal._tag}`);
+  }
+  return terminal;
+}
+
 const makeContractPipelineTestLayer = (config: PipelineTestConfig = {}) =>
   Layer.provide(
     ContractPipelineLive,
@@ -143,12 +155,13 @@ const makeContractPipelineTestLayer = (config: PipelineTestConfig = {}) =>
                           cancel: () => Effect.succeed(TEST_TX_HASH),
                           speedup: () => Effect.succeed(TEST_TX_HASH),
                         },
-                        result: Effect.succeed({
+                        stateRef,
+                        terminal: Effect.succeed({
+                          _tag: "success",
                           events: [],
                           hash: TEST_TX_HASH,
                           receipt: DEFAULT_RECEIPT,
                         }),
-                        stateRef,
                       };
                     }),
             })
@@ -163,7 +176,7 @@ describe("ContractPipeline", () => {
       Effect.gen(function* () {
         const pipeline = yield* ContractPipeline;
 
-        const result = yield* pipeline.writeAndWait({
+        const terminal = yield* pipeline.writeAndWait({
           abi: erc20Abi,
           account: TEST_ADDRESS,
           address: TEST_ADDRESS,
@@ -171,6 +184,7 @@ describe("ContractPipeline", () => {
           chainId: TEST_CHAIN_ID,
           functionName: "transfer",
         });
+        const result = expectSuccessTerminal(terminal);
 
         expect(result.hash).toBe(TEST_TX_HASH);
         expect(result.receipt).toBeDefined();
@@ -294,7 +308,7 @@ describe("ContractPipeline", () => {
       Effect.gen(function* () {
         const pipeline = yield* ContractPipeline;
 
-        const result = yield* pipeline.writeAndWait({
+        const terminal = yield* pipeline.writeAndWait({
           abi: erc20Abi,
           account: TEST_ADDRESS,
           address: TEST_ADDRESS,
@@ -307,6 +321,7 @@ describe("ContractPipeline", () => {
             replacementStrategy: "speedup",
           },
         });
+        const result = expectSuccessTerminal(terminal);
 
         expect(result.hash).toBe(TEST_TX_HASH);
       }).pipe(
@@ -338,7 +353,7 @@ describe("ContractPipeline", () => {
           transactionHash: TEST_TX_HASH,
         };
 
-        const result = yield* pipeline.writeAndWait({
+        const terminal = yield* pipeline.writeAndWait({
           abi: erc20Abi,
           account: TEST_ADDRESS,
           address: TEST_ADDRESS,
@@ -346,6 +361,7 @@ describe("ContractPipeline", () => {
           chainId: TEST_CHAIN_ID,
           functionName: "transfer",
         });
+        const result = expectSuccessTerminal(terminal);
 
         expect(result.events).toHaveLength(1);
         expect(result.events[0]).toEqual(mockEvent);
@@ -498,7 +514,7 @@ describe("ContractPipeline", () => {
       return Effect.gen(function* () {
         const pipeline = yield* ContractPipeline;
 
-        const result = yield* pipeline.writeAndWait({
+        const terminal = yield* pipeline.writeAndWait({
           abi: erc20Abi,
           account: TEST_ADDRESS,
           address: TEST_ADDRESS,
@@ -507,6 +523,7 @@ describe("ContractPipeline", () => {
           functionName: "transfer",
           preflight: { mode: "best-effort" },
         });
+        const result = expectSuccessTerminal(terminal);
 
         expect(result.hash).toBe(TEST_TX_HASH);
         expect(estimateCalls).toBe(1);
@@ -542,7 +559,7 @@ describe("ContractPipeline", () => {
       return Effect.gen(function* () {
         const pipeline = yield* ContractPipeline;
 
-        const result = yield* pipeline.writeAndWait({
+        const terminal = yield* pipeline.writeAndWait({
           abi: erc20Abi,
           account: TEST_ADDRESS,
           address: TEST_ADDRESS,
@@ -551,6 +568,7 @@ describe("ContractPipeline", () => {
           functionName: "transfer",
           preflight: { mode: "best-effort" },
         });
+        const result = expectSuccessTerminal(terminal);
 
         expect(result.hash).toBe(TEST_TX_HASH);
         expect(writeCalls).toBe(1);
@@ -579,7 +597,7 @@ describe("ContractPipeline", () => {
       return Effect.gen(function* () {
         const pipeline = yield* ContractPipeline;
 
-        const result = yield* pipeline.writeAndWait({
+        const terminal = yield* pipeline.writeAndWait({
           abi: erc20Abi,
           account: TEST_ADDRESS,
           address: TEST_ADDRESS,
@@ -588,6 +606,7 @@ describe("ContractPipeline", () => {
           functionName: "transfer",
           preflight: { mode: "none" },
         });
+        const result = expectSuccessTerminal(terminal);
 
         expect(result.hash).toBe(TEST_TX_HASH);
         expect(estimateCalls).toBe(0);
@@ -619,11 +638,11 @@ describe("ContractPipeline", () => {
   });
 
   describe("writeAndTrack", () => {
-    it.effect("returns stateRef and result effect", () =>
+    it.effect("returns stateRef and terminal effect", () =>
       Effect.gen(function* () {
         const pipeline = yield* ContractPipeline;
 
-        const { stateRef, result } = yield* pipeline.writeAndTrack({
+        const { stateRef, terminal } = yield* pipeline.writeAndTrack({
           abi: erc20Abi,
           account: TEST_ADDRESS,
           address: TEST_ADDRESS,
@@ -633,10 +652,10 @@ describe("ContractPipeline", () => {
         });
 
         expect(stateRef).toBeDefined();
-        expect(result).toBeDefined();
+        expect(terminal).toBeDefined();
 
-        // Execute the result
-        const finalResult = yield* result;
+        const finalTerminal = yield* terminal;
+        const finalResult = expectSuccessTerminal(finalTerminal);
         expect(finalResult.hash).toBe(TEST_TX_HASH);
       }).pipe(
         Effect.provide(
@@ -658,7 +677,7 @@ describe("ContractPipeline", () => {
       Effect.gen(function* () {
         const pipeline = yield* ContractPipeline;
 
-        const { stateRef, result } = yield* pipeline.writeAndTrack({
+        const { stateRef, terminal } = yield* pipeline.writeAndTrack({
           abi: erc20Abi,
           account: TEST_ADDRESS,
           address: TEST_ADDRESS,
@@ -667,8 +686,8 @@ describe("ContractPipeline", () => {
           functionName: "transfer",
         });
 
-        // Execute the result and check final state
-        const finalResult = yield* result;
+        const finalTerminal = yield* terminal;
+        const finalResult = expectSuccessTerminal(finalTerminal);
         const finalState = yield* stateRef.get;
 
         expect(finalResult.hash).toBe(TEST_TX_HASH);
@@ -695,7 +714,7 @@ describe("ContractPipeline", () => {
       return Effect.gen(function* () {
         const pipeline = yield* ContractPipeline;
 
-        const { result, stateRef } = yield* pipeline.writeAndTrack({
+        const { terminal, stateRef } = yield* pipeline.writeAndTrack({
           abi: erc20Abi,
           account: TEST_ADDRESS,
           address: TEST_ADDRESS,
@@ -705,7 +724,7 @@ describe("ContractPipeline", () => {
           preflight: { mode: "strict" },
         });
 
-        const exit = yield* result.pipe(Effect.exit);
+        const exit = yield* terminal.pipe(Effect.exit);
         expect(Exit.isFailure(exit)).toBe(true);
         expect(writeCalls).toBe(0);
 
@@ -741,7 +760,7 @@ describe("ContractPipeline", () => {
       return Effect.gen(function* () {
         const pipeline = yield* ContractPipeline;
 
-        const { result, stateRef } = yield* pipeline.writeAndTrack({
+        const { terminal, stateRef } = yield* pipeline.writeAndTrack({
           abi: erc20Abi,
           account: TEST_ADDRESS,
           address: TEST_ADDRESS,
@@ -751,7 +770,8 @@ describe("ContractPipeline", () => {
           preflight: { mode: "best-effort" },
         });
 
-        const finalResult = yield* result;
+        const finalTerminal = yield* terminal;
+        const finalResult = expectSuccessTerminal(finalTerminal);
         expect(finalResult.hash).toBe(TEST_TX_HASH);
         expect(estimateCalls).toBe(1);
         expect(simulateCalls).toBe(0);
@@ -793,7 +813,7 @@ describe("ContractPipeline", () => {
       return Effect.gen(function* () {
         const pipeline = yield* ContractPipeline;
 
-        const { result, stateRef } = yield* pipeline.writeAndTrack({
+        const { terminal, stateRef } = yield* pipeline.writeAndTrack({
           abi: erc20Abi,
           account: TEST_ADDRESS,
           address: TEST_ADDRESS,
@@ -803,7 +823,8 @@ describe("ContractPipeline", () => {
           preflight: { mode: "best-effort" },
         });
 
-        const finalResult = yield* result;
+        const finalTerminal = yield* terminal;
+        const finalResult = expectSuccessTerminal(finalTerminal);
         expect(finalResult.hash).toBe(TEST_TX_HASH);
         expect(writeCalls).toBe(1);
 
@@ -839,7 +860,7 @@ describe("ContractPipeline", () => {
       return Effect.gen(function* () {
         const pipeline = yield* ContractPipeline;
 
-        const { result, stateRef } = yield* pipeline.writeAndTrack({
+        const { terminal, stateRef } = yield* pipeline.writeAndTrack({
           abi: erc20Abi,
           account: TEST_ADDRESS,
           address: TEST_ADDRESS,
@@ -849,7 +870,8 @@ describe("ContractPipeline", () => {
           preflight: { mode: "best-effort" },
         });
 
-        const finalResult = yield* result;
+        const finalTerminal = yield* terminal;
+        const finalResult = expectSuccessTerminal(finalTerminal);
         expect(finalResult.hash).toBe(TEST_TX_HASH);
         expect(estimateCalls).toBe(1);
         expect(simulateCalls).toBe(1);
@@ -896,7 +918,7 @@ describe("ContractPipeline", () => {
       return Effect.gen(function* () {
         const pipeline = yield* ContractPipeline;
 
-        const { result } = yield* pipeline.writeAndTrack({
+        const { terminal } = yield* pipeline.writeAndTrack({
           abi: erc20Abi,
           account: TEST_ADDRESS,
           address: TEST_ADDRESS,
@@ -906,7 +928,8 @@ describe("ContractPipeline", () => {
           preflight: { mode: "none" },
         });
 
-        const finalResult = yield* result;
+        const finalTerminal = yield* terminal;
+        const finalResult = expectSuccessTerminal(finalTerminal);
         expect(finalResult.hash).toBe(TEST_TX_HASH);
         expect(estimateCalls).toBe(0);
         expect(simulateCalls).toBe(0);
@@ -940,7 +963,7 @@ describe("ContractPipeline", () => {
       Effect.gen(function* () {
         const pipeline = yield* ContractPipeline;
 
-        const { result, stateRef } = yield* pipeline.writeAndTrack({
+        const { terminal, stateRef } = yield* pipeline.writeAndTrack({
           abi: erc20Abi,
           account: TEST_ADDRESS,
           address: TEST_ADDRESS,
@@ -949,7 +972,7 @@ describe("ContractPipeline", () => {
           functionName: "transfer",
         });
 
-        const exit = yield* result.pipe(Effect.exit);
+        const exit = yield* terminal.pipe(Effect.exit);
         expect(Exit.isFailure(exit)).toBe(true);
 
         const state = yield* stateRef.get;
@@ -987,7 +1010,7 @@ describe("ContractPipeline", () => {
       Effect.gen(function* () {
         const pipeline = yield* ContractPipeline;
 
-        const { result, stateRef } = yield* pipeline.writeAndTrack({
+        const { terminal, stateRef } = yield* pipeline.writeAndTrack({
           abi: erc20Abi,
           account: TEST_ADDRESS,
           address: TEST_ADDRESS,
@@ -996,7 +1019,7 @@ describe("ContractPipeline", () => {
           functionName: "transfer",
         });
 
-        const exit = yield* result.pipe(Effect.exit);
+        const exit = yield* terminal.pipe(Effect.exit);
         expect(Exit.isFailure(exit)).toBe(true);
 
         const state = yield* stateRef.get;
@@ -1035,7 +1058,7 @@ describe("ContractPipeline", () => {
       Effect.gen(function* () {
         const pipeline = yield* ContractPipeline;
 
-        const { result, stateRef } = yield* pipeline.writeAndTrack({
+        const { terminal, stateRef } = yield* pipeline.writeAndTrack({
           abi: erc20Abi,
           account: TEST_ADDRESS,
           address: TEST_ADDRESS,
@@ -1044,7 +1067,8 @@ describe("ContractPipeline", () => {
           functionName: "transfer",
         });
 
-        const final = yield* result;
+        const finalTerminal = yield* terminal;
+        const final = expectSuccessTerminal(finalTerminal);
         const current = yield* stateRef.get;
 
         expect(final.hash).toBe(TEST_TX_HASH);
@@ -1064,11 +1088,11 @@ describe("ContractPipeline", () => {
       )
     );
 
-    it.effect("falls back to default write path when adapter declines", () =>
+    it.effect("writeAndWait returns queued terminal from adapter", () =>
       Effect.gen(function* () {
         const pipeline = yield* ContractPipeline;
 
-        const { result } = yield* pipeline.writeAndTrack({
+        const terminal = yield* pipeline.writeAndWait({
           abi: erc20Abi,
           account: TEST_ADDRESS,
           address: TEST_ADDRESS,
@@ -1077,7 +1101,120 @@ describe("ContractPipeline", () => {
           functionName: "transfer",
         });
 
-        const final = yield* result;
+        expect(terminal).toEqual({
+          _tag: "queued",
+          details: {
+            confirmations: 1,
+            confirmationsRequired: 2,
+            lastStatus: "awaiting_confirmations",
+          },
+          reason: "awaiting-safe-confirmations",
+          reference: TEST_TX_HASH,
+        });
+      }).pipe(
+        Effect.provide(
+          makeContractPipelineTestLayer({
+            adapter: {
+              canHandle: true,
+              writeAndTrack: () =>
+                Effect.gen(function* () {
+                  const stateRef = yield* SubscriptionRef.make<TxState>({
+                    status: "queued",
+                  });
+                  return {
+                    actions: {
+                      cancel: () => Effect.succeed(TEST_TX_HASH),
+                      speedup: () => Effect.succeed(TEST_TX_HASH),
+                    },
+                    stateRef,
+                    terminal: Effect.succeed({
+                      _tag: "queued",
+                      details: {
+                        confirmations: 1,
+                        confirmationsRequired: 2,
+                        lastStatus: "awaiting_confirmations",
+                      },
+                      reason: "awaiting-safe-confirmations",
+                      reference: TEST_TX_HASH,
+                    }),
+                  };
+                }),
+            },
+            walletClient: {
+              writeContract: () => Promise.reject(new Error("Should not hit default write path")),
+            },
+          })
+        ),
+        Effect.scoped
+      )
+    );
+
+    it.effect("writeAndWait returns cancelled terminal from adapter", () =>
+      Effect.gen(function* () {
+        const pipeline = yield* ContractPipeline;
+
+        const terminal = yield* pipeline.writeAndWait({
+          abi: erc20Abi,
+          account: TEST_ADDRESS,
+          address: TEST_ADDRESS,
+          args: [TEST_ADDRESS_2, 100n],
+          chainId: TEST_CHAIN_ID,
+          functionName: "transfer",
+        });
+
+        expect(terminal).toEqual({
+          _tag: "cancelled",
+          reason: "safe-cancelled",
+          reference: TEST_TX_HASH,
+        });
+      }).pipe(
+        Effect.provide(
+          makeContractPipelineTestLayer({
+            adapter: {
+              canHandle: true,
+              writeAndTrack: () =>
+                Effect.gen(function* () {
+                  const stateRef = yield* SubscriptionRef.make<TxState>({
+                    status: "cancelled",
+                  });
+                  return {
+                    actions: {
+                      cancel: () => Effect.succeed(TEST_TX_HASH),
+                      speedup: () => Effect.succeed(TEST_TX_HASH),
+                    },
+                    stateRef,
+                    terminal: Effect.succeed({
+                      _tag: "cancelled",
+                      reason: "safe-cancelled",
+                      reference: TEST_TX_HASH,
+                    }),
+                  };
+                }),
+            },
+            walletClient: {
+              writeContract: () => Promise.reject(new Error("Should not hit default write path")),
+            },
+          })
+        ),
+        Effect.scoped
+      )
+    );
+
+    it.effect("falls back to default write path when adapter declines", () =>
+      Effect.gen(function* () {
+        const pipeline = yield* ContractPipeline;
+
+        const { terminal } = yield* pipeline.writeAndTrack({
+          abi: erc20Abi,
+          account: TEST_ADDRESS,
+          address: TEST_ADDRESS,
+          args: [TEST_ADDRESS_2, 100n],
+          chainId: TEST_CHAIN_ID,
+          functionName: "transfer",
+        });
+
+        const finalTerminal = yield* terminal;
+        const final = expectSuccessTerminal(finalTerminal);
         expect(final.hash).toBe(TEST_TX_HASH);
       }).pipe(
         Effect.provide(

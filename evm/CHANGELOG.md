@@ -13,6 +13,21 @@ The format is based on [Common Changelog](https://common-changelog.org/).
 [1.3.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-evm%401.3.0
 [1.3.1]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-evm%401.3.1
 [1.4.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-evm%401.4.0
+[2.0.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-evm%402.0.0
+
+## [2.0.0] - 2026-02-20
+
+### Changed
+
+- Make `ContractPipeline.writeAndWait` adapter-aware by routing through `writeAndTrack` execution paths
+- Replace `WriteAndTrackExecution.result` with `WriteAndTrackExecution.terminal`
+- Change `ContractPipeline.writeAndWait` return type to terminal union (`success` | `queued` | `cancelled`)
+- Extend `TxState` with `queued` and `cancelled` variants and persist them in browser tx storage
+- Rename `useWriteAndTrack` output from `result` to `terminal`
+
+### Removed
+
+- Remove legacy `write-and-wait` / `runCorePipeline` path in favor of unified adapter-routed execution
 
 ## [1.4.0] - 2026-02-18
 

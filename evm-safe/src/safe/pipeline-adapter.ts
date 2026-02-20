@@ -1,6 +1,7 @@
 import type {
   WriteAndTrackExecution,
   WriteAndTrackParams,
+  WriteAndTrackTerminal,
 } from "@prb/effect-evm/contract/pipeline";
 import { WriteExecutionAdapter } from "@prb/effect-evm/contract/pipeline";
 import { TxFailedError } from "@prb/effect-evm/core/errors";
@@ -32,11 +33,21 @@ function mapSafeStateToTxState(state: SafeWriteAndTrackState): TxState {
     case "awaiting_confirmations":
     case "awaiting_execution":
     case "pending":
-    case "queued":
       return {
         confirmations: state.confirmations ?? 0,
         hash: state.safeTxHash,
         status: "pending",
+      };
+    case "queued":
+      return {
+        details: {
+          confirmations: state.confirmations,
+          confirmationsRequired: state.confirmationsRequired,
+          lastStatus: state.lastStatus,
+        },
+        reason: "awaiting-safe-confirmations",
+        reference: state.safeTxHash,
+        status: "queued",
       };
     case "success":
       return {
@@ -45,7 +56,11 @@ function mapSafeStateToTxState(state: SafeWriteAndTrackState): TxState {
         status: "mined",
       };
     case "cancelled":
-      return toFailedState(state.safeTxHash, "Safe transaction was cancelled");
+      return {
+        reason: "safe-cancelled",
+        reference: state.safeTxHash,
+        status: "cancelled",
+      };
     case "failed":
       return toFailedState(state.safeTxHash ?? "unknown", state.error ?? "Safe transaction failed");
   }
@@ -112,8 +127,8 @@ export const SafeWriteExecutionAdapterLive = Layer.effect(
                 cancel: () => Effect.fail(encodedData.left),
                 speedup: () => Effect.fail(encodedData.left),
               },
-              result: Effect.fail(encodedData.left),
               stateRef,
+              terminal: Effect.fail(encodedData.left),
             } satisfies WriteAndTrackExecution<TAbi>;
           }
 
@@ -139,46 +154,55 @@ export const SafeWriteExecutionAdapterLive = Layer.effect(
             )
           );
 
-          const result = safeExecution.result.pipe(
+          const terminal: Effect.Effect<
+            WriteAndTrackTerminal<TAbi>,
+            TxFailedError
+          > = safeExecution.result.pipe(
             Effect.mapError(toTxFailedSafeError),
-            Effect.flatMap((terminal) => {
-              switch (terminal._tag) {
-                case "success":
-                  return Effect.succeed({
-                    events: [],
-                    hash: terminal.onchainHash,
-                    receipt: terminal.receipt,
-                  });
-                case "queued":
-                  return Effect.fail(
-                    new TxFailedError({
-                      hash: terminal.safeTxHash,
-                      message: "Safe transaction is queued and awaiting more confirmations",
-                    })
-                  );
-                case "cancelled":
-                  return Effect.fail(
-                    new TxFailedError({
-                      hash: terminal.safeTxHash,
-                      message: "Safe transaction was cancelled",
-                    })
-                  );
-                case "failed":
-                  return Effect.fail(
-                    new TxFailedError({
-                      hash: terminal.safeTxHash,
-                      message: terminal.error,
-                    })
-                  );
-                default:
-                  return Effect.fail(
-                    new TxFailedError({
-                      hash: "unknown",
-                      message: "Unexpected Safe terminal state",
-                    })
-                  );
+            Effect.flatMap(
+              (safeTerminal): Effect.Effect<WriteAndTrackTerminal<TAbi>, TxFailedError> => {
+                switch (safeTerminal._tag) {
+                  case "success":
+                    return Effect.succeed({
+                      _tag: "success",
+                      events: [],
+                      hash: safeTerminal.onchainHash,
+                      receipt: safeTerminal.receipt,
+                    } satisfies WriteAndTrackTerminal<TAbi>);
+                  case "queued":
+                    return Effect.succeed({
+                      _tag: "queued",
+                      details: {
+                        confirmations: safeTerminal.confirmations,
+                        confirmationsRequired: safeTerminal.confirmationsRequired,
+                        lastStatus: safeTerminal.lastStatus,
+                      },
+                      reason: "awaiting-safe-confirmations",
+                      reference: safeTerminal.safeTxHash,
+                    } satisfies WriteAndTrackTerminal<TAbi>);
+                  case "cancelled":
+                    return Effect.succeed({
+                      _tag: "cancelled",
+                      reason: "safe-cancelled",
+                      reference: safeTerminal.safeTxHash,
+                    } satisfies WriteAndTrackTerminal<TAbi>);
+                  case "failed":
+                    return Effect.fail(
+                      new TxFailedError({
+                        hash: safeTerminal.safeTxHash,
+                        message: safeTerminal.error,
+                      })
+                    );
+                  default:
+                    return Effect.fail(
+                      new TxFailedError({
+                        hash: "unknown",
+                        message: "Unexpected Safe terminal state",
+                      })
+                    );
+                }
               }
-            })
+            )
           );
 
           return {
@@ -198,8 +222,8 @@ export const SafeWriteExecutionAdapterLive = Layer.effect(
                   })
                 ),
             },
-            result,
             stateRef,
+            terminal,
           } satisfies WriteAndTrackExecution<TAbi>;
         }),
     });

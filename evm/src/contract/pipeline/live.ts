@@ -9,7 +9,6 @@ import { WriteExecutionAdapter } from "./adapter.js";
 import type { ContractPipelineShape } from "./service.js";
 import { ContractPipeline } from "./service.js";
 import { makeWriteAndTrack } from "./write-and-track.js";
-import { makeWriteAndWait } from "./write-and-wait.js";
 
 export const ContractPipelineLive = Layer.effect(
   ContractPipeline,
@@ -33,14 +32,6 @@ export const ContractPipelineLive = Layer.effect(
       writer,
     };
 
-    const writeAndWaitDeps = {
-      eventStream,
-      gasService,
-      nonceService,
-      txManager,
-      writer,
-    };
-
     const defaultWriteAndTrack = makeWriteAndTrack(writeAndTrackDeps);
 
     const writeAndTrack: ContractPipelineShape["writeAndTrack"] = (params) =>
@@ -55,9 +46,17 @@ export const ContractPipelineLive = Layer.effect(
           : yield* defaultWriteAndTrack(params);
       });
 
+    const writeAndWait: ContractPipelineShape["writeAndWait"] = (params) =>
+      Effect.scoped(
+        Effect.gen(function* () {
+          const execution = yield* writeAndTrack(params);
+          return yield* execution.terminal;
+        })
+      );
+
     return ContractPipeline.of({
       writeAndTrack,
-      writeAndWait: makeWriteAndWait(writeAndWaitDeps),
+      writeAndWait,
     });
   })
 );

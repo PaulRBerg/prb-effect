@@ -68,6 +68,10 @@ function mapTxStateToStatus(state: TxState): PersistedTx["status"] {
       return "submitted";
     case "pending":
       return "pending";
+    case "queued":
+      return "queued";
+    case "cancelled":
+      return "cancelled";
     case "mined":
       return "mined";
     case "failed":
@@ -76,6 +80,10 @@ function mapTxStateToStatus(state: TxState): PersistedTx["status"] {
       // Replaced is a transition state, maintain current status
       return "submitted";
   }
+}
+
+function isTerminalPersistedStatus(status: PersistedTx["status"]): boolean {
+  return status === "mined" || status === "failed" || status === "cancelled";
 }
 
 /**
@@ -157,7 +165,7 @@ function handleStatusChange(options: {
     yield* options.txStore.upsert(updatedTx).pipe(Effect.catchAll(() => Effect.void));
 
     // Return true if terminal state reached
-    return options.newStatus === "mined" || options.newStatus === "failed";
+    return isTerminalPersistedStatus(options.newStatus);
   });
 }
 
@@ -172,77 +180,75 @@ export const TxPersistenceLive = Layer.effect(
 
     return TxPersistence.of({
       trackAndPersist: (chainId: number, hash: Hash, meta?: TxPersistenceMeta) =>
-        Effect.scoped(
-          Effect.gen(function* () {
-            const createdAt = yield* Clock.currentTimeMillis;
-            const txId = makeTxId(chainId, hash);
+        Effect.gen(function* () {
+          const createdAt = yield* Clock.currentTimeMillis;
+          const txId = makeTxId(chainId, hash);
 
-            // Create initial persisted entry
-            const initialTx: PersistedTx = {
-              chainId,
-              createdAt,
-              currentHash: hash,
-              description: meta?.description,
-              id: txId,
-              replacements: [],
-              rootHash: hash,
-              status: "submitted",
-              tags: meta?.tags,
-              txMeta: convertTxRequestMeta(meta?.txRequest),
-              updatedAt: createdAt,
-            };
+          // Create initial persisted entry
+          const initialTx: PersistedTx = {
+            chainId,
+            createdAt,
+            currentHash: hash,
+            description: meta?.description,
+            id: txId,
+            replacements: [],
+            rootHash: hash,
+            status: "submitted",
+            tags: meta?.tags,
+            txMeta: convertTxRequestMeta(meta?.txRequest),
+            updatedAt: createdAt,
+          };
 
-            // Persist initial state (ignore errors)
-            yield* txStore.upsert(initialTx).pipe(Effect.catchAll(() => Effect.void));
+          // Persist initial state (ignore errors)
+          yield* txStore.upsert(initialTx).pipe(Effect.catchAll(() => Effect.void));
 
-            // Track the transaction
-            const stateRef = yield* txManager.track(chainId, hash);
+          // Track the transaction
+          const stateRef = yield* txManager.track(chainId, hash);
 
-            // Fork a fiber to listen to state changes and update the store
-            yield* Effect.forkScoped(
-              Effect.gen(function* () {
-                let lastStatus: PersistedTx["status"] = "submitted";
-                let currentHash = hash;
+          // Fork a fiber to listen to state changes and update the store
+          yield* Effect.forkScoped(
+            Effect.gen(function* () {
+              let lastStatus: PersistedTx["status"] = "submitted";
+              let currentHash = hash;
 
-                yield* Stream.runForEach(stateRef.changes, (state) =>
-                  Effect.gen(function* () {
-                    const newStatus = mapTxStateToStatus(state);
+              yield* Stream.runForEach(stateRef.changes, (state) =>
+                Effect.gen(function* () {
+                  const newStatus = mapTxStateToStatus(state);
 
-                    // Handle replacement events
-                    if (state.status === "replaced") {
-                      currentHash = yield* handleReplacement({
-                        initialTx,
-                        lastStatus,
-                        state,
-                        txId,
-                        txStore,
-                      });
-                      return;
+                  // Handle replacement events
+                  if (state.status === "replaced") {
+                    currentHash = yield* handleReplacement({
+                      initialTx,
+                      lastStatus,
+                      state,
+                      txId,
+                      txStore,
+                    });
+                    return;
+                  }
+
+                  // Only update on status change
+                  if (newStatus !== lastStatus) {
+                    lastStatus = newStatus;
+                    const isTerminal = yield* handleStatusChange({
+                      currentHash,
+                      initialTx,
+                      newStatus,
+                      txId,
+                      txStore,
+                    });
+
+                    if (isTerminal) {
+                      yield* Effect.interrupt;
                     }
+                  }
+                })
+              );
+            })
+          );
 
-                    // Only update on status change
-                    if (newStatus !== lastStatus) {
-                      lastStatus = newStatus;
-                      const isTerminal = yield* handleStatusChange({
-                        currentHash,
-                        initialTx,
-                        newStatus,
-                        txId,
-                        txStore,
-                      });
-
-                      if (isTerminal) {
-                        yield* Effect.interrupt;
-                      }
-                    }
-                  })
-                );
-              })
-            );
-
-            return stateRef;
-          })
-        ),
+          return stateRef;
+        }),
     });
   })
 );

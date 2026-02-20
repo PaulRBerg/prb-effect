@@ -6,7 +6,7 @@ import type {
   WriteAndTrackError,
   WriteAndTrackExecution,
   WriteAndTrackParams,
-  WriteAndTrackResult,
+  WriteAndTrackTerminal,
 } from "./types.js";
 
 export type ContractPipelineShape = {
@@ -22,15 +22,15 @@ export type ContractPipelineShape = {
   ) => Effect.Effect<WriteAndTrackExecution<TAbi>, never, Scope.Scope>;
 
   /**
-   * Simplified version that just waits for receipt
-   * No reactive state, just returns final result
+   * Simplified version that waits for terminal pipeline outcome.
+   * No reactive state; returns terminal union (`success` | `queued` | `cancelled`).
    */
   readonly writeAndWait: <
     TAbi extends Abi,
     TFunctionName extends ContractFunctionName<TAbi, "nonpayable" | "payable">,
   >(
     params: WriteAndTrackParams<TAbi, TFunctionName>
-  ) => Effect.Effect<WriteAndTrackResult<TAbi>, WriteAndTrackError>;
+  ) => Effect.Effect<WriteAndTrackTerminal<TAbi>, WriteAndTrackError>;
 };
 
 export class ContractPipeline extends Context.Tag("ew3/ContractPipeline")<

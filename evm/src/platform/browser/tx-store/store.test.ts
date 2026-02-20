@@ -131,7 +131,7 @@ describe("InMemoryTxStore", () => {
     }).pipe(Effect.provide(InMemoryTxStoreLive))
   );
 
-  it.effect("getInFlight returns only submitted and pending transactions", () =>
+  it.effect("getInFlight returns submitted, pending, and queued transactions", () =>
     Effect.gen(function* () {
       const store = yield* TxStore;
 
@@ -148,11 +148,16 @@ describe("InMemoryTxStore", () => {
       const tx3 = makeTestTx({
         id: "1:0xCCC",
         rootHash: "0xCCC",
-        status: "mined",
+        status: "queued",
       });
       const tx4 = makeTestTx({
         id: "1:0xDDD",
         rootHash: "0xDDD",
+        status: "mined",
+      });
+      const tx5 = makeTestTx({
+        id: "1:0xEEE",
+        rootHash: "0xEEE",
         status: "failed",
       });
 
@@ -161,13 +166,12 @@ describe("InMemoryTxStore", () => {
       yield* store.upsert(tx2);
       yield* store.upsert(tx3);
       yield* store.upsert(tx4);
+      yield* store.upsert(tx5);
 
-      // Get in-flight transactions
       const inFlight = yield* store.getInFlight();
 
-      // Should only include submitted and pending
-      expect(inFlight).toHaveLength(2);
-      expect(inFlight.map((tx) => tx.id).sort()).toEqual(["1:0xAAA", "1:0xBBB"]);
+      expect(inFlight).toHaveLength(3);
+      expect(inFlight.map((tx) => tx.id).sort()).toEqual(["1:0xAAA", "1:0xBBB", "1:0xCCC"]);
     }).pipe(Effect.provide(InMemoryTxStoreLive))
   );
 
@@ -371,6 +375,58 @@ describe("LocalStorageTxStore", () => {
     )
   );
 
+  it.effect("pruning: treats cancelled transactions as terminal", () =>
+    Effect.gen(function* () {
+      const store = yield* TxStore;
+      const now = Date.now();
+
+      const cancelledOldHash = `0x${"a".padStart(64, "0")}` as `0x${string}`;
+      const cancelledNewHash = `0x${"b".padStart(64, "0")}` as `0x${string}`;
+      const submittedHash = `0x${"c".padStart(64, "0")}` as `0x${string}`;
+      const cancelledOldId = `1:${cancelledOldHash}`;
+      const cancelledNewId = `1:${cancelledNewHash}`;
+      const submittedId = `1:${submittedHash}`;
+
+      yield* store.upsert(
+        makeTestTx({
+          createdAt: now - 2000,
+          id: cancelledOldId,
+          rootHash: cancelledOldHash,
+          status: "cancelled",
+          updatedAt: now - 2000,
+        })
+      );
+      yield* store.upsert(
+        makeTestTx({
+          createdAt: now - 1000,
+          id: submittedId,
+          rootHash: submittedHash,
+          status: "submitted",
+          updatedAt: now - 1000,
+        })
+      );
+      yield* store.upsert(
+        makeTestTx({
+          createdAt: now,
+          id: cancelledNewId,
+          rootHash: cancelledNewHash,
+          status: "cancelled",
+          updatedAt: now,
+        })
+      );
+
+      const all = yield* store.getAll();
+      expect(all).toHaveLength(2);
+      expect(all.map((tx) => tx.id).sort()).toEqual([cancelledNewId, submittedId].sort());
+
+      const oldCancelled = yield* store.get(cancelledOldId);
+      expect(oldCancelled).toBeNull();
+    }).pipe(
+      Effect.provide(makeLocalStorageTxStoreLive({ maxTxs: 2 })),
+      Effect.provide(makeMockBrowserStorageLayer(makeMockLocalStorage()))
+    )
+  );
+
   it.effect("pruning: preserves all in-flight transactions even if exceeds maxTxs", () =>
     Effect.gen(function* () {
       const store = yield* TxStore;
@@ -441,27 +497,33 @@ describe("LocalStorageTxStore", () => {
         rootHash: "0xBBB",
         status: "pending",
       });
-      const txMined = makeTestTx({
+      const txQueued = makeTestTx({
         id: "1:0xCCC",
         rootHash: "0xCCC",
-        status: "mined",
+        status: "queued",
       });
-      const txFailed = makeTestTx({
+      const txCancelled = makeTestTx({
         id: "1:0xDDD",
         rootHash: "0xDDD",
+        status: "cancelled",
+      });
+      const txFailed = makeTestTx({
+        id: "1:0xEEE",
+        rootHash: "0xEEE",
         status: "failed",
       });
 
       yield* store.upsert(txSubmitted);
       yield* store.upsert(txPending);
-      yield* store.upsert(txMined);
+      yield* store.upsert(txQueued);
+      yield* store.upsert(txCancelled);
       yield* store.upsert(txFailed);
 
       // Get in-flight
       const inFlight = yield* store.getInFlight();
 
-      expect(inFlight).toHaveLength(2);
-      expect(inFlight.map((tx) => tx.status).sort()).toEqual(["pending", "submitted"]);
+      expect(inFlight).toHaveLength(3);
+      expect(inFlight.map((tx) => tx.status).sort()).toEqual(["pending", "queued", "submitted"]);
     }).pipe(
       Effect.provide(makeLocalStorageTxStoreLive()),
       Effect.provide(makeMockBrowserStorageLayer(makeMockLocalStorage()))

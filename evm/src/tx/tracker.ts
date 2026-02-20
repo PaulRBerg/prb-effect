@@ -57,6 +57,18 @@ export type TxState =
       confirmations: number;
     })
   | (TxStateBase & {
+      status: "queued";
+      reference?: string | undefined;
+      reason?: string | undefined;
+      details?: Readonly<Record<string, unknown>> | undefined;
+    })
+  | (TxStateBase & {
+      status: "cancelled";
+      reference?: string | undefined;
+      reason?: string | undefined;
+      details?: Readonly<Record<string, unknown>> | undefined;
+    })
+  | (TxStateBase & {
       status: "mined";
       hash: Hash;
       receipt: TransactionReceipt;

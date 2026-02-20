@@ -20,7 +20,12 @@ import type { ContractFunctionName } from "#src/types/index.js";
 import { nonceToBigInt } from "./internal/helpers.js";
 import { withNonceReservation } from "./internal/nonce.js";
 import { deriveBaseOverrides, runPreflight } from "./internal/prepare.js";
-import type { WriteAndTrackError, WriteAndTrackParams, WriteAndTrackResult } from "./types.js";
+import type {
+  WriteAndTrackError,
+  WriteAndTrackParams,
+  WriteAndTrackResult,
+  WriteAndTrackTerminal,
+} from "./types.js";
 
 /**
  * Dependencies required by writeAndTrack
@@ -73,7 +78,10 @@ export const makeWriteAndTrack = (deps: WriteAndTrackDeps) =>
     const autoAttemptsRef = yield* Ref.make(0);
     const autoReplacingRef = yield* Ref.make(false);
 
-    const resultDeferred = yield* Deferred.make<WriteAndTrackResult<TAbi>, WriteAndTrackError>();
+    const terminalDeferred = yield* Deferred.make<
+      WriteAndTrackTerminal<TAbi>,
+      WriteAndTrackError
+    >();
     const preflightMode = params.preflight?.mode ?? "strict";
     let failurePhase: TxFailedPhase = "preflight";
     let preflightWarning: TxPreflightWarning | undefined;
@@ -343,10 +351,11 @@ export const makeWriteAndTrack = (deps: WriteAndTrackDeps) =>
       )) as WriteAndTrackResult<TAbi>["events"];
 
       return {
+        _tag: "success",
         events,
         hash: receipt.transactionHash as Hash,
         receipt,
-      } as WriteAndTrackResult<TAbi>;
+      } as WriteAndTrackTerminal<TAbi>;
     }).pipe(
       Effect.catchAll((error) =>
         Effect.gen(function* () {
@@ -373,8 +382,8 @@ export const makeWriteAndTrack = (deps: WriteAndTrackDeps) =>
       Effect.either,
       Effect.flatMap((either) =>
         either._tag === "Right"
-          ? Deferred.succeed(resultDeferred, either.right)
-          : Deferred.fail(resultDeferred, either.left)
+          ? Deferred.succeed(terminalDeferred, either.right)
+          : Deferred.fail(terminalDeferred, either.left)
       ),
       Effect.forkScoped
     );
@@ -421,7 +430,7 @@ export const makeWriteAndTrack = (deps: WriteAndTrackDeps) =>
             return newHash;
           }),
       },
-      result: Deferred.await(resultDeferred),
       stateRef: tracker.ref,
+      terminal: Deferred.await(terminalDeferred),
     };
   });

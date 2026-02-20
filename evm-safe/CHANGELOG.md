@@ -12,6 +12,15 @@ The format is based on [Common Changelog](https://common-changelog.org/).
 [2.0.1]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-evm-safe%402.0.1
 [2.0.2]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-evm-safe%402.0.2
 [2.1.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-evm-safe%402.1.0
+[3.0.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-evm-safe%403.0.0
+
+## [3.0.0] - 2026-02-20
+
+### Changed
+
+- Map Safe `queued` and `cancelled` outcomes to pipeline terminal unions instead of coercing to `TxFailedError`
+- Emit `TxState` `queued` / `cancelled` statuses from `SafeWriteExecutionAdapterLive`
+- Align adapter execution API with `WriteAndTrackExecution.terminal` in `@prb/effect-evm@^2`
 
 ## [2.1.0] - 2026-02-18
 

@@ -35,7 +35,7 @@ export type TxStoreShape = {
   readonly delete: (id: string) => Effect.Effect<void, TxStoreError>;
 
   /**
-   * Retrieve all in-flight transactions (submitted or pending status).
+   * Retrieve all in-flight transactions (submitted, pending, or queued status).
    */
   readonly getInFlight: () => Effect.Effect<PersistedTx[], TxStoreError>;
 

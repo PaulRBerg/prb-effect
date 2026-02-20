@@ -89,7 +89,7 @@ export type PersistedTx = {
   /**
    * Current status of the transaction.
    */
-  status: "submitted" | "pending" | "mined" | "failed";
+  status: "submitted" | "pending" | "queued" | "mined" | "failed" | "cancelled";
 
   /**
    * Unix timestamp (milliseconds) when the transaction was first created.
@@ -157,7 +157,7 @@ export type TxStoreChange =
     };
 
 export function isInFlightPersistedTx(tx: PersistedTx): boolean {
-  return tx.status === "submitted" || tx.status === "pending";
+  return tx.status === "submitted" || tx.status === "pending" || tx.status === "queued";
 }
 
 /**

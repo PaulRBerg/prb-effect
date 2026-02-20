@@ -169,7 +169,9 @@ function pruneIfNeeded(
 
     // Separate in-flight from terminal
     const inFlight = txs.filter(isInFlightPersistedTx);
-    const terminal = txs.filter((tx) => tx.status === "mined" || tx.status === "failed");
+    const terminal = txs.filter(
+      (tx) => tx.status === "mined" || tx.status === "failed" || tx.status === "cancelled"
+    );
 
     // Sort terminal by updatedAt (oldest first)
     terminal.sort((a, b) => a.updatedAt - b.updatedAt);

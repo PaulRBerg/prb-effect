@@ -120,6 +120,31 @@ describe("makeTxTracker", () => {
         expect(state.confirmations).toBe(3);
       }
 
+      // Test queued
+      yield* tracker.set({
+        details: { confirmations: 1, confirmationsRequired: 2 },
+        reason: "awaiting-safe-confirmations",
+        reference: TEST_TX_HASH,
+        status: "queued",
+      });
+      state = yield* tracker.get;
+      expect(state.status).toBe("queued");
+      if (state.status === "queued") {
+        expect(state.reference).toBe(TEST_TX_HASH);
+      }
+
+      // Test cancelled
+      yield* tracker.set({
+        reason: "safe-cancelled",
+        reference: TEST_TX_HASH,
+        status: "cancelled",
+      });
+      state = yield* tracker.get;
+      expect(state.status).toBe("cancelled");
+      if (state.status === "cancelled") {
+        expect(state.reference).toBe(TEST_TX_HASH);
+      }
+
       // Test replaced
       yield* tracker.set({
         newHash: "0x9999999999999999999999999999999999999999999999999999999999999999",
