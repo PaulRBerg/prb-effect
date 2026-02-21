@@ -14,6 +14,14 @@ The format is based on [Common Changelog](https://common-changelog.org/).
 [1.3.1]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-evm%401.3.1
 [1.4.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-evm%401.4.0
 [2.0.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-evm%402.0.0
+[2.0.1]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-evm%402.0.1
+
+## [2.0.1] - 2026-02-21
+
+### Fixed
+
+- Guard `error.details` access in `isResourceExhaustion` to prevent `TypeError` when `CoreError.details` is undefined
+  ([`8dc9642`](https://github.com/PaulRBerg/prb-effect/commit/8dc9642))
 
 ## [2.0.0] - 2026-02-20
 
