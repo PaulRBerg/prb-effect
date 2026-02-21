@@ -76,7 +76,7 @@ export function isResourceExhaustion(error: unknown): boolean {
       return true;
     }
     // Also check the top-level details field (BaseError.details is string)
-    if (RESOURCE_EXHAUSTION_RE.test(error.details)) {
+    if (typeof error.details === "string" && RESOURCE_EXHAUSTION_RE.test(error.details)) {
       return true;
     }
   }
