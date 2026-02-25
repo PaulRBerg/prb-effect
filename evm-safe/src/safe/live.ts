@@ -1,3 +1,4 @@
+import { isUserRejectedError, UserRejectedError } from "@prb/effect-evm/core/errors";
 import { TxManager } from "@prb/effect-evm/tx";
 import { Effect, Layer, Option, Ref } from "effect";
 import type { Hash, Hex } from "viem";
@@ -171,6 +172,9 @@ export const SafeAppsServiceLive = (config?: SafeAppsServiceConfig) =>
           (s) =>
             Effect.tryPromise({
               catch: (cause) => {
+                if (isUserRejectedError(cause)) {
+                  return new UserRejectedError({ message: "User rejected the Safe transaction" });
+                }
                 const detail = getSafeErrorMessage(cause);
                 return new SafeMultisigTxSubmissionError({
                   cause,
@@ -293,8 +297,15 @@ export const SafeAppsServiceLive = (config?: SafeAppsServiceConfig) =>
           getSdk,
           (s) =>
             Effect.tryPromise({
-              catch: (cause) =>
-                new SignTypedDataError({ cause, message: "Failed to sign typed data via Safe" }),
+              catch: (cause) => {
+                if (isUserRejectedError(cause)) {
+                  return new UserRejectedError({ message: "User rejected Safe signature" });
+                }
+                return new SignTypedDataError({
+                  cause,
+                  message: "Failed to sign typed data via Safe",
+                });
+              },
               try: () => s.txs.signTypedMessage(typedData),
             }),
           (e) => new SignTypedDataError({ cause: e, message: e.message })

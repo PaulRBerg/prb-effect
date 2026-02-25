@@ -2,6 +2,7 @@ import type {
   ClientNotFoundError,
   ReceiptTimeoutError,
   TxFailedError,
+  UserRejectedError,
 } from "@prb/effect-evm/core/errors";
 import type { Effect, Option } from "effect";
 import { Context } from "effect";
@@ -36,7 +37,7 @@ export type SafeAppsServiceShape = {
   readonly sendTxs: (
     txs: readonly SafeMultisigTx[],
     params?: { safeTxGas?: number }
-  ) => Effect.Effect<SafeMultisigTxSubmission, SafeMultisigTxSubmissionError>;
+  ) => Effect.Effect<SafeMultisigTxSubmission, SafeMultisigTxSubmissionError | UserRejectedError>;
 
   /** Get Safe tx details by safeTxHash (status, onchain hash, confirmations metadata) */
   readonly getTx: (
@@ -59,7 +60,7 @@ export type SafeAppsServiceShape = {
   /** Sign typed data (returns discriminated union based on Safe settings) */
   readonly signTypedData: (
     typedData: EIP712TypedData
-  ) => Effect.Effect<SignTypedDataResult, SignTypedDataError>;
+  ) => Effect.Effect<SignTypedDataResult, SignTypedDataError | UserRejectedError>;
 
   /** Get off-chain signature (returns Option.none if not yet available) */
   readonly getOffchainSignature: (
