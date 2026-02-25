@@ -8,7 +8,7 @@ import {
   isTaggedUserRejectedError,
   isUserRejectedError,
   UserRejectedError,
-} from "./transaction.js";
+} from "./tx.js";
 
 describe("isUserRejectedError", () => {
   it("returns true for UserRejectedError instance", () => {

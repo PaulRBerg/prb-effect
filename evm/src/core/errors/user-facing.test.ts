@@ -3,7 +3,7 @@ import {
   InsufficientFundsError,
   ReceiptTimeoutError,
   UserRejectedError,
-} from "#src/core/errors/transaction.js";
+} from "#src/core/errors/tx.js";
 import { toUserFacingTxError } from "./user-facing.js";
 
 describe("toUserFacingTxError", () => {

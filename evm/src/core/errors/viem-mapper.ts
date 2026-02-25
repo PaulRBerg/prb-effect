@@ -22,7 +22,7 @@ import {
   isLikelyUserRejectedError,
   ResourceExhaustionError,
   UserRejectedError,
-} from "#src/core/errors/transaction.js";
+} from "#src/core/errors/tx.js";
 import {
   AddChainError,
   ChainSwitchError,

@@ -18,7 +18,7 @@ import {
   TxFailedError,
   TxReplacedError,
   UserRejectedError,
-} from "./transaction.js";
+} from "./tx.js";
 
 export type UserFacingTxErrorCategory =
   | "cancelled"
