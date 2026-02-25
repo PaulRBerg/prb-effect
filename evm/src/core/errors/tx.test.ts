@@ -74,6 +74,10 @@ describe("isUserRejectedError", () => {
   it("returns false for object with different _tag", () => {
     expect(isUserRejectedError({ _tag: "OtherError" })).toBe(false);
   });
+
+  it("returns false for Safe rejection message without code", () => {
+    expect(isUserRejectedError(new Error("Transaction was rejected"))).toBe(false);
+  });
 });
 
 describe("isLikelyUserRejectedError", () => {
@@ -97,6 +101,17 @@ describe("isLikelyUserRejectedError", () => {
   it("returns true for strict rejections", () => {
     const error = Object.assign(new Error("User rejected the request"), { code: 4001 });
     expect(isLikelyUserRejectedError(error)).toBe(true);
+  });
+
+  it("returns true for Safe SDK rejection message", () => {
+    expect(isLikelyUserRejectedError(new Error("Transaction was rejected"))).toBe(true);
+  });
+
+  it("returns true for Safe SDK rejection in viem wrapper", () => {
+    const viemError = new Error(
+      "An unknown RPC error occurred.\n\nDetails: Transaction was rejected\nVersion: viem@2.45.3"
+    );
+    expect(isLikelyUserRejectedError(viemError)).toBe(true);
   });
 
   it("returns false for unrelated errors", () => {

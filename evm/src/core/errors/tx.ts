@@ -73,6 +73,7 @@ const USER_REJECTION_MESSAGE_FRAGMENTS = [
   "rejected by user",
   "denied by user",
   "rejected the request",
+  "transaction was rejected", // Safe SDK rejection
 ];
 
 type UserRejectionRecord = {
