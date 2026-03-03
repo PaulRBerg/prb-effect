@@ -1,4 +1,4 @@
-# @prb/xstate
+# @prb/effect-xstate
 
 > [!WARNING]
 >
@@ -21,7 +21,7 @@ xState v5's state management capabilities.
 ## Installation
 
 ```bash
-bun add @prb/xstate effect xstate @xstate/react
+bun add @prb/effect-xstate effect xstate @xstate/react
 ```
 
 ## Usage
@@ -31,7 +31,7 @@ bun add @prb/xstate effect xstate @xstate/react
 Create a form workflow that validates inputs before processing:
 
 ```typescript
-import { createFormMachine } from "@prb/xstate";
+import { createFormMachine } from "@prb/effect-xstate";
 import { Effect } from "effect";
 
 const machine = createFormMachine({
@@ -49,7 +49,7 @@ const machine = createFormMachine({
 Create a check-then-create workflow:
 
 ```typescript
-import { createFacilitatorMachine } from "@prb/xstate";
+import { createFacilitatorMachine } from "@prb/effect-xstate";
 import { Effect } from "effect";
 
 const machine = createFacilitatorMachine({
@@ -64,7 +64,7 @@ const machine = createFacilitatorMachine({
 ### React Hook
 
 ```typescript
-import { useFacilitatorWorkflow } from "@prb/xstate";
+import { useFacilitatorWorkflow } from "@prb/effect-xstate";
 
 function MyComponent() {
   const workflow = useFacilitatorWorkflow(machine);
@@ -83,6 +83,15 @@ function MyComponent() {
   );
 }
 ```
+
+## Migration (v3.0.0)
+
+- `FormMachineContext.payload` is now `TPayload | null`.
+- `FormMachineContext.preprocess` is now `TPreprocess | null`.
+- `useFormWorkflow(...).preprocess` now returns `TPreprocess | null`.
+- `createFacilitatorMachine` accepts `CREATE` only from `checked` when eligibility `status === "true"`.
+- `CREATE` from `failed` is ignored; retry via `CHECK` or `RESET`.
+- `createTxMachine` now strictly validates gas/simulate outputs and hash-bearing sign/confirm outputs at runtime.
 
 ## License
 

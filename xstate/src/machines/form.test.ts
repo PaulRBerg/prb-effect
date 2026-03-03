@@ -77,6 +77,73 @@ describe("machines/form", () => {
     expect(snapshot.context.error).toBe("invalid payload");
   });
 
+  it("clears stale error when retry succeeds from failure", async () => {
+    let attempts = 0;
+
+    const machine = createFormMachine<
+      never,
+      { count: number },
+      { done: number },
+      { doubled: number }
+    >({
+      id: "retry-clear-error",
+      services: {
+        onCheck: () => Effect.succeed(undefined),
+        onProcess: ({ payload, preprocess }) =>
+          Effect.succeed({ done: payload.count + preprocess.doubled }),
+        onValidate: (payload) => {
+          attempts += 1;
+          if (attempts === 1) {
+            return Effect.fail(new Error("invalid payload"));
+          }
+          return Effect.succeed({ doubled: payload.count * 2 });
+        },
+      },
+    });
+
+    const actor = createActor(machine).start();
+
+    actor.send({ payload: { count: 1 }, type: "SAVE" });
+    await waitFor(actor, (s) => s.value === "failure", { timeout: 1000 });
+    expect(actor.getSnapshot().context.error).toBe("invalid payload");
+
+    actor.send({ payload: { count: 2 }, type: "SAVE" });
+    const successSnapshot = await waitFor(actor, (s) => s.value === "success", { timeout: 1000 });
+
+    expect(successSnapshot.context.error).toBe(null);
+    expect(successSnapshot.context.preprocess).toEqual({ doubled: 4 });
+    expect(successSnapshot.context.result).toEqual({ done: 6 });
+  });
+
+  it("RESET clears payload/preprocess/result/error to null from success", async () => {
+    const machine = createFormMachine<
+      never,
+      { count: number },
+      { done: number },
+      { doubled: number }
+    >({
+      id: "reset-null-context",
+      services: {
+        onCheck: () => Effect.succeed(undefined),
+        onProcess: ({ payload, preprocess }) =>
+          Effect.succeed({ done: payload.count + preprocess.doubled }),
+        onValidate: (payload) => Effect.succeed({ doubled: payload.count * 2 }),
+      },
+    });
+
+    const actor = createActor(machine).start();
+    actor.send({ payload: { count: 3 }, type: "SAVE" });
+    await waitFor(actor, (s) => s.value === "success", { timeout: 1000 });
+
+    actor.send({ type: "RESET" });
+    const resetSnapshot = await waitFor(actor, (s) => s.value === "initial", { timeout: 1000 });
+
+    expect(resetSnapshot.context.error).toBe(null);
+    expect(resetSnapshot.context.payload).toBe(null);
+    expect(resetSnapshot.context.preprocess).toBe(null);
+    expect(resetSnapshot.context.result).toBe(null);
+  });
+
   it("treats user-rejected process errors as cancel (reset to initial)", async () => {
     const machine = createFormMachine<never, { count: number }, never, { doubled: number }>({
       id: "user-reject",
@@ -94,5 +161,7 @@ describe("machines/form", () => {
     const snapshot = await waitFor(actor, (s) => s.value === "initial", { timeout: 1000 });
     expect(snapshot.context.error).toBe(null);
     expect(snapshot.context.result).toBe(null);
+    expect(snapshot.context.payload).toBe(null);
+    expect(snapshot.context.preprocess).toBe(null);
   });
 });

@@ -64,6 +64,82 @@ describe("machines/facilitator", () => {
     });
   });
 
+  it("does not allow CREATE from failed after CHECK error", async () => {
+    const onCreate = vi.fn(() => Effect.succeed(undefined));
+
+    const machine = createFacilitatorMachine<
+      { user: string },
+      { claim: string },
+      { proof: string }
+    >({
+      id: "failed-create-blocked",
+      services: {
+        onCheck: () => Effect.fail(new Error("not eligible")),
+        onCreate,
+      },
+    });
+
+    const actor = createActor(machine).start();
+    actor.send({ payload: { user: "alice" }, type: "CHECK" });
+    await waitFor(actor, (s) => s.value === "failed", { timeout: 1000 });
+
+    actor.send({ payload: { claim: "airdrop" }, type: "CREATE" });
+
+    expect(actor.getSnapshot().value).toBe("failed");
+    expect(onCreate).not.toHaveBeenCalled();
+  });
+
+  it("blocks CREATE when eligibility status is false", async () => {
+    const onCreate = vi.fn(() => Effect.succeed(undefined));
+
+    const machine = createFacilitatorMachine<
+      { user: string },
+      { claim: string },
+      { proof: string }
+    >({
+      id: "ineligible-create-blocked",
+      services: {
+        onCheck: () => Effect.succeed({ status: "false" as const, transitive: { proof: "0xabc" } }),
+        onCreate,
+      },
+    });
+
+    const actor = createActor(machine).start();
+    actor.send({ payload: { user: "alice" }, type: "CHECK" });
+    await waitFor(actor, (s) => s.value === "checked", { timeout: 1000 });
+
+    actor.send({ payload: { claim: "airdrop" }, type: "CREATE" });
+
+    expect(actor.getSnapshot().value).toBe("checked");
+    expect(onCreate).not.toHaveBeenCalled();
+  });
+
+  it("blocks CREATE when eligibility status is expired", async () => {
+    const onCreate = vi.fn(() => Effect.succeed(undefined));
+
+    const machine = createFacilitatorMachine<
+      { user: string },
+      { claim: string },
+      { proof: string }
+    >({
+      id: "expired-create-blocked",
+      services: {
+        onCheck: () =>
+          Effect.succeed({ status: "expired" as const, transitive: { proof: "0xabc" } }),
+        onCreate,
+      },
+    });
+
+    const actor = createActor(machine).start();
+    actor.send({ payload: { user: "alice" }, type: "CHECK" });
+    await waitFor(actor, (s) => s.value === "checked", { timeout: 1000 });
+
+    actor.send({ payload: { claim: "airdrop" }, type: "CREATE" });
+
+    expect(actor.getSnapshot().value).toBe("checked");
+    expect(onCreate).not.toHaveBeenCalled();
+  });
+
   it("sets error and transitions to failed when check fails", async () => {
     const machine = createFacilitatorMachine<{ user: string }, never, never>({
       id: "check-fail",

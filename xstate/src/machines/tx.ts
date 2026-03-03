@@ -1,4 +1,4 @@
-import { Effect } from "effect";
+import { Effect, Schema } from "effect";
 import { assign, fromPromise, setup } from "xstate";
 import type { TxError } from "#src/errors/index.js";
 import { extractErrorData } from "#src/errors/index.js";
@@ -103,6 +103,21 @@ type TxMachineConfig<TPayload, TPreprocess, TSignResult, TResult> = {
 
 const UNKNOWN_TX_ERROR_MESSAGE = "An unknown error occurred";
 
+const GasLimitOverflowSchema = Schema.Struct({
+  blockGasLimit: Schema.BigIntFromSelf,
+  effectiveLimit: Schema.BigIntFromSelf,
+  estimatedGas: Schema.BigIntFromSelf,
+  reason: Schema.Literal("exceeded", "tx-cap"),
+});
+
+const GasCheckGasLimitSchema = Schema.Struct({
+  gasLimit: Schema.UndefinedOr(Schema.BigIntFromSelf),
+});
+const GasCheckOverflowSchema = Schema.Struct({ overflow: GasLimitOverflowSchema });
+
+const SignOutputSchema = Schema.Struct({ hash: Schema.String });
+const ConfirmOutputSchema = Schema.Struct({ hash: Schema.NullOr(Schema.String) });
+
 function getTxErrorMessage(error: TxError): string {
   return typeof error === "string" ? error : error.message;
 }
@@ -117,6 +132,73 @@ function normalizeTxError(error: unknown): {
     error: txError,
     errorMessage: getTxErrorMessage(txError),
   };
+}
+
+function decodeOutputSchema<S extends Schema.Schema.AnyNoContext>(
+  schema: S,
+  output: unknown,
+  message: string
+): Schema.Schema.Type<S> {
+  try {
+    return Schema.decodeUnknownSync(schema)(output);
+  } catch (cause) {
+    throw new Error(message, { cause });
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object";
+}
+
+function hasOwnKey(value: unknown, key: string): value is Record<string, unknown> {
+  return isRecord(value) && Object.hasOwn(value, key);
+}
+
+function getEventOutput(event: unknown, phase: string): unknown {
+  if (!isRecord(event) || !("output" in event)) {
+    throw new Error(`Missing ${phase} output`);
+  }
+  return event.output;
+}
+
+function validateSignOutput(output: unknown): void {
+  if (hasOwnKey(output, "hash")) {
+    decodeOutputSchema(SignOutputSchema, output, "Invalid sign output schema");
+  }
+}
+
+function validateConfirmOutput(output: unknown): void {
+  if (hasOwnKey(output, "hash")) {
+    decodeOutputSchema(ConfirmOutputSchema, output, "Invalid confirm output schema");
+  }
+}
+
+function decodeGasCheckOutput(output: unknown): GasCheckResult {
+  if (hasOwnKey(output, "overflow")) {
+    return decodeOutputSchema(GasCheckOverflowSchema, output, "Invalid gas check output schema");
+  }
+  if (hasOwnKey(output, "gasLimit")) {
+    return decodeOutputSchema(GasCheckGasLimitSchema, output, "Invalid gas check output schema");
+  }
+  throw new Error("Invalid gas check output schema");
+}
+
+function decodeSimulateOutput(output: unknown): undefined | { overflow: GasLimitOverflow } {
+  if (output === undefined) {
+    return undefined;
+  }
+  if (hasOwnKey(output, "overflow")) {
+    return decodeOutputSchema(GasCheckOverflowSchema, output, "Invalid simulate output schema");
+  }
+  throw new Error("Invalid simulate output schema");
+}
+
+function requireContextValue<T>(value: T | null, errorMessage: string): T {
+  if (value === null) {
+    throw new Error(errorMessage);
+  }
+
+  return value;
 }
 
 /**
@@ -170,29 +252,25 @@ function createTxMachine<TPayload, TPreprocess, TSignResult, TResult>({
         result: ({ context, event }) => (event.type === "SUBMIT" ? null : context.result),
         signResult: ({ context, event }) => (event.type === "SUBMIT" ? null : context.signResult),
       }),
-      doError: assign(({ event }) => {
-        return normalizeTxError("error" in event ? event.error : undefined);
-      }),
+      doError: assign(({ event }) => normalizeTxError("error" in event ? event.error : undefined)),
       doGasLimit: assign({
         gasLimit: ({ event }) => {
-          if ("output" in event && event.output && typeof event.output === "object") {
-            const output = event.output as { gasLimit?: bigint };
-            if ("gasLimit" in output) {
-              return output.gasLimit;
-            }
+          const output = decodeGasCheckOutput(getEventOutput(event, "gas check"));
+          if ("gasLimit" in output) {
+            return output.gasLimit;
           }
+
           return undefined;
         },
       }),
       doGasLimitOverflow: assign({
         gasLimitOverflow: ({ event }) => {
-          if ("output" in event && event.output && typeof event.output === "object") {
-            const output = event.output as { overflow?: GasLimitOverflow };
-            if ("overflow" in output && output.overflow) {
-              return output.overflow;
-            }
-          }
-          return null;
+          const output = decodeOutputSchema(
+            Schema.Struct({ overflow: GasLimitOverflowSchema }),
+            getEventOutput(event, "overflow"),
+            "Invalid overflow output schema"
+          );
+          return output.overflow;
         },
       }),
       doGasLimitOverflowFromError: assign({
@@ -227,50 +305,42 @@ function createTxMachine<TPayload, TPreprocess, TSignResult, TResult>({
       }),
       doResult: assign({
         hash: ({ context, event }) => {
-          if ("output" in event && event.output && typeof event.output === "object") {
-            const output = event.output as { hash?: unknown };
-            if ("hash" in output && (typeof output.hash === "string" || output.hash === null)) {
-              return output.hash;
-            }
+          const output = getEventOutput(event, "confirm");
+          if (hasOwnKey(output, "hash")) {
+            return decodeOutputSchema(ConfirmOutputSchema, output, "Invalid confirm output schema")
+              .hash;
           }
+
           return context.hash;
         },
-        result: ({ event }) => {
-          if ("output" in event) {
-            return event.output as TResult;
-          }
-          return null;
-        },
+        result: ({ event }) => getEventOutput(event, "confirm") as TResult,
       }),
       doSignResult: assign({
         hash: ({ event }) => {
-          if ("output" in event && event.output && typeof event.output === "object") {
-            const output = event.output as { hash?: string };
-            if ("hash" in output && typeof output.hash === "string") {
-              return output.hash;
-            }
+          const output = getEventOutput(event, "sign");
+          if (hasOwnKey(output, "hash")) {
+            return decodeOutputSchema(SignOutputSchema, output, "Invalid sign output schema").hash;
           }
+
           return null;
         },
-        signResult: ({ event }) => {
-          if ("output" in event) {
-            return event.output as TSignResult;
-          }
-          return null;
-        },
+        signResult: ({ event }) => getEventOutput(event, "sign") as TSignResult,
       }),
     },
     actors: {
       doConfirm: fromPromise(
-        async ({ input }: { input: { payload: TPayload; signResult: TSignResult } }) =>
-          Effect.runPromise(services.onConfirm(input))
+        async ({ input }: { input: { payload: TPayload; signResult: TSignResult } }) => {
+          const output = await Effect.runPromise(services.onConfirm(input));
+          validateConfirmOutput(output);
+          return output;
+        }
       ),
       doGasCheck: fromPromise(
         async ({ input }: { input: { payload: TPayload; preprocess: TPreprocess } }) => {
-          if (!services.onGasCheck) {
-            return { gasLimit: undefined };
-          }
-          return await Effect.runPromise(services.onGasCheck(input));
+          const output = services.onGasCheck
+            ? await Effect.runPromise(services.onGasCheck(input))
+            : { gasLimit: undefined };
+          return decodeGasCheckOutput(output);
         }
       ),
       doSign: fromPromise(
@@ -278,14 +348,18 @@ function createTxMachine<TPayload, TPreprocess, TSignResult, TResult>({
           input,
         }: {
           input: { payload: TPayload; preprocess: TPreprocess; gasLimit?: bigint };
-        }) => Effect.runPromise(services.onSign(input))
+        }) => {
+          const output = await Effect.runPromise(services.onSign(input));
+          validateSignOutput(output);
+          return output;
+        }
       ),
       doSimulate: fromPromise(
         async ({ input }: { input: { payload: TPayload; preprocess: TPreprocess } }) => {
-          if (!services.onSimulate) {
-            return undefined;
-          }
-          return await Effect.runPromise(services.onSimulate(input));
+          const output = services.onSimulate
+            ? await Effect.runPromise(services.onSimulate(input))
+            : undefined;
+          return decodeSimulateOutput(output);
         }
       ),
       doValidate: fromPromise(async ({ input }: { input: TPayload }) =>
@@ -294,11 +368,10 @@ function createTxMachine<TPayload, TPreprocess, TSignResult, TResult>({
     },
     guards: {
       hasGasLimitOverflow: ({ event }) => {
-        if ("output" in event && event.output && typeof event.output === "object") {
-          const output = event.output as { overflow?: GasLimitOverflow };
-          return "overflow" in output && output.overflow !== undefined;
+        if (!isRecord(event) || !("output" in event)) {
+          return false;
         }
-        return false;
+        return hasOwnKey(event.output, "overflow");
       },
       isEoaWallet: ({ context }) => {
         if (!context.payload) {
@@ -359,15 +432,12 @@ function createTxMachine<TPayload, TPreprocess, TSignResult, TResult>({
         invoke: {
           id: "gasCheck",
           input: ({ context }) => {
-            if (context.payload === null) {
-              throw new Error("Missing payload for gas check");
-            }
-            if (context.preprocess === null) {
-              throw new Error("Missing preprocess data for gas check");
-            }
             return {
-              payload: context.payload,
-              preprocess: context.preprocess,
+              payload: requireContextValue(context.payload, "Missing payload for gas check"),
+              preprocess: requireContextValue(
+                context.preprocess,
+                "Missing preprocess data for gas check"
+              ),
             };
           },
           onDone: [
@@ -419,15 +489,12 @@ function createTxMachine<TPayload, TPreprocess, TSignResult, TResult>({
         invoke: {
           id: "confirm",
           input: ({ context }) => {
-            if (context.payload === null) {
-              throw new Error("Missing payload for confirmation");
-            }
-            if (context.signResult === null) {
-              throw new Error("Missing sign result for confirmation");
-            }
             return {
-              payload: context.payload,
-              signResult: context.signResult,
+              payload: requireContextValue(context.payload, "Missing payload for confirmation"),
+              signResult: requireContextValue(
+                context.signResult,
+                "Missing sign result for confirmation"
+              ),
             };
           },
           onDone: {
@@ -445,16 +512,13 @@ function createTxMachine<TPayload, TPreprocess, TSignResult, TResult>({
         invoke: {
           id: "sign",
           input: ({ context }) => {
-            if (context.payload === null) {
-              throw new Error("Missing payload for signing");
-            }
-            if (context.preprocess === null) {
-              throw new Error("Missing preprocess data for signing");
-            }
             return {
               gasLimit: context.gasLimit,
-              payload: context.payload,
-              preprocess: context.preprocess,
+              payload: requireContextValue(context.payload, "Missing payload for signing"),
+              preprocess: requireContextValue(
+                context.preprocess,
+                "Missing preprocess data for signing"
+              ),
             };
           },
           onDone: {
@@ -484,15 +548,12 @@ function createTxMachine<TPayload, TPreprocess, TSignResult, TResult>({
         invoke: {
           id: "simulate",
           input: ({ context }) => {
-            if (context.payload === null) {
-              throw new Error("Missing payload for simulation");
-            }
-            if (context.preprocess === null) {
-              throw new Error("Missing preprocess data for simulation");
-            }
             return {
-              payload: context.payload,
-              preprocess: context.preprocess,
+              payload: requireContextValue(context.payload, "Missing payload for simulation"),
+              preprocess: requireContextValue(
+                context.preprocess,
+                "Missing preprocess data for simulation"
+              ),
             };
           },
           onDone: [

@@ -27,11 +27,31 @@ describe("hooks/useFormWorkflow", () => {
     expect(api.preprocess).toEqual({ p: true });
   });
 
+  it("exposes preprocess as null before first successful validate", () => {
+    const send = vi.fn();
+    useActorMock.mockReturnValueOnce([
+      {
+        context: { error: null, payload: null, preprocess: null, result: null },
+        value: "initial",
+      },
+      send,
+    ]);
+
+    const api = useFormWorkflow<
+      { dep: string },
+      { value: number },
+      { ok: true },
+      { parsed: number }
+    >({} as any);
+
+    expect(api.preprocess).toBe(null);
+  });
+
   it("sends CHECK/SAVE/RESET events with payloads", () => {
     const send = vi.fn();
     useActorMock.mockReturnValueOnce([
       {
-        context: { error: null, payload: {}, preprocess: undefined, result: null },
+        context: { error: null, payload: null, preprocess: null, result: null },
         value: "initial",
       },
       send,

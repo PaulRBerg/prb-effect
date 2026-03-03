@@ -763,6 +763,74 @@ describe("machines/tx", () => {
   });
 
   // ---------------------------------------------------------------------------
+  // 10. Strict output schema validation
+  // ---------------------------------------------------------------------------
+  describe("Strict output schema validation", () => {
+    it("fails when gasCheck output schema is invalid", async () => {
+      const services = createMockServices({
+        onGasCheck: vi.fn(() => Effect.succeed({ gasLimit: "100000" } as any)),
+      });
+      const machine = createTestMachine({ services });
+      const actor = createActor(machine).start();
+
+      actor.send({ payload: { amount: 100, isSafe: false }, type: "SUBMIT" });
+
+      const snapshot = await waitFor(actor, (s) => s.value === "failure", { timeout: 2000 });
+      expect(snapshot.context.errorMessage).toBe("Invalid gas check output schema");
+      expect(services.onSign).not.toHaveBeenCalled();
+    });
+
+    it("fails when simulate output schema is invalid", async () => {
+      const services = createMockServices({
+        onSimulate: vi.fn(() =>
+          Effect.succeed({
+            overflow: {
+              blockGasLimit: 30_000_000n,
+              effectiveLimit: 25_000_000n,
+              estimatedGas: 50_000_000n,
+              reason: "invalid-reason",
+            },
+          } as any)
+        ) as NonNullable<TestServices["onSimulate"]>,
+      });
+      const machine = createTestMachine({ services });
+      const actor = createActor(machine).start();
+
+      actor.send({ payload: { amount: 100, isSafe: true }, type: "SUBMIT" });
+
+      const snapshot = await waitFor(actor, (s) => s.value === "failure", { timeout: 2000 });
+      expect(snapshot.context.errorMessage).toBe("Invalid simulate output schema");
+      expect(services.onSign).not.toHaveBeenCalled();
+    });
+
+    it("fails when sign result has invalid hash type", async () => {
+      const services = createMockServices({
+        onSign: vi.fn(() => Effect.succeed({ hash: 123 } as any)),
+      });
+      const machine = createTestMachine({ services });
+      const actor = createActor(machine).start();
+
+      actor.send({ payload: { amount: 100, isSafe: false }, type: "SUBMIT" });
+
+      const snapshot = await waitFor(actor, (s) => s.value === "failure", { timeout: 2000 });
+      expect(snapshot.context.errorMessage).toBe("Invalid sign output schema");
+    });
+
+    it("fails when confirm result has invalid hash type", async () => {
+      const services = createMockServices({
+        onConfirm: vi.fn(() => Effect.succeed({ hash: 123 } as any)),
+      });
+      const machine = createTestMachine({ services });
+      const actor = createActor(machine).start();
+
+      actor.send({ payload: { amount: 100, isSafe: false }, type: "SUBMIT" });
+
+      const snapshot = await waitFor(actor, (s) => s.value === "failure", { timeout: 2000 });
+      expect(snapshot.context.errorMessage).toBe("Invalid confirm output schema");
+    });
+  });
+
+  // ---------------------------------------------------------------------------
   // Additional edge cases
   // ---------------------------------------------------------------------------
   describe("Edge cases", () => {

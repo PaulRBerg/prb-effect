@@ -8,9 +8,9 @@ type FormMachineContext<TPayload, TResult, TPreprocess> = {
   /** Error message from failed operations */
   error: string | null;
   /** The form payload to be processed */
-  payload: TPayload;
+  payload: TPayload | null;
   /** Preprocessed data from validation */
-  preprocess: TPreprocess;
+  preprocess: TPreprocess | null;
   /** Result from successful processing */
   result: TResult | null;
 };
@@ -95,11 +95,11 @@ function createFormMachine<TCheck, TPayload, TResult, TPreprocess = undefined>({
   return setup({
     actions: {
       doCache: assign({
-        payload: ({ event }) => {
+        payload: ({ context, event }) => {
           if (event.type === "SAVE") {
             return event.payload;
           }
-          return {} as TPayload;
+          return context.payload;
         },
       }),
       doError: assign({
@@ -110,21 +110,27 @@ function createFormMachine<TCheck, TPayload, TResult, TPreprocess = undefined>({
           return "An unknown error occurred";
         },
       }),
+      doPrepareSave: assign({
+        error: () => null,
+        preprocess: () => null,
+        result: () => null,
+      }),
       doPreprocess: assign({
         preprocess: ({ event }) => {
           if ("output" in event) {
             return event.output as TPreprocess;
           }
-          return {} as TPreprocess;
+          return null;
         },
       }),
       doReset: assign({
         error: () => null,
-        payload: () => ({}) as TPayload,
-        preprocess: () => ({}) as TPreprocess,
+        payload: () => null,
+        preprocess: () => null,
         result: () => null,
       }),
       doResult: assign({
+        error: () => null,
         result: ({ event }) => {
           if ("output" in event) {
             return event.output as TResult;
@@ -152,8 +158,8 @@ function createFormMachine<TCheck, TPayload, TResult, TPreprocess = undefined>({
   }).createMachine({
     context: {
       error: null,
-      payload: {} as TPayload,
-      preprocess: {} as TPreprocess,
+      payload: null,
+      preprocess: null,
       result: null,
     },
     id: `formMachine-${id}`,
@@ -189,20 +195,22 @@ function createFormMachine<TCheck, TPayload, TResult, TPreprocess = undefined>({
       failure: {
         on: {
           RESET: {
+            actions: "doReset",
             target: "initial",
           },
           SAVE: {
+            actions: "doPrepareSave",
             target: "validate",
           },
         },
       },
       initial: {
-        exit: "doReset",
         on: {
           CHECK: {
             target: "check",
           },
           SAVE: {
+            actions: "doPrepareSave",
             target: "validate",
           },
         },
@@ -210,10 +218,18 @@ function createFormMachine<TCheck, TPayload, TResult, TPreprocess = undefined>({
       process: {
         invoke: {
           id: "process",
-          input: ({ context }) => ({
-            payload: context.payload,
-            preprocess: context.preprocess,
-          }),
+          input: ({ context }) => {
+            if (context.payload === null) {
+              throw new Error("Missing payload for process");
+            }
+            if (context.preprocess === null) {
+              throw new Error("Missing preprocess data for process");
+            }
+            return {
+              payload: context.payload,
+              preprocess: context.preprocess,
+            };
+          },
           onDone: {
             actions: "doResult",
             target: "success",
@@ -240,9 +256,11 @@ function createFormMachine<TCheck, TPayload, TResult, TPreprocess = undefined>({
       success: {
         on: {
           RESET: {
+            actions: "doReset",
             target: "initial",
           },
           SAVE: {
+            actions: "doPrepareSave",
             target: "validate",
           },
         },
@@ -252,7 +270,12 @@ function createFormMachine<TCheck, TPayload, TResult, TPreprocess = undefined>({
         // @ts-expect-error - xState v5 type inference limitation with generic functions
         invoke: {
           id: "validate",
-          input: ({ context }) => context.payload,
+          input: ({ context }) => {
+            if (context.payload === null) {
+              throw new Error("Missing payload for validate");
+            }
+            return context.payload;
+          },
           onDone: {
             actions: "doPreprocess",
             target: "process",

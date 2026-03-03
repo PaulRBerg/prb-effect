@@ -59,7 +59,7 @@ type UseFormWorkflowReturn<TCheck, TPayload, TResult, TPreprocess> = {
   error: string | null;
 
   /** Preprocessed data from validation step */
-  preprocess: TPreprocess;
+  preprocess: TPreprocess | null;
 
   /** Result from successful processing step */
   result: TResult | null;

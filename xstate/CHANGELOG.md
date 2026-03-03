@@ -9,6 +9,19 @@ The format is based on [Common Changelog](https://common-changelog.org/).
 [2.0.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-xstate%402.0.0
 [2.0.1]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-xstate%402.0.1
 [2.0.2]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-xstate%402.0.2
+[3.0.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-xstate%403.0.0
+
+## [3.0.0] - 2026-03-02
+
+### Changed
+
+- Restrict `createFacilitatorMachine` `CREATE` transitions to `checked` states where eligibility status is `"true"`
+- Remove `CREATE` transition from facilitator `failed` state; retries now require `CHECK` or `RESET`
+- Make `createFormMachine` context `payload` and `preprocess` fields nullable (`null` at rest/reset)
+- Clear stale form `error`, `result`, and `preprocess` on each retry `SAVE`, and clear `error` on successful process
+- Make `useFormWorkflow().preprocess` nullable to match machine context
+- Add strict runtime schema validation for `createTxMachine` gas/simulation outputs and hash-bearing sign/confirm
+  outputs
 
 ## [2.0.2] - 2026-02-17
 

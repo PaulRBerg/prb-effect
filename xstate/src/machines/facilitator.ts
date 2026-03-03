@@ -135,6 +135,9 @@ function createFacilitatorMachine<TCheck, TCreate, TTransitive>({
           Effect.runPromise(services.onCreate(input))
       ),
     },
+    guards: {
+      canCreate: ({ context }) => context.status === "true",
+    },
     types: {
       context: {} as FacilitatorMachineContext<TTransitive>,
       events: {} as FacilitatorMachineEvents<TCheck, TCreate>,
@@ -154,6 +157,7 @@ function createFacilitatorMachine<TCheck, TCreate, TTransitive>({
             target: "checking",
           },
           CREATE: {
+            guard: "canCreate",
             target: "creating",
           },
           RESET: {
@@ -229,9 +233,6 @@ function createFacilitatorMachine<TCheck, TCreate, TTransitive>({
         on: {
           CHECK: {
             target: "checking",
-          },
-          CREATE: {
-            target: "creating",
           },
           RESET: {
             target: "idle",
