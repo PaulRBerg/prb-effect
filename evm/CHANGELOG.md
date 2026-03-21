@@ -14,8 +14,16 @@ The format is based on [Common Changelog](https://common-changelog.org/).
 [1.3.1]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-evm%401.3.1
 [1.4.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-evm%401.4.0
 [2.0.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-evm%402.0.0
-[2.1.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-evm%402.1.0
 [2.0.1]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-evm%402.0.1
+[2.1.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-evm%402.1.0
+[2.1.1]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-evm%402.1.1
+
+## [2.1.1] - 2026-03-21
+
+### Fixed
+
+- Infer `insufficient-funds` from RPC gas-estimation errors that combine "gas required exceeds allowance" with "missing
+  or invalid parameters" ([`a483033`](https://github.com/PaulRBerg/prb-effect/commit/a483033))
 
 ## [2.1.0] - 2026-02-25
 
