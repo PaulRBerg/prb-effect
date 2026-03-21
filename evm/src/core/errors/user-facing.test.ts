@@ -39,6 +39,34 @@ describe("toUserFacingTxError", () => {
     expect(mapped.retryable).toBe(false);
   });
 
+  it("infers insufficient funds from mixed provider gas-estimation failures", () => {
+    const source = {
+      _tag: "GasEstimationError",
+      cause:
+        "Execution reverted with reason: Missing or invalid parameters.\nDetails: gas required exceeds allowance (1)",
+      message: "Missing or invalid parameters.",
+    };
+    const mapped = toUserFacingTxError(source);
+
+    expect(mapped.category).toBe("insufficient-funds");
+    expect(mapped.retryable).toBe(false);
+    expect(mapped.message).toBe("Insufficient funds to cover gas for this transaction");
+    expect(mapped.raw).toBe(source);
+  });
+
+  it("does not promote standalone gas-allowance failures to insufficient funds", () => {
+    const source = {
+      _tag: "GasEstimationError",
+      cause: "Execution reverted with reason: gas required exceeds allowance (1)",
+      message: "Failed to estimate gas",
+    };
+    const mapped = toUserFacingTxError(source);
+
+    expect(mapped.category).toBe("unknown");
+    expect(mapped.message).toBe("Failed to estimate gas");
+    expect(mapped.raw).toBe(source);
+  });
+
   it("preserves unknown error messages for telemetry", () => {
     const source = new Error("unexpected failure");
     const mapped = toUserFacingTxError(source);

@@ -42,6 +42,14 @@ type TaggedErrorShape = {
   readonly message?: unknown;
 };
 
+const GAS_ALLOWANCE_EXCEEDED_PATTERN = /gas required exceeds allowance/i;
+const MISSING_OR_INVALID_PARAMETERS_PATTERN = /missing or invalid parameters/i;
+const INSUFFICIENT_FUNDS_PATTERNS: RegExp[] = [
+  /insufficient funds/i,
+  /insufficient balance/i,
+  /total cost \(gas \* gas fee \+ value\).*exceeds the balance/i,
+];
+
 function getMessage(error: unknown): string | undefined {
   if (typeof error === "string") {
     return error;
@@ -59,6 +67,83 @@ function getMessage(error: unknown): string | undefined {
   }
 
   return undefined;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function pushCandidate(candidates: string[], value: unknown): void {
+  if (typeof value !== "string") {
+    return;
+  }
+
+  const trimmed = value.trim();
+  if (trimmed.length > 0) {
+    candidates.push(trimmed);
+  }
+}
+
+function getMessageCandidates(error: unknown): string[] {
+  const candidates: string[] = [];
+  const queue: unknown[] = [error];
+  const visited = new WeakSet<object>();
+
+  while (queue.length > 0) {
+    const value = queue.shift();
+
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        queue.push(item);
+      }
+      continue;
+    }
+
+    pushCandidate(candidates, value);
+
+    if (!isRecord(value) || visited.has(value)) {
+      continue;
+    }
+
+    visited.add(value);
+
+    pushCandidate(candidates, value.message);
+    pushCandidate(candidates, value.shortMessage);
+    pushCandidate(candidates, value.reason);
+    pushCandidate(candidates, value.details);
+    pushCandidate(candidates, value.revertReason);
+
+    if ("cause" in value) {
+      queue.push(value.cause);
+    }
+
+    if (Array.isArray(value.metaMessages)) {
+      for (const message of value.metaMessages) {
+        queue.push(message);
+      }
+    }
+  }
+
+  return Array.from(new Set(candidates));
+}
+
+function matchesAnyPattern(candidates: string[], patterns: RegExp[]): boolean {
+  return candidates.some((candidate) => patterns.some((pattern) => pattern.test(candidate)));
+}
+
+function isRpcInsufficientFundsShape(candidates: string[]): boolean {
+  return (
+    matchesAnyPattern(candidates, [GAS_ALLOWANCE_EXCEEDED_PATTERN]) &&
+    matchesAnyPattern(candidates, [MISSING_OR_INVALID_PARAMETERS_PATTERN])
+  );
+}
+
+function isInferredInsufficientFundsError(error: unknown): boolean {
+  const candidates = getMessageCandidates(error);
+  return (
+    matchesAnyPattern(candidates, INSUFFICIENT_FUNDS_PATTERNS) ||
+    isRpcInsufficientFundsShape(candidates)
+  );
 }
 
 function toFallbackMessage(error: unknown): string {
@@ -102,6 +187,15 @@ export function toUserFacingTxError(error: unknown): UserFacingTxError {
     return {
       category: "insufficient-funds",
       message: error.message || "Insufficient funds to submit this transaction",
+      raw: error,
+      retryable: false,
+    };
+  }
+
+  if (isInferredInsufficientFundsError(error)) {
+    return {
+      category: "insufficient-funds",
+      message: "Insufficient funds to cover gas for this transaction",
       raw: error,
       retryable: false,
     };
