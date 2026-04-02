@@ -17,6 +17,14 @@ The format is based on [Common Changelog](https://common-changelog.org/).
 [2.0.1]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-evm%402.0.1
 [2.1.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-evm%402.1.0
 [2.1.1]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-evm%402.1.1
+[2.1.2]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm%402.1.2
+
+## [2.1.2] - 2026-04-02
+
+### Fixed
+
+- Preserve transaction `msg.value` in tagged contract execution errors as a decimal string for downstream UIs and
+  simulators ([`74e67bc`](https://github.com/PaulRBerg/prb-effect/commit/74e67bc))
 
 ## [2.1.1] - 2026-03-21
 

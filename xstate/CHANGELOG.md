@@ -4,12 +4,20 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Common Changelog](https://common-changelog.org/).
 
-[1.0.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-xstate%401.0.0
-[1.0.1]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-xstate%401.0.1
-[2.0.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-xstate%402.0.0
-[2.0.1]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-xstate%402.0.1
-[2.0.2]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-xstate%402.0.2
-[3.0.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-xstate%403.0.0
+[1.0.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/xstate%401.0.0
+[1.0.1]: https://github.com/PaulRBerg/prb-effect/releases/tag/xstate%401.0.1
+[2.0.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/xstate%402.0.0
+[2.0.1]: https://github.com/PaulRBerg/prb-effect/releases/tag/xstate%402.0.1
+[2.0.2]: https://github.com/PaulRBerg/prb-effect/releases/tag/xstate%402.0.2
+[3.0.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/xstate%403.0.0
+[3.0.1]: https://github.com/PaulRBerg/prb-effect/releases/tag/xstate%403.0.1
+
+## [3.0.1] - 2026-04-02
+
+### Fixed
+
+- Preserve tagged transaction `value` when extracting structured transaction errors for downstream UIs and simulators
+  ([`74e67bc`](https://github.com/PaulRBerg/prb-effect/commit/74e67bc))
 
 ## [3.0.0] - 2026-03-02
 
