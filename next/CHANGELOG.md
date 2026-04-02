@@ -4,9 +4,9 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Common Changelog](https://common-changelog.org/).
 
-[1.0.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-next%401.0.0
-[1.0.1]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-next%401.0.1
-[1.1.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/%40prb%2Feffect-next%401.1.0
+[1.0.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/next%401.0.0
+[1.0.1]: https://github.com/PaulRBerg/prb-effect/releases/tag/next%401.0.1
+[1.1.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/next%401.1.0
 
 ## [1.1.0] - 2026-02-13
 
