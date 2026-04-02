@@ -3,11 +3,14 @@ import { describe, expect, it } from "vitest";
 import {
   classifyContractError,
   classifyGasEstimationError,
+  classifyWriteError,
   extractRevertReason,
   isInsufficientFunds,
   isResourceExhaustion,
   isUserRejection,
 } from "./viem-mapper.js";
+
+const TEST_VALUE = "1000000000000000000";
 
 describe("viem error classification", () => {
   describe("isUserRejection", () => {
@@ -158,6 +161,7 @@ describe("viem error classification", () => {
         {
           address: "0x1234567890123456789012345678901234567890",
           functionName: "transfer",
+          value: TEST_VALUE,
         }
       );
 
@@ -166,6 +170,7 @@ describe("viem error classification", () => {
         expect(error.phase).toBe("simulate");
         expect(error.revertReason).toBe("ERC20: transfer amount exceeds allowance");
         expect(error.customErrorName).toBeUndefined();
+        expect(error.value).toBe(TEST_VALUE);
       }
     });
 
@@ -186,6 +191,7 @@ describe("viem error classification", () => {
         {
           address: "0x1234567890123456789012345678901234567890",
           functionName: "withdraw",
+          value: TEST_VALUE,
         }
       );
 
@@ -193,6 +199,22 @@ describe("viem error classification", () => {
       if (error._tag === "GasEstimationError") {
         expect(error.phase).toBe("estimate");
         expect(error.customErrorName).toBe("SablierLockup_DepositAmountZero");
+        expect(error.value).toBe(TEST_VALUE);
+      }
+    });
+  });
+
+  describe("classifyWriteError", () => {
+    it("returns ContractWriteError with decimal-string value", () => {
+      const error = classifyWriteError(new Error("RPC failed"), {
+        address: "0x1234567890123456789012345678901234567890",
+        functionName: "withdraw",
+        value: TEST_VALUE,
+      });
+
+      expect(error._tag).toBe("ContractWriteError");
+      if (error._tag === "ContractWriteError") {
+        expect(error.value).toBe(TEST_VALUE);
       }
     });
   });

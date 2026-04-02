@@ -35,6 +35,14 @@ import {
 
 const TX_HASH_RE = /0x[a-fA-F0-9]{64}/;
 
+type TransactionErrorContext = {
+  address: Address;
+  calldata?: string;
+  functionName: string;
+  sender?: string;
+  value?: string;
+};
+
 /**
  * Check if an error represents a user rejection (wallet user denied the request)
  */
@@ -155,7 +163,7 @@ function getReplacementHashFromMessage(message: string): Hash | undefined {
  */
 export function classifyContractError(
   error: unknown,
-  context: { address: Address; calldata?: string; functionName: string; sender?: string }
+  context: TransactionErrorContext
 ):
   | ContractReadError
   | SimulationFailedError
@@ -204,6 +212,7 @@ export function classifyContractError(
       revertData: resolvedExecutionFailure.revertData,
       revertReason: resolvedExecutionFailure.revertReason,
       sender: context.sender,
+      value: context.value,
     });
   }
 
@@ -221,7 +230,7 @@ export function classifyContractError(
  */
 export function classifyWriteError(
   error: unknown,
-  context: { address: Address; calldata?: string; functionName: string; sender?: string }
+  context: TransactionErrorContext
 ): ContractWriteError | InsufficientFundsError | ResourceExhaustionError | UserRejectedError {
   // Check for user rejection first
   if (isUserRejection(error)) {
@@ -253,6 +262,7 @@ export function classifyWriteError(
     functionName: context.functionName,
     message: `Failed to write ${context.functionName} to ${context.address}`,
     sender: context.sender,
+    value: context.value,
   });
 }
 
@@ -261,7 +271,7 @@ export function classifyWriteError(
  */
 export function classifyGasEstimationError(
   error: unknown,
-  context: { address: Address; calldata?: string; functionName: string; sender?: string }
+  context: TransactionErrorContext
 ): GasEstimationError | InsufficientFundsError | ResourceExhaustionError | UserRejectedError {
   // Check for user rejection
   if (isUserRejection(error)) {
@@ -301,6 +311,7 @@ export function classifyGasEstimationError(
     revertData: executionFailure.revertData,
     revertReason: executionFailure.revertReason,
     sender: context.sender,
+    value: context.value,
   });
 }
 

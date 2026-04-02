@@ -2,6 +2,8 @@ import { describe, expect, it } from "@effect/vitest";
 
 const { extractErrorData, hasTaggedErrorShape } = await import("./extract.js");
 
+const TEST_VALUE = "1000000000000000000";
+
 describe("errors/extract", () => {
   it("hasTaggedErrorShape() accepts a minimal tagged error shape", () => {
     expect(hasTaggedErrorShape({ _tag: "Foo", message: "bar" })).toBe(true);
@@ -16,7 +18,7 @@ describe("errors/extract", () => {
     expect(hasTaggedErrorShape({ _tag: "Foo", message: 123 })).toBe(false);
   });
 
-  it("extractErrorData() preserves tagged error details", () => {
+  it("extractErrorData() preserves value for direct tagged errors", () => {
     const tagged = {
       _tag: "Reverted",
       address: "0xabc",
@@ -25,6 +27,7 @@ describe("errors/extract", () => {
       functionName: "transfer",
       message: "execution reverted",
       sender: "0xdef",
+      value: TEST_VALUE,
     };
 
     expect(extractErrorData(tagged)).toEqual({
@@ -35,6 +38,7 @@ describe("errors/extract", () => {
         functionName: "transfer",
         sender: "0xdef",
         tag: "Reverted",
+        value: TEST_VALUE,
       },
       message: "execution reverted",
     });
@@ -44,7 +48,7 @@ describe("errors/extract", () => {
     expect(extractErrorData(new Error("boom"))).toBe("boom");
   });
 
-  it("extractErrorData() parses serialized tagged errors from Error.message", () => {
+  it("extractErrorData() preserves value for serialized tagged errors", () => {
     const serialized = new Error(
       JSON.stringify({
         _tag: "ContractWriteError",
@@ -54,6 +58,7 @@ describe("errors/extract", () => {
         functionName: "transfer",
         message: "execution reverted",
         sender: "0xdef",
+        value: TEST_VALUE,
       })
     );
 
@@ -65,6 +70,7 @@ describe("errors/extract", () => {
         functionName: "transfer",
         sender: "0xdef",
         tag: "ContractWriteError",
+        value: TEST_VALUE,
       },
       message: "execution reverted",
     });

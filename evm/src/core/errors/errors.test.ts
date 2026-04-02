@@ -18,6 +18,8 @@ import {
   WalletNotConnectedError,
 } from "#src/core/index.js";
 
+const TEST_VALUE = "1000000000000000000";
+
 describe("ClientNotFoundError", () => {
   it("has correct _tag", () => {
     const error = new ClientNotFoundError({
@@ -158,7 +160,7 @@ describe("SimulationFailedError", () => {
     expect(error._tag).toBe("SimulationFailedError");
   });
 
-  it("stores address, functionName, message, and optional revertData", () => {
+  it("stores address, functionName, message, optional revertData, and value", () => {
     const error = new SimulationFailedError({
       address: "0x1234",
       customErrorName: "InsufficientAllowance",
@@ -167,6 +169,7 @@ describe("SimulationFailedError", () => {
       phase: "simulate",
       revertData: "0xabcd",
       revertReason: "insufficient allowance",
+      value: TEST_VALUE,
     });
     expect(error.address).toBe("0x1234");
     expect(error.customErrorName).toBe("InsufficientAllowance");
@@ -175,6 +178,7 @@ describe("SimulationFailedError", () => {
     expect(error.phase).toBe("simulate");
     expect(error.revertData).toBe("0xabcd");
     expect(error.revertReason).toBe("insufficient allowance");
+    expect(error.value).toBe(TEST_VALUE);
   });
 
   it.effect("can be caught with catchTag", () =>
@@ -204,7 +208,7 @@ describe("GasEstimationError", () => {
     expect(error._tag).toBe("GasEstimationError");
   });
 
-  it("stores address, functionName, message, and optional cause", () => {
+  it("stores address, functionName, message, optional cause, and value", () => {
     const cause = new Error("Estimation error");
     const error = new GasEstimationError({
       address: "0x1234",
@@ -215,6 +219,7 @@ describe("GasEstimationError", () => {
       phase: "estimate",
       revertData: "0xdeadbeef",
       revertReason: "withdraw window closed",
+      value: TEST_VALUE,
     });
     expect(error.address).toBe("0x1234");
     expect(error.customErrorName).toBe("WithdrawWindowClosed");
@@ -224,6 +229,7 @@ describe("GasEstimationError", () => {
     expect(error.revertData).toBe("0xdeadbeef");
     expect(error.revertReason).toBe("withdraw window closed");
     expect(error.cause).toBe(cause);
+    expect(error.value).toBe(TEST_VALUE);
   });
 
   it.effect("can be caught with catchTag", () =>
@@ -252,18 +258,20 @@ describe("ContractWriteError", () => {
     expect(error._tag).toBe("ContractWriteError");
   });
 
-  it("stores address, functionName, message, and optional cause", () => {
+  it("stores address, functionName, message, optional cause, and value", () => {
     const cause = new Error("Write error");
     const error = new ContractWriteError({
       address: "0x1234",
       cause,
       functionName: "transfer",
       message: "Write failed",
+      value: TEST_VALUE,
     });
     expect(error.address).toBe("0x1234");
     expect(error.functionName).toBe("transfer");
     expect(error.message).toBe("Write failed");
     expect(error.cause).toBe(cause);
+    expect(error.value).toBe(TEST_VALUE);
   });
 
   it.effect("can be caught with catchTag", () =>

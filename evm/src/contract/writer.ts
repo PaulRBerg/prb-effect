@@ -67,6 +67,20 @@ const tryEncodeCalldata = <
   }
 };
 
+const txErrorContextFromWriteParams = <
+  TAbi extends Abi,
+  TFunctionName extends ContractFunctionName<TAbi, "nonpayable" | "payable">,
+>(
+  params: WriteParams<TAbi, TFunctionName>,
+  calldata: string | undefined
+) => ({
+  address: params.address,
+  calldata,
+  functionName: params.functionName as string,
+  sender: params.account,
+  value: params.value?.toString(),
+});
+
 /**
  * Service for writing to smart contracts
  */
@@ -149,12 +163,10 @@ export const ContractWriterLive = Layer.effect(
         return yield* Effect.tryPromise({
           catch: (cause) => {
             const calldata = tryEncodeCalldata(params);
-            return classifyGasEstimationError(cause, {
-              address: params.address,
-              calldata,
-              functionName: params.functionName as string,
-              sender: params.account,
-            });
+            return classifyGasEstimationError(
+              cause,
+              txErrorContextFromWriteParams(params, calldata)
+            );
           },
           try: () =>
             publicClient.estimateContractGas({
@@ -177,12 +189,7 @@ export const ContractWriterLive = Layer.effect(
         return yield* Effect.tryPromise({
           catch: (cause) => {
             const calldata = tryEncodeCalldata(params);
-            return classifyContractError(cause, {
-              address: params.address,
-              calldata,
-              functionName: params.functionName as string,
-              sender: params.account,
-            });
+            return classifyContractError(cause, txErrorContextFromWriteParams(params, calldata));
           },
           try: async () => {
             const result = await publicClient.simulateContract({
@@ -218,12 +225,7 @@ export const ContractWriterLive = Layer.effect(
         return yield* Effect.tryPromise({
           catch: (cause) => {
             const calldata = tryEncodeCalldata(params);
-            return classifyWriteError(cause, {
-              address: params.address,
-              calldata,
-              functionName: params.functionName as string,
-              sender: params.account,
-            });
+            return classifyWriteError(cause, txErrorContextFromWriteParams(params, calldata));
           },
           try: () =>
             walletClient.writeContract({

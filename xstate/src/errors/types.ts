@@ -10,6 +10,8 @@ export type ErrorDetails = {
   functionName?: string;
   /** Sender address (wallet that initiated the transaction) */
   sender?: string;
+  /** Transaction msg.value as a decimal string */
+  value?: string;
   /** Error tag/type identifier */
   tag?: string;
 };

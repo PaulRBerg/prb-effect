@@ -22,6 +22,7 @@ export class SimulationFailedError extends Schema.TaggedError<SimulationFailedEr
     revertData: Schema.optional(Schema.String),
     revertReason: Schema.optional(Schema.String),
     sender: Schema.optional(Schema.String),
+    value: Schema.optional(Schema.String),
   }
 ) {}
 
@@ -38,6 +39,7 @@ export class GasEstimationError extends Schema.TaggedError<GasEstimationError>()
     revertData: Schema.optional(Schema.String),
     revertReason: Schema.optional(Schema.String),
     sender: Schema.optional(Schema.String),
+    value: Schema.optional(Schema.String),
   }
 ) {}
 
@@ -50,6 +52,7 @@ export class ContractWriteError extends Schema.TaggedError<ContractWriteError>()
     functionName: Schema.String,
     message: Schema.String,
     sender: Schema.optional(Schema.String),
+    value: Schema.optional(Schema.String),
   }
 ) {}
 

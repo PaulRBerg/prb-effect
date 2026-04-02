@@ -10,6 +10,7 @@ type TaggedErrorShape = {
   calldata?: string;
   functionName?: string;
   sender?: string;
+  value?: string;
   cause?: unknown;
 };
 
@@ -36,6 +37,7 @@ function toTxError(error: TaggedErrorShape): TxError {
       functionName: error.functionName,
       sender: error.sender,
       tag: error._tag,
+      value: error.value,
     },
     message: error.message,
   };
@@ -58,7 +60,7 @@ function parseErrorMessage(message: string): TaggedErrorShape | null {
 /**
  * Extract structured error data from various error types.
  *
- * Preserves address, functionName, cause, and tag from Effect-TS tagged errors.
+ * Preserves address, functionName, cause, value, and tag from Effect-TS tagged errors.
  */
 export function extractErrorData(error: unknown, fallbackMessage = "Operation failed"): TxError {
   if (hasTaggedErrorShape(error)) {
