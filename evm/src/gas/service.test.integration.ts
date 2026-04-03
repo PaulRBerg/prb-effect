@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@effect/vitest";
 import { Cause, Effect, Exit } from "effect";
 import type { Address, Block } from "viem";
-import { mainnet } from "viem/chains";
+import { base, mainnet } from "viem/chains";
 import { MIN_TX_GAS } from "#src/constants/index.js";
 import { ClientNotFoundError } from "#src/core/index.js";
 import { GasPriceUnavailableError, GasService } from "#src/gas/index.js";
@@ -55,6 +55,13 @@ describe("GasService (Live)", () => {
         return Promise.resolve(DEFAULT_BLOCK);
       },
       getGasPrice: async () => 45000000000n,
+    },
+  });
+  const opStackLayer = makeEffectEvmTestLayer({
+    chainId: base.id,
+    publicClient: {
+      chain: base,
+      estimateL1Fee: async () => 987654321n,
     },
   });
 
@@ -169,6 +176,31 @@ describe("GasService (Live)", () => {
 
         expect(gas).toBe(MIN_TX_GAS);
       }).pipe(Effect.provide(eip1559Layer))
+    );
+  });
+
+  describe("OP Stack L1 fee estimation", () => {
+    it.effect("hasL1DataFee returns true for OP Stack chains", () =>
+      Effect.gen(function* () {
+        const service = yield* GasService;
+        const hasL1DataFee = yield* service.hasL1DataFee({
+          chainId: base.id,
+        });
+
+        expect(hasL1DataFee).toBe(true);
+      }).pipe(Effect.provide(opStackLayer))
+    );
+
+    it.effect("estimateL1Fee returns the mocked L1 data fee", () =>
+      Effect.gen(function* () {
+        const service = yield* GasService;
+        const l1Fee = yield* service.estimateL1Fee({
+          chainId: base.id,
+          to: "0x1234567890123456789012345678901234567890" as Address,
+        });
+
+        expect(l1Fee).toBe(987654321n);
+      }).pipe(Effect.provide(opStackLayer))
     );
   });
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "@effect/vitest";
 import { Effect, Exit, Layer } from "effect";
-import type { Block, Hash } from "viem";
+import type { Address, Block, Hash, Hex } from "viem";
+import { base } from "viem/chains";
 import { GasService, GasServiceLive } from "#src/gas/index.js";
 import type { MockPublicClientConfig } from "#src/testing-kit/index.js";
 import {
@@ -61,7 +62,41 @@ function makeLegacyLayer(gasPrice = DEFAULT_GAS_PRICE): Layer.Layer<GasService> 
   });
 }
 
+function makeOpStackLayer(
+  config: MockPublicClientConfig = {},
+  chainId = base.id
+): Layer.Layer<GasService> {
+  return Layer.provide(
+    GasServiceLive,
+    makeMockPublicClientLayer(
+      {
+        chain: base,
+        ...config,
+      },
+      chainId
+    )
+  );
+}
+
 describe("GasService", () => {
+  describe("hasL1DataFee", () => {
+    it.effect("returns true for OP Stack chains", () =>
+      Effect.gen(function* () {
+        const gasService = yield* GasService;
+        const result = yield* gasService.hasL1DataFee({ chainId: base.id });
+        expect(result).toBe(true);
+      }).pipe(Effect.provide(makeOpStackLayer()))
+    );
+
+    it.effect("returns false for non-OP Stack chains", () =>
+      Effect.gen(function* () {
+        const gasService = yield* GasService;
+        const result = yield* gasService.hasL1DataFee({ chainId: TEST_CHAIN_ID });
+        expect(result).toBe(false);
+      }).pipe(Effect.provide(makeGasLayer()))
+    );
+  });
+
   describe("supportsEip1559", () => {
     it.effect("returns true when baseFeePerGas is present", () =>
       Effect.gen(function* () {
@@ -255,6 +290,95 @@ describe("GasService", () => {
                 return Promise.reject(new Error("Pending not supported"));
               };
             })(),
+          })
+        )
+      )
+    );
+  });
+
+  describe("estimateL1Fee", () => {
+    const TO = "0x1234567890123456789012345678901234567890" as Address;
+    const FROM = "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd" as Address;
+    const DATA = "0x1234" as Hex;
+
+    it.effect("uses the mock public client default L1 fee stub when not overridden", () =>
+      Effect.gen(function* () {
+        const gasService = yield* GasService;
+        const result = yield* gasService.estimateL1Fee({
+          chainId: base.id,
+          to: TO,
+        });
+
+        expect(result).toBe(0n);
+      }).pipe(Effect.provide(makeOpStackLayer()))
+    );
+
+    it.effect("returns the L1 data fee for OP Stack chains", () =>
+      Effect.gen(function* () {
+        const gasService = yield* GasService;
+        const result = yield* gasService.estimateL1Fee({
+          chainId: base.id,
+          data: DATA,
+          from: FROM,
+          to: TO,
+          value: 1n,
+        });
+
+        expect(result).toBe(123456789n);
+      }).pipe(
+        Effect.provide(
+          makeOpStackLayer({
+            estimateL1Fee: (params: unknown) => {
+              expect(params).toMatchObject({
+                account: FROM,
+                data: DATA,
+                to: TO,
+                value: 1n,
+              });
+              return Promise.resolve(123456789n);
+            },
+          })
+        )
+      )
+    );
+
+    it.effect("returns 0n for non-OP Stack chains without calling the L1 estimator", () =>
+      Effect.gen(function* () {
+        const gasService = yield* GasService;
+        const result = yield* gasService.estimateL1Fee({
+          chainId: TEST_CHAIN_ID,
+          to: TO,
+        });
+
+        expect(result).toBe(0n);
+      }).pipe(
+        Effect.provide(
+          makeGasLayer({
+            estimateL1Fee: () => Promise.reject(new Error("should not be called")),
+          })
+        )
+      )
+    );
+
+    it.effect("returns GasPriceUnavailableError when L1 fee estimation fails", () =>
+      Effect.gen(function* () {
+        const gasService = yield* GasService;
+        const exit = yield* gasService
+          .estimateL1Fee({
+            chainId: base.id,
+            to: TO,
+          })
+          .pipe(Effect.exit);
+
+        expect(Exit.isFailure(exit)).toBe(true);
+        if (Exit.isFailure(exit) && exit.cause._tag === "Fail") {
+          expect(exit.cause.error._tag).toBe("GasPriceUnavailableError");
+          expect(exit.cause.error.message).toContain("Failed to estimate L1 data fee");
+        }
+      }).pipe(
+        Effect.provide(
+          makeOpStackLayer({
+            estimateL1Fee: () => Promise.reject(new Error("RPC error")),
           })
         )
       )

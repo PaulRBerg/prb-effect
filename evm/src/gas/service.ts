@@ -4,7 +4,12 @@ import type { ClientNotFoundError } from "#src/core/errors/index.js";
 import { PublicClientService } from "#src/core/index.js";
 import { GasPriceUnavailableError } from "#src/gas/errors.js";
 import type { FeeEstimate, GasSpeed } from "#src/gas/estimator.js";
-import { getAllFeeEstimatesImpl, supportsEip1559Impl } from "#src/gas/estimator.js";
+import {
+  estimateL1FeeImpl,
+  getAllFeeEstimatesImpl,
+  hasL1DataFeeImpl,
+  supportsEip1559Impl,
+} from "#src/gas/estimator.js";
 import { SpanNames } from "#src/telemetry/index.js";
 
 export type GasServiceShape = {
@@ -35,6 +40,18 @@ export type GasServiceShape = {
     to: Address;
     value?: bigint;
   }) => Effect.Effect<bigint, GasPriceUnavailableError | ClientNotFoundError>;
+
+  readonly estimateL1Fee: (params: {
+    chainId: number;
+    data?: Hex;
+    from?: Address;
+    to: Address;
+    value?: bigint;
+  }) => Effect.Effect<bigint, GasPriceUnavailableError | ClientNotFoundError>;
+
+  readonly hasL1DataFee: (params: {
+    chainId: number;
+  }) => Effect.Effect<boolean, ClientNotFoundError>;
 
   readonly supportsEip1559: (params: {
     chainId: number;
@@ -89,6 +106,22 @@ export const GasServiceLive = Layer.effect(
           });
         }).pipe(
           Effect.withSpan(SpanNames.GAS_ESTIMATE_GAS, {
+            attributes: {
+              chainId: params.chainId,
+              to: params.to,
+            },
+          })
+        ),
+
+      estimateL1Fee: (params: {
+        chainId: number;
+        data?: Hex;
+        from?: Address;
+        to: Address;
+        value?: bigint;
+      }) =>
+        estimateL1FeeImpl(publicClientService, params.chainId, params).pipe(
+          Effect.withSpan(SpanNames.GAS_ESTIMATE_L1_FEE, {
             attributes: {
               chainId: params.chainId,
               to: params.to,
@@ -166,6 +199,15 @@ export const GasServiceLive = Layer.effect(
           });
         }).pipe(
           Effect.withSpan(SpanNames.GAS_GET_MAX_PRIORITY_FEE, {
+            attributes: {
+              chainId: params.chainId,
+            },
+          })
+        ),
+
+      hasL1DataFee: (params: { chainId: number }) =>
+        hasL1DataFeeImpl(publicClientService, params.chainId).pipe(
+          Effect.withSpan(SpanNames.GAS_HAS_L1_DATA_FEE, {
             attributes: {
               chainId: params.chainId,
             },

@@ -81,6 +81,16 @@ export type MockGasServiceConfig = {
     value?: bigint;
   }) => Effect.Effect<bigint, GasPriceUnavailableError | ClientNotFoundError>;
 
+  estimateL1Fee?: (params: {
+    chainId: number;
+    data?: Hex;
+    from?: Address;
+    to: Address;
+    value?: bigint;
+  }) => Effect.Effect<bigint, GasPriceUnavailableError | ClientNotFoundError>;
+
+  hasL1DataFee?: (params: { chainId: number }) => Effect.Effect<boolean, ClientNotFoundError>;
+
   supportsEip1559?: (params: {
     chainId: number;
   }) => Effect.Effect<boolean, GasPriceUnavailableError | ClientNotFoundError>;
@@ -89,9 +99,11 @@ export type MockGasServiceConfig = {
 const defaultConfig: Required<MockGasServiceConfig> = {
   estimateFees: () => Effect.succeed(DEFAULT_FEE_ESTIMATE),
   estimateGas: () => Effect.succeed(MIN_TX_GAS), // Standard transfer
+  estimateL1Fee: () => Effect.succeed(0n),
   getAllFeeEstimates: () => Effect.succeed(DEFAULT_ALL_FEE_ESTIMATES),
   getBaseFee: () => Effect.succeed(30000000000n), // 30 gwei
   getMaxPriorityFee: () => Effect.succeed(1500000000n), // 1.5 gwei
+  hasL1DataFee: () => Effect.succeed(false),
   supportsEip1559: () => Effect.succeed(true),
 };
 
@@ -128,8 +140,10 @@ export const makeMockGasServiceLayer = (
   makeMockServiceLayer(GasService, defaultConfig, config, (merged) => ({
     estimateFees: withChainIdCheck(supportedChainId, merged.estimateFees),
     estimateGas: withChainIdCheck(supportedChainId, merged.estimateGas),
+    estimateL1Fee: withChainIdCheck(supportedChainId, merged.estimateL1Fee),
     getAllFeeEstimates: withChainIdCheck(supportedChainId, merged.getAllFeeEstimates),
     getBaseFee: withChainIdCheck(supportedChainId, merged.getBaseFee),
     getMaxPriorityFee: withChainIdCheck(supportedChainId, merged.getMaxPriorityFee),
+    hasL1DataFee: withChainIdCheck(supportedChainId, merged.hasL1DataFee),
     supportsEip1559: withChainIdCheck(supportedChainId, merged.supportsEip1559),
   }));

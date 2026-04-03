@@ -4,6 +4,7 @@ import { constVoid as noop } from "effect/Function";
 import type {
   Address,
   Block,
+  Chain,
   Hash,
   Hex,
   TransactionReceipt,
@@ -62,6 +63,7 @@ export type MockPublicClientConfig = {
   getGasPrice?: () => Promise<bigint>;
   estimateMaxPriorityFeePerGas?: () => Promise<bigint>;
   estimateGas?: (params: unknown) => Promise<bigint>;
+  estimateL1Fee?: (params: unknown) => Promise<bigint>;
 
   // Bytecode methods
   getBytecode?: (params: { address: Address }) => Promise<Hex | null>;
@@ -72,6 +74,9 @@ export type MockPublicClientConfig = {
   getEnsAvatar?: (params: unknown) => Promise<string | null>;
   getEnsText?: (params: unknown) => Promise<string | null>;
   getEnsResolver?: (params: unknown) => Promise<Address | null>;
+
+  // Client shape
+  chain?: Chain;
 };
 
 const DEFAULT_ADDRESS = "0x1234567890123456789012345678901234567890" as Address;
@@ -163,7 +168,9 @@ export const makeMockPublicClientLayer = (
   const {
     estimateContractGas = async () => MIN_TX_GAS,
     estimateGas = async () => MIN_TX_GAS,
+    estimateL1Fee = () => Promise.resolve(0n),
     estimateMaxPriorityFeePerGas = async () => 1500000000n,
+    chain = { id: supportedChainId } as Chain,
     getBalance = async () => 1000000000000000000n,
     getBlock = async () => DEFAULT_BLOCK,
     getBlockNumber = async () => 1000n,
@@ -188,12 +195,21 @@ export const makeMockPublicClientLayer = (
     watchPendingTransactions = () => noop,
   } = config;
 
-  // Create mock PublicClient
   const mockPublicClient = {
-    chain: { id: supportedChainId },
+    chain,
     estimateContractGas,
     estimateGas,
     estimateMaxPriorityFeePerGas,
+    extend: <TExtended extends Record<string, unknown>>(
+      fn: (client: typeof mockPublicClient) => TExtended
+    ) => {
+      const extended = fn(mockPublicClient);
+      return {
+        ...mockPublicClient,
+        ...extended,
+        estimateL1Fee,
+      };
+    },
     getBalance,
     getBlock,
     getBlockNumber,

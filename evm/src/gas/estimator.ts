@@ -1,8 +1,10 @@
 import { Effect } from "effect";
-import type { PublicClient } from "viem";
+import type { Address, Hex, PublicClient } from "viem";
+import { publicActionsL2 } from "viem/op-stack";
 import type { ClientNotFoundError } from "#src/core/errors/index.js";
 import type { PublicClientServiceShape } from "#src/core/index.js";
 import { GasPriceUnavailableError } from "#src/gas/errors.js";
+import { isOpStackClient } from "#src/gas/op-stack.js";
 
 export type GasSpeed = "slow" | "standard" | "fast" | "instant";
 
@@ -89,6 +91,53 @@ function getLegacyFeeEstimates(
     };
 
     return estimates;
+  });
+}
+
+export function hasL1DataFeeImpl(
+  publicClientService: PublicClientServiceShape,
+  chainId: number
+): Effect.Effect<boolean, ClientNotFoundError> {
+  return Effect.gen(function* () {
+    const client = yield* publicClientService.get(chainId);
+    return isOpStackClient(client);
+  });
+}
+
+export function estimateL1FeeImpl(
+  publicClientService: PublicClientServiceShape,
+  chainId: number,
+  params: {
+    data?: Hex;
+    from?: Address;
+    to: Address;
+    value?: bigint;
+  }
+): Effect.Effect<bigint, GasPriceUnavailableError | ClientNotFoundError> {
+  return Effect.gen(function* () {
+    const client = yield* publicClientService.get(chainId);
+    if (!isOpStackClient(client)) {
+      return 0n;
+    }
+
+    const opClient = client.extend(publicActionsL2());
+    const request = {
+      ...(params.from ? { account: params.from } : {}),
+      ...(params.data !== undefined ? { data: params.data } : {}),
+      ...(params.value !== undefined ? { value: params.value } : {}),
+      chain: client.chain,
+      to: params.to,
+    } as Parameters<typeof opClient.estimateL1Fee>[0];
+
+    return yield* Effect.tryPromise({
+      catch: (cause) =>
+        new GasPriceUnavailableError({
+          cause,
+          chainId,
+          message: `Failed to estimate L1 data fee: ${String(cause)}`,
+        }),
+      try: () => opClient.estimateL1Fee(request),
+    });
   });
 }
 
