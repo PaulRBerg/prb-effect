@@ -70,14 +70,14 @@ alias rel := release
 # Run unit tests
 [group("tests")]
 @test-unit +args="":
-    na vitest {{ args }}
+    na vitest --exclude '**/*.test.integration.ts' {{ args }}
 alias t := test-unit
 alias tu := test-unit
 
 # Run integration tests
 [group("tests")]
 @test-integration +args="":
-    na vitest run '.integration.' {{ args }}
+    na vitest run --exclude '**/*.test.ts' {{ args }}
 alias ti := test-integration
 
 # ---------------------------------------------------------------------------- #

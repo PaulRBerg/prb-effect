@@ -14,8 +14,7 @@ export default mergeConfig(
       alias: { "#src": srcDir },
     },
     test: {
-      exclude: ["evm-safe/src/**/*.test.integration.ts"],
-      include: ["evm-safe/src/**/*.test.ts"],
+      include: ["evm-safe/src/**/*.test.ts", "evm-safe/src/**/*.test.integration.ts"],
       name: "evm-safe",
       retry: CI ? 3 : 0,
       root: rootDir,
