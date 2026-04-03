@@ -14,6 +14,8 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - uses: sablier-labs/devkit/actions/setup@v1
+        with:
+          save-cache: true
 
       - name: Run unit tests
         run: just ${{ inputs.package-name }}::test --run
