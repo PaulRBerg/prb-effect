@@ -21,7 +21,7 @@
     },
     "evm": {
       "name": "@prb/effect-evm",
-      "version": "2.1.1",
+      "version": "2.2.0",
       "devDependencies": {
         "@biomejs/biome": "catalog:dev",
         "@effect/platform": "catalog:effect",
@@ -187,7 +187,7 @@
     },
     "xstate": {
       "name": "@prb/effect-xstate",
-      "version": "3.0.0",
+      "version": "3.0.1",
       "devDependencies": {
         "@biomejs/biome": "catalog:dev",
         "@effect/vitest": "catalog:dev",
