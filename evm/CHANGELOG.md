@@ -17,7 +17,17 @@ The format is based on [Common Changelog](https://common-changelog.org/).
 [2.0.1]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm%402.0.1
 [2.1.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm%402.1.0
 [2.1.1]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm%402.1.1
+[2.2.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm%402.2.0
 [2.1.2]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm%402.1.2
+
+## [2.2.0] - 2026-04-03
+
+### Added
+
+- Add OP Stack L1 data fee estimation to `GasService` with `estimateL1Fee` and `hasL1DataFee` methods
+  ([`6802b92`](https://github.com/PaulRBerg/prb-effect/commit/6802b92))
+- Add `isOpStackClient` utility to detect OP Stack chains via `gasPriceOracle` contract presence
+  ([`6802b92`](https://github.com/PaulRBerg/prb-effect/commit/6802b92))
 
 ## [2.1.2] - 2026-04-02
 
