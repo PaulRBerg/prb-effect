@@ -76,7 +76,7 @@ describe("TxManager", () => {
       )
     );
 
-    it.effect("returns ReceiptTimeoutError when error message contains timeout", () =>
+    it.live("returns ReceiptTimeoutError when error message contains timeout", () =>
       Effect.gen(function* () {
         const manager = yield* TxManager;
         const exit = yield* manager
@@ -320,7 +320,7 @@ describe("TxManager", () => {
   });
 
   describe("makeTxManagerLive", () => {
-    it.effect("applies custom layer policy as base for waitForReceipt", () =>
+    it.live("applies custom layer policy as base for waitForReceipt", () =>
       Effect.gen(function* () {
         const manager = yield* TxManager;
 
