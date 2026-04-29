@@ -161,12 +161,16 @@ export const safeWriteAndTrack = Effect.fn("safeWriteAndTrack")(function* (
       });
     }
 
+    // Bound each per-iteration receipt fetch so we don't sit on the TxManager default while the
+    // relay is still pushing the tx on-chain. The outer poll loop continues retrying on transient
+    // failures via `retryable: true`.
+    const receiptTimeoutMs = 10_000;
     const waitResult = yield* waitForSafeMultisigTx(
       safeTxHash,
       (onchainHash) =>
         txManager
-          .waitForReceipt(resolvedChainId, onchainHash)
-          .pipe(Effect.mapError((cause) => toSafeMultisigTxLookupError(safeTxHash, cause, false))),
+          .waitForReceipt(resolvedChainId, onchainHash, receiptTimeoutMs)
+          .pipe(Effect.mapError((cause) => toSafeMultisigTxLookupError(safeTxHash, cause, true))),
       params.waitOptions
     );
 

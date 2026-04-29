@@ -81,55 +81,77 @@ function mapStatus(raw: string | undefined): SafeMultisigTxStatus {
   }
 }
 
+/**
+ * Convert a retryable Safe lookup error into an `Option.none` (so the poll loop continues),
+ * and re-fail on terminal lookup errors. Reused for both `getTx` and receipt fetches.
+ */
+function handleRetryablePoll<T>(context: string, attempt: number, safeTxHash: Hash) {
+  return (error: SafeMultisigTxLookupError) => {
+    if (error.retryable) {
+      return Effect.logWarning(context).pipe(
+        Effect.annotateLogs({ attempt, error: error.message, safeTxHash }),
+        Effect.as(Option.none<T>())
+      );
+    }
+    return Effect.fail(error);
+  };
+}
+
 function resolveTerminalWaitResult(
   queued: SafeMultisigTxInfo,
   safeTxHash: Hash,
   getReceipt: (hash: Hash) => Effect.Effect<TransactionReceipt, SafeMultisigTxLookupError>
 ): Effect.Effect<Option.Option<SafeMultisigWaitResult>, SafeMultisigTxLookupError> {
-  switch (queued.status) {
-    case "CANCELLED":
-      return Effect.succeed(
-        Option.some({
-          _tag: "cancelled" as const,
-          onchainHash: null,
-          safeTxHash,
-        } satisfies SafeMultisigWaitResult)
-      );
-    case "FAILED":
-      return Effect.succeed(
-        Option.some({
-          _tag: "failed" as const,
-          error: "Safe transaction failed",
-          onchainHash: null,
-          safeTxHash,
-        } satisfies SafeMultisigWaitResult)
-      );
-    case "SUCCESS": {
-      if (Option.isNone(queued.onchainHash)) {
-        return Effect.succeed(
-          Option.some({
+  // Cancelled before any on-chain hash is known — purely a Safe-side decision.
+  if (queued.status === "CANCELLED") {
+    return Effect.succeed(
+      Option.some({
+        _tag: "cancelled" as const,
+        onchainHash: null,
+        safeTxHash,
+      } satisfies SafeMultisigWaitResult)
+    );
+  }
+
+  // FAILED with no hash — Safe rejected before submission (rare).
+  if (queued.status === "FAILED" && Option.isNone(queued.onchainHash)) {
+    return Effect.succeed(
+      Option.some({
+        _tag: "failed" as const,
+        error: "Safe transaction failed",
+        onchainHash: null,
+        safeTxHash,
+      } satisfies SafeMultisigWaitResult)
+    );
+  }
+
+  // On-chain hash is the source of truth once present, regardless of indexer-lagged status.
+  // The Safe Transaction Service can lag the on-chain inclusion by minutes (especially on
+  // Arbitrum and for Gelato-relayed sponsored txs), so don't wait for `txStatus === SUCCESS`.
+  if (Option.isSome(queued.onchainHash)) {
+    const txHash = queued.onchainHash.value as Hash;
+    return getReceipt(txHash).pipe(
+      Effect.map((receipt) => {
+        if (receipt.status === "reverted") {
+          return Option.some({
             _tag: "failed" as const,
-            error: "Safe transaction succeeded but no on-chain hash available",
+            error: `Transaction ${txHash} reverted on-chain`,
             onchainHash: null,
             safeTxHash,
-          } satisfies SafeMultisigWaitResult)
-        );
-      }
-      const txHash = queued.onchainHash.value as Hash;
-      return getReceipt(txHash).pipe(
-        Effect.map((receipt) =>
-          Option.some({
-            _tag: "success" as const,
-            onchainHash: txHash,
-            receipt,
-            safeTxHash,
-          } satisfies SafeMultisigWaitResult)
-        )
-      );
-    }
-    default:
-      return Effect.succeed(Option.none());
+          } satisfies SafeMultisigWaitResult);
+        }
+        return Option.some({
+          _tag: "success" as const,
+          onchainHash: txHash,
+          receipt,
+          safeTxHash,
+        } satisfies SafeMultisigWaitResult);
+      })
+    );
   }
+
+  // No on-chain hash yet (AWAITING_*, PENDING, or SUCCESS without indexed hash) — keep polling.
+  return Effect.succeed(Option.none());
 }
 
 // ---------------------------------------------------------------------------
@@ -147,8 +169,16 @@ function resolveTerminalWaitResult(
  * On timeout this returns a "queued" result with `onchainHash: null` and the
  * original `safeTxHash` so callers can persist and resume tracking later.
  *
+ * Resolution is driven by `onchainHash` presence, not by the gateway's `txStatus`. The Safe
+ * Transaction Service can lag on-chain inclusion (notably on Arbitrum and for sponsored relays)
+ * but typically populates `txHash` earlier; we use the receipt itself to decide success vs.
+ * reverted.
+ *
  * @param safeTxHash  - The Safe transaction hash returned by `sendTxs`
- * @param getReceipt  - Caller-provided effect to fetch an on-chain receipt
+ * @param getReceipt  - Caller-provided effect to fetch an on-chain receipt. If the tx is not yet
+ *                      mined, the caller MUST surface that as a retryable
+ *                      `SafeMultisigTxLookupError` (`retryable: true`) so the poll loop keeps
+ *                      iterating. Non-retryable errors short-circuit the wait with a failure.
  * @param options     - Optional polling configuration
  */
 export const waitForSafeMultisigTx = Effect.fn("waitForSafeMultisigTx")(function* (
@@ -168,44 +198,48 @@ export const waitForSafeMultisigTx = Effect.fn("waitForSafeMultisigTx")(function
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     // --- Fetch tx status, classifying errors ---
-    const queuedResult = yield* safeApps.getTx(safeTxHash).pipe(
-      Effect.map(Option.some),
-      Effect.catchTag("SafeMultisigTxLookupError", (error) => {
-        if (error.retryable) {
-          return Effect.logWarning("Retryable error polling Safe tx").pipe(
-            Effect.annotateLogs({ attempt, error: error.message, safeTxHash }),
-            Effect.as(Option.none<SafeMultisigTxInfo>())
-          );
-        }
-        // Terminal lookup error — stop polling immediately
-        return Effect.fail(error);
-      })
-    );
+    const queuedResult = yield* safeApps
+      .getTx(safeTxHash)
+      .pipe(
+        Effect.map(Option.some),
+        Effect.catchTag(
+          "SafeMultisigTxLookupError",
+          handleRetryablePoll<SafeMultisigTxInfo>(
+            "Retryable error polling Safe tx",
+            attempt,
+            safeTxHash
+          )
+        )
+      );
 
-    if (Option.isNone(queuedResult)) {
-      if (attempt < maxAttempts - 1) {
-        yield* Effect.sleep(interval);
+    if (Option.isSome(queuedResult)) {
+      const queued = queuedResult.value;
+      lastInfo = queued;
+      yield* Effect.logDebug("Safe tx poll status").pipe(
+        Effect.annotateLogs({
+          attempt,
+          hash: Option.isSome(queued.onchainHash) ? queued.onchainHash.value : "pending",
+          safeTxHash,
+          status: queued.status,
+        })
+      );
+
+      const terminalResult = yield* resolveTerminalWaitResult(queued, safeTxHash, getReceipt).pipe(
+        Effect.catchTag(
+          "SafeMultisigTxLookupError",
+          handleRetryablePoll<SafeMultisigWaitResult>(
+            "Retryable error fetching receipt during Safe tx poll",
+            attempt,
+            safeTxHash
+          )
+        )
+      );
+      if (Option.isSome(terminalResult)) {
+        return terminalResult.value;
       }
-      continue;
     }
 
-    const queued = queuedResult.value;
-    lastInfo = queued;
-    yield* Effect.logDebug("Safe tx poll status").pipe(
-      Effect.annotateLogs({
-        attempt,
-        hash: Option.isSome(queued.onchainHash) ? queued.onchainHash.value : "pending",
-        safeTxHash,
-        status: queued.status,
-      })
-    );
-
-    const terminalResult = yield* resolveTerminalWaitResult(queued, safeTxHash, getReceipt);
-    if (Option.isSome(terminalResult)) {
-      return terminalResult.value;
-    }
-
-    // Still pending — keep polling
+    // Still pending (no info, retryable error, or non-terminal status) — sleep before next attempt.
     if (attempt < maxAttempts - 1) {
       yield* Effect.sleep(interval);
     }

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "@effect/vitest";
 import { Effect, Layer, Option } from "effect";
 import type { Hash, Hex, TransactionReceipt } from "viem";
+import { SafeMultisigTxLookupError } from "./errors.js";
 import type { SafeAppsServiceShape } from "./service.js";
 import { SafeAppsService } from "./service.js";
 import { waitForSafeMultisigTx } from "./tx-lifecycle.js";
@@ -16,6 +17,16 @@ const TEST_RECEIPT = {
   status: "success",
   transactionHash: TEST_ONCHAIN_HASH,
 } as unknown as TransactionReceipt;
+const TEST_REVERTED_RECEIPT = {
+  status: "reverted",
+  transactionHash: TEST_ONCHAIN_HASH,
+} as unknown as TransactionReceipt;
+
+// Shared wait options. `TIMEOUT_OPTIONS` makes the loop exit after one attempt so we can assert
+// the timeout branch without burning real wall-clock time in `it.effect` tests.
+const DEFAULT_OPTIONS = { interval: "1 second", maxWait: "1 minute" } as const;
+const TIMEOUT_OPTIONS = { interval: "1 second", maxWait: "1 second" } as const;
+const getReceiptOk = () => Effect.succeed(TEST_RECEIPT);
 
 function makeSafeAppsServiceLayer(
   getTx: (...args: Parameters<SafeAppsServiceShape["getTx"]>) => Effect.Effect<any, unknown>
@@ -41,14 +52,7 @@ function makeSafeAppsServiceLayer(
 describe("waitForSafeMultisigTx", () => {
   it.effect("returns onchainHash and safeTxHash when Safe tx executes", () =>
     Effect.gen(function* () {
-      const result = yield* waitForSafeMultisigTx(
-        TEST_SAFE_TX_HASH,
-        () => Effect.succeed(TEST_RECEIPT),
-        {
-          interval: "1 second",
-          maxWait: "1 minute",
-        }
-      );
+      const result = yield* waitForSafeMultisigTx(TEST_SAFE_TX_HASH, getReceiptOk, DEFAULT_OPTIONS);
 
       expect(result).toEqual({
         _tag: "success",
@@ -72,14 +76,7 @@ describe("waitForSafeMultisigTx", () => {
 
   it.effect("returns queued with null onchainHash on timeout", () =>
     Effect.gen(function* () {
-      const result = yield* waitForSafeMultisigTx(
-        TEST_SAFE_TX_HASH,
-        () => Effect.succeed(TEST_RECEIPT),
-        {
-          interval: "1 second",
-          maxWait: "1 second",
-        }
-      );
+      const result = yield* waitForSafeMultisigTx(TEST_SAFE_TX_HASH, getReceiptOk, TIMEOUT_OPTIONS);
 
       expect(result).toEqual({
         _tag: "queued",
@@ -105,14 +102,7 @@ describe("waitForSafeMultisigTx", () => {
 
   it.effect("returns queued awaiting execution progress on timeout", () =>
     Effect.gen(function* () {
-      const result = yield* waitForSafeMultisigTx(
-        TEST_SAFE_TX_HASH,
-        () => Effect.succeed(TEST_RECEIPT),
-        {
-          interval: "1 second",
-          maxWait: "1 second",
-        }
-      );
+      const result = yield* waitForSafeMultisigTx(TEST_SAFE_TX_HASH, getReceiptOk, TIMEOUT_OPTIONS);
 
       expect(result).toEqual({
         _tag: "queued",
@@ -138,14 +128,7 @@ describe("waitForSafeMultisigTx", () => {
 
   it.effect("returns cancelled with null onchainHash when Safe tx is cancelled", () =>
     Effect.gen(function* () {
-      const result = yield* waitForSafeMultisigTx(
-        TEST_SAFE_TX_HASH,
-        () => Effect.succeed(TEST_RECEIPT),
-        {
-          interval: "1 second",
-          maxWait: "1 minute",
-        }
-      );
+      const result = yield* waitForSafeMultisigTx(TEST_SAFE_TX_HASH, getReceiptOk, DEFAULT_OPTIONS);
 
       expect(result).toEqual({
         _tag: "cancelled",
@@ -165,4 +148,181 @@ describe("waitForSafeMultisigTx", () => {
       )
     )
   );
+
+  it.effect("resolves success when onchainHash present even if status is AWAITING_EXECUTION", () =>
+    Effect.gen(function* () {
+      const result = yield* waitForSafeMultisigTx(TEST_SAFE_TX_HASH, getReceiptOk, DEFAULT_OPTIONS);
+
+      expect(result).toEqual({
+        _tag: "success",
+        onchainHash: TEST_ONCHAIN_HASH,
+        receipt: TEST_RECEIPT,
+        safeTxHash: TEST_SAFE_TX_HASH,
+      });
+    }).pipe(
+      Effect.provide(
+        makeSafeAppsServiceLayer(() =>
+          Effect.succeed({
+            confirmations: 2,
+            confirmationsRequired: 2,
+            onchainHash: Option.some(TEST_ONCHAIN_HASH),
+            status: "AWAITING_EXECUTION",
+          })
+        )
+      )
+    )
+  );
+
+  it.effect("resolves success when onchainHash present even if status is PENDING", () =>
+    Effect.gen(function* () {
+      const result = yield* waitForSafeMultisigTx(TEST_SAFE_TX_HASH, getReceiptOk, DEFAULT_OPTIONS);
+
+      expect(result).toEqual({
+        _tag: "success",
+        onchainHash: TEST_ONCHAIN_HASH,
+        receipt: TEST_RECEIPT,
+        safeTxHash: TEST_SAFE_TX_HASH,
+      });
+    }).pipe(
+      Effect.provide(
+        makeSafeAppsServiceLayer(() =>
+          Effect.succeed({
+            confirmations: 2,
+            confirmationsRequired: 2,
+            onchainHash: Option.some(TEST_ONCHAIN_HASH),
+            status: "PENDING",
+          })
+        )
+      )
+    )
+  );
+
+  it.effect("resolves failed when receipt status is reverted", () =>
+    Effect.gen(function* () {
+      const result = yield* waitForSafeMultisigTx(
+        TEST_SAFE_TX_HASH,
+        () => Effect.succeed(TEST_REVERTED_RECEIPT),
+        DEFAULT_OPTIONS
+      );
+
+      expect(result).toEqual({
+        _tag: "failed",
+        error: `Transaction ${TEST_ONCHAIN_HASH} reverted on-chain`,
+        onchainHash: null,
+        safeTxHash: TEST_SAFE_TX_HASH,
+      });
+    }).pipe(
+      Effect.provide(
+        makeSafeAppsServiceLayer(() =>
+          Effect.succeed({
+            confirmations: 2,
+            confirmationsRequired: 2,
+            onchainHash: Option.some(TEST_ONCHAIN_HASH),
+            status: "SUCCESS",
+          })
+        )
+      )
+    )
+  );
+
+  it.live("keeps polling when status SUCCESS but onchainHash is None, then resolves", () => {
+    let attempt = 0;
+    const layer = makeSafeAppsServiceLayer(() =>
+      Effect.sync(() => {
+        attempt += 1;
+        return attempt === 1
+          ? {
+              confirmations: 2,
+              confirmationsRequired: 2,
+              onchainHash: Option.none(),
+              status: "SUCCESS",
+            }
+          : {
+              confirmations: 2,
+              confirmationsRequired: 2,
+              onchainHash: Option.some(TEST_ONCHAIN_HASH),
+              status: "SUCCESS",
+            };
+      })
+    );
+
+    return Effect.gen(function* () {
+      const result = yield* waitForSafeMultisigTx(TEST_SAFE_TX_HASH, getReceiptOk, DEFAULT_OPTIONS);
+
+      expect(result).toEqual({
+        _tag: "success",
+        onchainHash: TEST_ONCHAIN_HASH,
+        receipt: TEST_RECEIPT,
+        safeTxHash: TEST_SAFE_TX_HASH,
+      });
+      expect(attempt).toBeGreaterThanOrEqual(2);
+    }).pipe(Effect.provide(layer));
+  });
+
+  it.effect("returns failed when status is FAILED with no onchainHash", () =>
+    Effect.gen(function* () {
+      const result = yield* waitForSafeMultisigTx(TEST_SAFE_TX_HASH, getReceiptOk, DEFAULT_OPTIONS);
+
+      expect(result).toEqual({
+        _tag: "failed",
+        error: "Safe transaction failed",
+        onchainHash: null,
+        safeTxHash: TEST_SAFE_TX_HASH,
+      });
+    }).pipe(
+      Effect.provide(
+        makeSafeAppsServiceLayer(() =>
+          Effect.succeed({
+            confirmations: 1,
+            confirmationsRequired: 2,
+            onchainHash: Option.none(),
+            status: "FAILED",
+          })
+        )
+      )
+    )
+  );
+
+  it.live("retries getReceipt when it errors with retryable=true, then resolves success", () => {
+    let receiptAttempts = 0;
+    return Effect.gen(function* () {
+      const result = yield* waitForSafeMultisigTx(
+        TEST_SAFE_TX_HASH,
+        () =>
+          Effect.suspend(() => {
+            receiptAttempts += 1;
+            if (receiptAttempts === 1) {
+              return Effect.fail(
+                new SafeMultisigTxLookupError({
+                  message: "receipt not yet available",
+                  retryable: true,
+                  safeTxHash: TEST_SAFE_TX_HASH,
+                })
+              );
+            }
+            return Effect.succeed(TEST_RECEIPT);
+          }),
+        DEFAULT_OPTIONS
+      );
+
+      expect(result).toEqual({
+        _tag: "success",
+        onchainHash: TEST_ONCHAIN_HASH,
+        receipt: TEST_RECEIPT,
+        safeTxHash: TEST_SAFE_TX_HASH,
+      });
+      expect(receiptAttempts).toBeGreaterThanOrEqual(2);
+    }).pipe(
+      Effect.provide(
+        makeSafeAppsServiceLayer(() =>
+          Effect.succeed({
+            confirmations: 2,
+            confirmationsRequired: 2,
+            onchainHash: Option.some(TEST_ONCHAIN_HASH),
+            status: "AWAITING_EXECUTION",
+          })
+        )
+      )
+    );
+  });
 });
