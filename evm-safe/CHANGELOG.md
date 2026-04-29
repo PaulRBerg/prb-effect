@@ -14,6 +14,21 @@ The format is based on [Common Changelog](https://common-changelog.org/).
 [2.1.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm-safe%402.1.0
 [3.0.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm-safe%403.0.0
 [3.0.1]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm-safe%403.0.1
+[3.0.2]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm-safe%403.0.2
+
+## [3.0.2] - 2026-04-29
+
+### Changed
+
+- Resolve `waitForSafeMultisigTx` from on-chain hash presence and receipt status instead of waiting for the Safe
+  Transaction Service `txStatus === SUCCESS`, which can lag inclusion by minutes on Arbitrum and for sponsored relays
+  ([`5dd718d`](https://github.com/PaulRBerg/prb-effect/commit/5dd718d))
+- Mark `safeWriteAndTrack` receipt fetch errors as retryable and bound each per-iteration fetch with a 10s timeout so
+  the poll loop continues while the relay finishes pushing the tx on-chain
+
+### Fixed
+
+- Continue polling on retryable `getReceipt` errors instead of short-circuiting the wait
 
 ## [3.0.1] - 2026-02-25
 
