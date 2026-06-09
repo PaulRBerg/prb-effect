@@ -1,6 +1,6 @@
 import "server-only";
 
-import { OtlpMetrics, OtlpTracer } from "@effect/opentelemetry";
+import { OtlpMetrics, OtlpSerialization, OtlpTracer } from "@effect/opentelemetry";
 import { FetchHttpClient } from "@effect/platform";
 import type * as Headers from "@effect/platform/Headers";
 import type * as HttpClient from "@effect/platform/HttpClient";
@@ -38,6 +38,11 @@ export type OtelLayerOptions = {
   readonly provideHttpClient?: boolean;
 };
 
+type RawOtelLayer = Layer.Layer<
+  never,
+  never,
+  HttpClient.HttpClient | OtlpSerialization.OtlpSerialization
+>;
 type OtelLayer = Layer.Layer<never, never, HttpClient.HttpClient>;
 
 /**
@@ -56,7 +61,7 @@ export function createOtelLayer(options: OtelLayerOptions) {
 
   const resource = options.resource;
 
-  const tracesLayer: OtelLayer = options.traces
+  const tracesLayer: RawOtelLayer = options.traces
     ? OtlpTracer.layer({
         exportInterval: options.traces.exportInterval,
         headers: options.traces.headers,
@@ -65,9 +70,9 @@ export function createOtelLayer(options: OtelLayerOptions) {
         shutdownTimeout: options.traces.shutdownTimeout,
         url: options.traces.url,
       })
-    : (Layer.empty as OtelLayer);
+    : Layer.empty;
 
-  const metricsLayer: OtelLayer = options.metrics
+  const metricsLayer: RawOtelLayer = options.metrics
     ? OtlpMetrics.layer({
         exportInterval: options.metrics.exportInterval,
         headers: options.metrics.headers,
@@ -75,9 +80,11 @@ export function createOtelLayer(options: OtelLayerOptions) {
         shutdownTimeout: options.metrics.shutdownTimeout,
         url: options.metrics.url,
       })
-    : (Layer.empty as OtelLayer);
+    : Layer.empty;
 
-  const merged: OtelLayer = Layer.mergeAll(tracesLayer, metricsLayer);
+  const merged: OtelLayer = Layer.mergeAll(tracesLayer, metricsLayer).pipe(
+    Layer.provide(OtlpSerialization.layerJson)
+  );
   if (options.provideHttpClient === false) {
     return merged;
   }

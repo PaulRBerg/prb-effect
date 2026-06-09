@@ -26,7 +26,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:dev",
-    "@effect/opentelemetry": "^0.60.0",
+    "@effect/opentelemetry": "^0.63.0",
     "@effect/platform": "catalog:effect",
     "@effect/vitest": "catalog:dev",
     "@sablier/devkit": "catalog:dev",
@@ -71,7 +71,7 @@
     "typescript"
   ],
   "peerDependencies": {
-    "@effect/opentelemetry": "^0.60.0",
+    "@effect/opentelemetry": "^0.63.0",
     "@effect/platform": "catalog:peers",
     "effect": "catalog:peers",
     "next": "catalog:peers",
