@@ -21,7 +21,7 @@
     },
     "evm": {
       "name": "@prb/effect-evm",
-      "version": "2.2.0",
+      "version": "2.2.1",
       "devDependencies": {
         "@biomejs/biome": "catalog:dev",
         "@effect/platform": "catalog:effect",
@@ -58,7 +58,7 @@
     },
     "evm-safe": {
       "name": "@prb/effect-evm-safe",
-      "version": "3.0.2",
+      "version": "3.0.3",
       "devDependencies": {
         "@biomejs/biome": "catalog:dev",
         "@effect/platform": "catalog:effect",
@@ -101,7 +101,7 @@
     },
     "next": {
       "name": "@prb/effect-next",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "devDependencies": {
         "@biomejs/biome": "catalog:dev",
         "@effect/opentelemetry": "^0.63.0",
@@ -138,7 +138,7 @@
     },
     "solana": {
       "name": "@prb/effect-solana",
-      "version": "1.0.0-beta.5",
+      "version": "1.0.0-beta.6",
       "dependencies": {
         "bn.js": "^5.2.1",
         "buffer": "^6.0.3",
@@ -187,7 +187,7 @@
     },
     "xstate": {
       "name": "@prb/effect-xstate",
-      "version": "3.0.1",
+      "version": "3.0.2",
       "devDependencies": {
         "@biomejs/biome": "catalog:dev",
         "@effect/vitest": "catalog:dev",

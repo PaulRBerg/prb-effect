@@ -7,6 +7,14 @@ The format is based on [Common Changelog](https://common-changelog.org/).
 [1.0.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/next%401.0.0
 [1.0.1]: https://github.com/PaulRBerg/prb-effect/releases/tag/next%401.0.1
 [1.1.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/next%401.1.0
+[1.1.1]: https://github.com/PaulRBerg/prb-effect/releases/tag/next%401.1.1
+
+## [1.1.1] - 2026-06-09
+
+### Changed
+
+- Bump Effect telemetry peer dependency baseline to `@effect/opentelemetry@^0.63.0` and preserve OTLP JSON serialization
+  ([`671511d`](https://github.com/PaulRBerg/prb-effect/commit/671511d))
 
 ## [1.1.0] - 2026-02-13
 

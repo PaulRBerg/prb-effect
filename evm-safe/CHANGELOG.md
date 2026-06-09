@@ -15,6 +15,14 @@ The format is based on [Common Changelog](https://common-changelog.org/).
 [3.0.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm-safe%403.0.0
 [3.0.1]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm-safe%403.0.1
 [3.0.2]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm-safe%403.0.2
+[3.0.3]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm-safe%403.0.3
+
+## [3.0.3] - 2026-06-09
+
+### Changed
+
+- Bump Effect peer dependency baseline to `effect@^3.21.3` and `@effect/platform@^0.96.1`
+  ([`671511d`](https://github.com/PaulRBerg/prb-effect/commit/671511d))
 
 ## [3.0.2] - 2026-04-29
 
