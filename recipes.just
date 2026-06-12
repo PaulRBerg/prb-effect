@@ -54,11 +54,11 @@ alias tui := test-ui
 # Run unit tests (excludes integration tests)
 [group("tests")]
 @test-unit *args:
-    na vitest run --exclude '**/*.integration.test.ts' {{ args }}
+    na vitest run --exclude '**/*.test.integration.ts' {{ args }}
 alias tu := test-unit
 
-# Run integration tests only
+# Run integration tests only, with env vars decrypted from the root .env via dotenvx
 [group("tests")]
 @test-integration *args:
-    na vitest run '.integration.' {{ args }}
+    na dotenvx run -f ../.env --quiet -- na vitest run '.integration.' {{ args }}
 alias ti := test-integration

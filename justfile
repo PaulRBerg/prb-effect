@@ -74,10 +74,10 @@ alias rel := release
 alias t := test-unit
 alias tu := test-unit
 
-# Run integration tests
+# Run integration tests with env vars decrypted from .env via dotenvx
 [group("tests")]
 @test-integration +args="":
-    na vitest run --exclude '**/*.test.ts' {{ args }}
+    na dotenvx run --quiet -- na vitest run --exclude '**/*.test.ts' {{ args }}
 alias ti := test-integration
 
 # ---------------------------------------------------------------------------- #

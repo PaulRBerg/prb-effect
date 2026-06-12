@@ -6,6 +6,8 @@ node_modules/
 
 # files
 *.env
+!.env
+.env.keys
 *.log
 *.tgz
 *.tsbuildinfo

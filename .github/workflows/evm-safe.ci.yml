@@ -1,7 +1,7 @@
-name: solana > CI
+name: evm-safe > CI
 
 on:
-  push: &solana_filters
+  push: &evm_safe_filters
     branches: [main]
     paths:
       # == Workspace configs ==
@@ -14,10 +14,11 @@ on:
       - package.json
       - tsconfig.json
       # == Package-specific ==
-      - "solana/**"
+      - "evm/**" # workspace dependency, built before tests
+      - "evm-safe/**"
       - "**/_base.ci.yml"
-      - "**/solana.*.yml"
-  pull_request: *solana_filters
+      - "**/evm-safe.*.yml"
+  pull_request: *evm_safe_filters
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -27,4 +28,7 @@ jobs:
   ci:
     uses: ./.github/workflows/_base.ci.yml
     with:
-      package-name: solana
+      package-name: evm_safe
+      setup-command: just build evm
+    secrets:
+      ROUTEMESH_API_KEY: ${{ secrets.ROUTEMESH_API_KEY }}

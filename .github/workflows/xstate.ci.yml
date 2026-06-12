@@ -15,6 +15,7 @@ on:
       - tsconfig.json
       # == Package-specific ==
       - "xstate/**"
+      - "**/_base.ci.yml"
       - "**/xstate.*.yml"
   pull_request: *xstate_filters
 

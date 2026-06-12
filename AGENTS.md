@@ -60,6 +60,28 @@ just solana::build       # Build @prb/effect-solana
 just xstate::build       # Build @prb/effect-xstate
 ```
 
+## Environment Variables (dotenvx)
+
+Secrets are managed with [dotenvx](https://dotenvx.com) (`@dotenvx/dotenvx`, root devDependency):
+
+- **`.env`** — encrypted values + `DOTENV_PUBLIC_KEY`. Safe to commit; committed.
+- **`.env.keys`** — `DOTENV_PRIVATE_KEY` used for decryption. Gitignored; NEVER commit it.
+
+Rules:
+
+- Integration tests (`just ti`) run through `dotenvx run`, which decrypts `.env` at runtime. Do not pass secrets via
+  shell exports or plaintext env files.
+- Add or update a secret with `na dotenvx set KEY value` (encrypts in place). Never write plaintext values into `.env`
+  directly.
+- Without `.env.keys`, dotenvx logs a `MISSING_PRIVATE_KEY` error and injects the literal `encrypted:...` string instead
+  of the decrypted value. Code reading these vars must treat `encrypted:`-prefixed values as absent and degrade
+  gracefully (see `evm-safe/src/safe/detection.test.integration.ts`).
+- Current keys: `ROUTEMESH_API_KEY` — RouteMesh RPC load balancer (`https://lb.routeme.sh/rpc/CHAIN_ID/API_KEY`), used
+  as the primary RPC in integration tests.
+- CI does not use dotenvx: GitHub Actions injects `ROUTEMESH_API_KEY` from the repository secret of the same name (see
+  `.github/workflows/_base.ci.yml`). dotenvx never overrides pre-set env vars, so a value from the shell or CI always
+  wins over `.env`.
+
 ## Code Standards
 
 ### Naming Conventions

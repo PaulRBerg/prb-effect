@@ -7,6 +7,15 @@ on:
         description: Name of the package
         required: true
         type: string
+      setup-command:
+        description: Optional command to run before tests (e.g., build a workspace dependency)
+        required: false
+        type: string
+        default: ""
+    secrets:
+      ROUTEMESH_API_KEY:
+        description: RouteMesh RPC API key used by integration tests (optional)
+        required: false
 
 jobs:
   ci:
@@ -17,8 +26,14 @@ jobs:
         with:
           save-cache: true
 
-      - name: Run unit tests
+      - name: Run setup command
+        if: inputs.setup-command != ''
+        run: ${{ inputs.setup-command }}
+
+      - name: Run tests
         run: just ${{ inputs.package-name }}::test --run
+        env:
+          ROUTEMESH_API_KEY: ${{ secrets.ROUTEMESH_API_KEY }}
 
       - name: Add summary
         run: |
