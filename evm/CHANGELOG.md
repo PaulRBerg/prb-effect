@@ -20,6 +20,32 @@ The format is based on [Common Changelog](https://common-changelog.org/).
 [2.2.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm%402.2.0
 [2.1.2]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm%402.1.2
 [2.2.1]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm%402.2.1
+[2.2.2]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm%402.2.2
+
+## [2.2.2] - 2026-06-12
+
+### Changed
+
+- Resolve the write-execution adapter from call-time context so it can be provided anywhere in the final layer
+  composition, with no ordering requirement relative to `ContractPipelineLive`
+  ([`a661cd8`](https://github.com/PaulRBerg/prb-effect/commit/a661cd8))
+
+### Fixed
+
+- Scope nonce reservation to each write so a user rejection frees the nonce immediately, and re-confirm the nonce on
+  revert ([`a661cd8`](https://github.com/PaulRBerg/prb-effect/commit/a661cd8))
+- Surface event-stream and backfill RPC failures as typed `EventWatchError`s instead of silent defects or stuck fibers
+  ([`a661cd8`](https://github.com/PaulRBerg/prb-effect/commit/a661cd8))
+- Fix cursor resume and sync gaps, and the local-storage cursor-store delete/flush race
+  ([`a661cd8`](https://github.com/PaulRBerg/prb-effect/commit/a661cd8))
+- Re-arm the RPC circuit breaker after the reset window, stop counting reverts toward the failure threshold, and drop
+  unhandled deduplication rejections ([`a661cd8`](https://github.com/PaulRBerg/prb-effect/commit/a661cd8))
+- Retry `track()` receipt fetches, and report `confirmations: 0` while a tracked transaction is still pending
+  ([`a661cd8`](https://github.com/PaulRBerg/prb-effect/commit/a661cd8))
+- Fix `toWei` scaling, basis-point rounding, and `formatGas` precision
+  ([`a661cd8`](https://github.com/PaulRBerg/prb-effect/commit/a661cd8))
+- Re-prompt the zero-first ERC-20 allowance flow after a user rejection
+  ([`a661cd8`](https://github.com/PaulRBerg/prb-effect/commit/a661cd8))
 
 ## [2.2.1] - 2026-06-09
 
