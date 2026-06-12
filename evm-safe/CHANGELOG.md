@@ -16,6 +16,23 @@ The format is based on [Common Changelog](https://common-changelog.org/).
 [3.0.1]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm-safe%403.0.1
 [3.0.2]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm-safe%403.0.2
 [3.0.3]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm-safe%403.0.3
+[3.0.4]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm-safe%403.0.4
+
+## [3.0.4] - 2026-06-12
+
+### Changed
+
+- Surface Safe poll progress and deduplication states through the `safeWriteAndTrack` lifecycle, and decode receipt
+  event logs ([`a661cd8`](https://github.com/PaulRBerg/prb-effect/commit/a661cd8))
+
+### Fixed
+
+- Guarantee at least one poll when `maxWait` is shorter than the poll interval
+  ([`a661cd8`](https://github.com/PaulRBerg/prb-effect/commit/a661cd8))
+- Carry the on-chain transaction hash through to the result on revert
+  ([`a661cd8`](https://github.com/PaulRBerg/prb-effect/commit/a661cd8))
+- Cache only a successfully loaded Safe Apps SDK, and fail fast / time out SDK calls made outside a Safe host
+  ([`a661cd8`](https://github.com/PaulRBerg/prb-effect/commit/a661cd8))
 
 ## [3.0.3] - 2026-06-09
 

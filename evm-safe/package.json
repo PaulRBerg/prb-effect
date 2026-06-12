@@ -6,7 +6,7 @@
   "sideEffects": false,
   "type": "module",
   "types": "./dist/index.d.ts",
-  "version": "3.0.3",
+  "version": "3.0.4",
   "scripts": {
     "build": "just build",
     "prepack": "bun install --frozen-lockfile && just build"
