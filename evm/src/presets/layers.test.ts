@@ -1,6 +1,7 @@
-import { describe, expect, it } from "@effect/vitest";
+import { afterEach, describe, expect, it, vi } from "@effect/vitest";
 import { Effect, Exit, Layer } from "effect";
 import type { Transport } from "viem";
+import { HttpRequestError, RpcRequestError } from "viem";
 import { mainnet, sepolia } from "viem/chains";
 import { BalanceService } from "#src/balance/index.js";
 import { BlockService } from "#src/block/index.js";
@@ -209,6 +210,191 @@ describe("Preset Layers", () => {
           ])
         )
       );
+    });
+  });
+
+  describe("rpcMiddleware transport (A5)", () => {
+    type RequestFn = (req: { method: string; params?: unknown }) => Promise<unknown>;
+
+    /** Build a minimal viem-shaped transport from a request implementation. */
+    const makeTransport = (request: RequestFn): Transport =>
+      (() => {
+        const fn = request as unknown;
+        return {
+          config: { key: "test", name: "test", request: fn, type: "custom" },
+          request: fn,
+        };
+      }) as unknown as Transport;
+
+    /** Resolve the wrapped client.request for a given chain config. */
+    const getRequest = (config: Parameters<typeof makePublicClientLayer>[0][number]) =>
+      Effect.runPromise(
+        Effect.gen(function* () {
+          const service = yield* PublicClientService;
+          const client = yield* service.get(config.chainId);
+          return client.request as RequestFn;
+        }).pipe(Effect.provide(makePublicClientLayer([config])))
+      );
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it("re-opens the breaker after the reset window elapses (re-stamps openedAtMs)", async () => {
+      let nowMs = 1_000_000;
+      vi.spyOn(Date, "now").mockImplementation(() => nowMs);
+
+      let calls = 0;
+      const request = getRequest({
+        chain: mainnet,
+        chainId: mainnet.id,
+        rpcMiddleware: {
+          circuitBreaker: { failureThreshold: 2, resetTimeoutMs: 1000 },
+        },
+        rpcUrls: ["https://eth-mainnet.example.com"],
+        transport: makeTransport(() => {
+          calls += 1;
+          return Promise.reject(
+            new HttpRequestError({ status: 502, url: "https://eth-mainnet.example.com" })
+          );
+        }),
+      });
+      const req = await request;
+
+      const fail = async () => {
+        try {
+          await req({ method: "eth_blockNumber" });
+        } catch {
+          /* expected */
+        }
+      };
+
+      // Two transport failures open the circuit.
+      await fail();
+      await fail();
+      expect(calls).toBe(2);
+
+      // Open: rejected without hitting the transport.
+      await fail();
+      expect(calls).toBe(2);
+
+      // Advance past the reset window; the next call is admitted (trial)...
+      nowMs += 1500;
+      await fail();
+      expect(calls).toBe(3);
+
+      // ...and because it failed again, the breaker MUST re-open (re-stamp), not stay
+      // half-open forever. The following call is rejected without a transport hit.
+      await fail();
+      expect(calls).toBe(3);
+    });
+
+    it("does not raise an unhandled rejection when a deduped request fails", async () => {
+      const unhandled: unknown[] = [];
+      const onUnhandled = (reason: unknown) => unhandled.push(reason);
+      process.on("unhandledRejection", onUnhandled);
+
+      try {
+        const request = getRequest({
+          chain: mainnet,
+          chainId: mainnet.id,
+          rpcMiddleware: { dedup: true },
+          rpcUrls: ["https://eth-mainnet.example.com"],
+          transport: makeTransport(async () => {
+            await new Promise((r) => setTimeout(r, 5));
+            throw new Error("boom");
+          }),
+        });
+        const req = await request;
+
+        // Two concurrent deduped calls share one in-flight promise; both reject.
+        const results = await Promise.allSettled([
+          req({ method: "eth_blockNumber" }),
+          req({ method: "eth_blockNumber" }),
+        ]);
+        expect(results.every((r) => r.status === "rejected")).toBe(true);
+
+        // Let the derived cleanup chain settle.
+        await new Promise((r) => setTimeout(r, 10));
+        expect(unhandled).toHaveLength(0);
+      } finally {
+        process.off("unhandledRejection", onUnhandled);
+      }
+    });
+
+    it("does not count JSON-RPC application errors (reverts) toward the breaker", async () => {
+      let calls = 0;
+      const request = getRequest({
+        chain: mainnet,
+        chainId: mainnet.id,
+        rpcMiddleware: {
+          circuitBreaker: { failureThreshold: 2, resetTimeoutMs: 60_000 },
+        },
+        rpcUrls: ["https://eth-mainnet.example.com"],
+        transport: makeTransport(() => {
+          calls += 1;
+          // A contract designed to revert on eth_call surfaces as RpcRequestError.
+          return Promise.reject(
+            new RpcRequestError({
+              body: { method: "eth_call" },
+              error: { code: 3, message: "execution reverted" },
+              url: "https://eth-mainnet.example.com",
+            })
+          );
+        }),
+      });
+      const req = await request;
+
+      const revert = async () => {
+        try {
+          await req({ method: "eth_call" });
+        } catch {
+          /* expected */
+        }
+      };
+
+      // Five reverts must NOT open the breaker: every call reaches the transport.
+      for (let i = 0; i < 5; i++) {
+        await revert();
+      }
+      expect(calls).toBe(5);
+    });
+
+    it("counts a concurrently-deduped transport failure only once", async () => {
+      let physicalCalls = 0;
+      const request = getRequest({
+        chain: mainnet,
+        chainId: mainnet.id,
+        rpcMiddleware: {
+          circuitBreaker: { failureThreshold: 2, resetTimeoutMs: 60_000 },
+          dedup: true,
+        },
+        rpcUrls: ["https://eth-mainnet.example.com"],
+        transport: makeTransport(async () => {
+          physicalCalls += 1;
+          await new Promise((r) => setTimeout(r, 5));
+          throw new HttpRequestError({ status: 503, url: "https://eth-mainnet.example.com" });
+        }),
+      });
+      const req = await request;
+
+      // Three concurrent waiters on ONE physical failing request. Because the breaker
+      // sits below dedup, this counts as a single failure, not three.
+      await Promise.allSettled([
+        req({ method: "eth_blockNumber" }),
+        req({ method: "eth_blockNumber" }),
+        req({ method: "eth_blockNumber" }),
+      ]);
+      expect(physicalCalls).toBe(1);
+
+      // failureThreshold is 2, so a single counted failure leaves the breaker closed:
+      // the next batch must reach the transport again (would be blocked if it had
+      // counted 3 failures from the first batch).
+      await Promise.allSettled([
+        req({ method: "eth_blockNumber" }),
+        req({ method: "eth_blockNumber" }),
+      ]);
+      expect(physicalCalls).toBe(2);
     });
   });
 

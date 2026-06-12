@@ -8,6 +8,7 @@ import {
   ApprovalError,
   ContractReadError,
   SimulationFailedError,
+  UserRejectedError,
 } from "#src/core/index.js";
 import {
   Erc20AllowanceService,
@@ -386,6 +387,63 @@ describe("ERC-20 Allowance Services", () => {
               "simulate",
               "write", // approve(amount)
             ]);
+          }).pipe(Effect.provide(Layer.provide(Erc20AllowanceServiceLive, deps)));
+        })()
+    );
+
+    it.effect(
+      "ensureAllowance does NOT fall back to zero-first when the user rejects the direct approve",
+      () =>
+        (() => {
+          const calls: Call[] = [];
+
+          const deps = Layer.mergeAll(
+            Layer.succeed(
+              ContractReader,
+              ContractReader.of({
+                multicall: (() =>
+                  Effect.dieMessage("unused")) as unknown as ContractReaderShape["multicall"],
+                read: ((params: unknown) => {
+                  calls.push({ kind: "read", params });
+                  // Non-zero existing allowance: without the fix, the zero-first
+                  // branch would be eligible and re-prompt the user.
+                  return Effect.succeed(1n);
+                }) as unknown as ContractReaderShape["read"],
+              } satisfies ContractReaderShape)
+            ),
+            Layer.succeed(
+              ContractWriter,
+              ContractWriter.of({
+                estimateGas: (() =>
+                  Effect.dieMessage("unused")) as unknown as ContractWriterShape["estimateGas"],
+                simulate: ((params: unknown) => {
+                  calls.push({ kind: "simulate", params });
+                  return Effect.fail(new UserRejectedError({ message: "user rejected" }));
+                }) as unknown as ContractWriterShape["simulate"],
+                write: ((params: unknown) => {
+                  calls.push({ kind: "write", params });
+                  return Effect.dieMessage("write must not run after rejection");
+                }) as unknown as ContractWriterShape["write"],
+              } satisfies ContractWriterShape)
+            )
+          );
+
+          return Effect.gen(function* () {
+            const service = yield* Erc20AllowanceService;
+
+            const result = yield* service
+              .ensureAllowance({
+                account: TEST_ADDRESS,
+                chainId: TEST_CHAIN_ID,
+                required: 5n,
+                spender: TEST_ADDRESS_2,
+                tokenAddress: TEST_ADDRESS,
+              })
+              .pipe(Effect.catchTag("UserRejectedError", (e) => Effect.succeed(e)));
+
+            expect(result).toBeInstanceOf(UserRejectedError);
+            // Exactly one simulate (the direct attempt), no extra signatures.
+            expect(calls.map((c) => c.kind)).toEqual(["read", "simulate"]);
           }).pipe(Effect.provide(Layer.provide(Erc20AllowanceServiceLive, deps)));
         })()
     );

@@ -49,17 +49,37 @@ export const defaultRetryableErrors = [
 ];
 
 /**
+ * Patterns made of digits and/or word characters only (e.g. HTTP status codes
+ * like "429"/"502" or errno tokens like "ECONNRESET") are matched at word
+ * boundaries. Plain substring matching lets them false-match unrelated content
+ * such as a 0x-prefixed tx hash that happens to embed "429". Multi-word phrases
+ * ("rate limit", "timeout") still use substring matching.
+ */
+const WORDLIKE_PATTERN = /^\w+$/;
+
+const isWordlikePattern = (pattern: string): boolean => WORDLIKE_PATTERN.test(pattern);
+
+const patternMatches = (message: string, pattern: string): boolean => {
+  const needle = pattern.toLowerCase();
+  if (isWordlikePattern(needle)) {
+    return new RegExp(`\\b${needle}\\b`).test(message);
+  }
+  return message.includes(needle);
+};
+
+/**
  * Check if an error should be retried based on its message.
  * Handles Error instances, strings, and plain objects with a message property.
  */
 export const isRetryableError = (error: unknown, retryablePatterns: string[]): boolean => {
+  const matchMessage = (message: string): boolean =>
+    retryablePatterns.some((pattern) => patternMatches(message, pattern));
+
   if (error instanceof Error) {
-    const message = error.message.toLowerCase();
-    return retryablePatterns.some((pattern) => message.includes(pattern.toLowerCase()));
+    return matchMessage(error.message.toLowerCase());
   }
   if (typeof error === "string") {
-    const message = error.toLowerCase();
-    return retryablePatterns.some((pattern) => message.includes(pattern.toLowerCase()));
+    return matchMessage(error.toLowerCase());
   }
   // Handle plain objects with message property (some RPC transports throw these)
   if (
@@ -68,8 +88,7 @@ export const isRetryableError = (error: unknown, retryablePatterns: string[]): b
     "message" in error &&
     typeof error.message === "string"
   ) {
-    const message = error.message.toLowerCase();
-    return retryablePatterns.some((pattern) => message.includes(pattern.toLowerCase()));
+    return matchMessage(error.message.toLowerCase());
   }
   return false;
 };

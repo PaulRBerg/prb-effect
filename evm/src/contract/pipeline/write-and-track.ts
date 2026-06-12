@@ -128,234 +128,255 @@ export const makeWriteAndTrack = (deps: WriteAndTrackDeps) =>
       preflightWarning = preflight.preflightWarning;
 
       const explicitNonce = params.overrides?.nonce;
-      const nonceReservation = yield* withNonceReservation(nonceService, {
-        account: params.account,
-        chainId: params.chainId,
-        explicitNonce,
-      });
 
-      const overridesWithGasAndNonce = {
-        ...preflight.overridesWithGas,
-        nonce: nonceReservation.nonce,
-      };
-
-      const txPreview = {
-        accessList: overridesWithGasAndNonce.accessList,
-        gas: overridesWithGasAndNonce.gas,
-        gasPrice: overridesWithGasAndNonce.gasPrice,
-        maxFeePerGas: overridesWithGasAndNonce.maxFeePerGas,
-        maxPriorityFeePerGas: overridesWithGasAndNonce.maxPriorityFeePerGas,
-        nonce: nonceReservation.nonce,
-        type: overridesWithGasAndNonce.type,
-      } as const;
-
-      if (preflight.finalGas != null) {
-        yield* tracker.set({
-          gas: preflight.finalGas,
-          preflightWarning,
-          status: "estimated",
-          tx: txPreview,
-        });
-      }
-
-      yield* tracker.set({
-        preflightWarning,
-        status: "signing",
-        tx: txPreview,
-      });
-
-      failurePhase = "submission";
-      const hash = yield* writer.write({
-        ...params,
-        overrides: overridesWithGasAndNonce,
-      });
-
-      yield* nonceReservation.markSubmitted;
-      yield* Ref.set(currentHashRef, hash);
-      yield* Ref.set(blocksElapsedRef, 0);
-      yield* Ref.set(autoAttemptsRef, 0);
-      yield* Ref.set(autoReplacingRef, false);
-      yield* Ref.set(startedAtMsRef, yield* Clock.currentTimeMillis);
-      yield* setSubmittedState(hash);
-
-      const publicClient: PublicClient = yield* publicClientService.get(params.chainId);
-      const replacementStrategy =
-        policy.replacement?.strategy ?? policy.replacementStrategy ?? "none";
-      const stuckMs = policy.replacement?.stuckMs ?? DEFAULT_STUCK_TX_MS;
-      const maxAttempts = policy.replacement?.maxAttempts ?? 1;
-
-      const updatePendingState = (currentHash: Hash) =>
+      // The nonce reservation's release finalizer must fire as soon as this write
+      // completes or fails — not when the caller's long-lived tracking scope closes.
+      // Wrapping the reservation-through-decode section in its own scope guarantees
+      // that: on success/revert `markSubmitted`/`confirm` no-op the release, and on
+      // failure (e.g. wallet rejection) the nonce is freed immediately so a retry can
+      // re-reserve it instead of opening a gap. An explicit release-on-error is unsafe
+      // here: a late scope-close release could free a nonce already re-reserved by a
+      // subsequent write.
+      return yield* Effect.scoped(
         Effect.gen(function* () {
-          const blocksElapsed = yield* Ref.modify(blocksElapsedRef, (n) => [n + 1, n + 1] as const);
-
-          yield* tracker.update((prev) => {
-            if (prev.status === "mined" || prev.status === "failed") {
-              return prev;
-            }
-
-            return {
-              confirmations: blocksElapsed,
-              hash: currentHash,
-              preflightWarning: prev.preflightWarning,
-              status: "pending",
-              tx: prev.tx,
-            } as TxState;
+          const nonceReservation = yield* withNonceReservation(nonceService, {
+            account: params.account,
+            chainId: params.chainId,
+            explicitNonce,
           });
 
-          return blocksElapsed;
-        });
+          const overridesWithGasAndNonce = {
+            ...preflight.overridesWithGas,
+            nonce: nonceReservation.nonce,
+          };
 
-      const performAutoReplacement = (currentHash: Hash, now: number) =>
-        Ref.set(autoReplacingRef, true).pipe(
-          Effect.zipRight(
-            (replacementStrategy === "cancel"
-              ? txReplacement.cancel(params.chainId, currentHash, policy)
-              : txReplacement.speedup(params.chainId, currentHash, policy)
-            ).pipe(
-              Effect.either,
-              Effect.ensuring(Ref.set(autoReplacingRef, false)),
-              Effect.flatMap((replaced) => {
-                if (replaced._tag === "Left") {
-                  return Effect.void;
+          const txPreview = {
+            accessList: overridesWithGasAndNonce.accessList,
+            gas: overridesWithGasAndNonce.gas,
+            gasPrice: overridesWithGasAndNonce.gasPrice,
+            maxFeePerGas: overridesWithGasAndNonce.maxFeePerGas,
+            maxPriorityFeePerGas: overridesWithGasAndNonce.maxPriorityFeePerGas,
+            nonce: nonceReservation.nonce,
+            type: overridesWithGasAndNonce.type,
+          } as const;
+
+          if (preflight.finalGas != null) {
+            yield* tracker.set({
+              gas: preflight.finalGas,
+              preflightWarning,
+              status: "estimated",
+              tx: txPreview,
+            });
+          }
+
+          yield* tracker.set({
+            preflightWarning,
+            status: "signing",
+            tx: txPreview,
+          });
+
+          failurePhase = "submission";
+          const hash = yield* writer.write({
+            ...params,
+            overrides: overridesWithGasAndNonce,
+          });
+
+          yield* nonceReservation.markSubmitted;
+          yield* Ref.set(currentHashRef, hash);
+          yield* Ref.set(blocksElapsedRef, 0);
+          yield* Ref.set(autoAttemptsRef, 0);
+          yield* Ref.set(autoReplacingRef, false);
+          yield* Ref.set(startedAtMsRef, yield* Clock.currentTimeMillis);
+          yield* setSubmittedState(hash);
+
+          const publicClient: PublicClient = yield* publicClientService.get(params.chainId);
+          const replacementStrategy =
+            policy.replacement?.strategy ?? policy.replacementStrategy ?? "none";
+          const stuckMs = policy.replacement?.stuckMs ?? DEFAULT_STUCK_TX_MS;
+          const maxAttempts = policy.replacement?.maxAttempts ?? 1;
+
+          const updatePendingState = (currentHash: Hash) =>
+            Effect.gen(function* () {
+              const blocksElapsed = yield* Ref.modify(
+                blocksElapsedRef,
+                (n) => [n + 1, n + 1] as const
+              );
+
+              yield* tracker.update((prev) => {
+                if (prev.status === "mined" || prev.status === "failed") {
+                  return prev;
                 }
 
-                const newHash = replaced.right;
-                return Effect.all([
-                  Ref.set(currentHashRef, newHash),
-                  Ref.set(blocksElapsedRef, 0),
-                  Ref.set(startedAtMsRef, now),
-                  Ref.update(autoAttemptsRef, (n) => n + 1),
-                  setReplacedState(
-                    currentHash,
-                    newHash,
-                    replacementStrategy === "cancel" ? "cancelled" : "repriced"
-                  ),
-                  setSubmittedState(newHash),
-                ]).pipe(Effect.asVoid);
+                return {
+                  // An unmined tx has zero confirmations; blocksElapsed is only for stuck-tx detection.
+                  confirmations: 0,
+                  hash: currentHash,
+                  preflightWarning: prev.preflightWarning,
+                  status: "pending",
+                  tx: prev.tx,
+                } as TxState;
+              });
+
+              return blocksElapsed;
+            });
+
+          const performAutoReplacement = (currentHash: Hash, now: number) =>
+            Ref.set(autoReplacingRef, true).pipe(
+              Effect.zipRight(
+                (replacementStrategy === "cancel"
+                  ? txReplacement.cancel(params.chainId, currentHash, policy)
+                  : txReplacement.speedup(params.chainId, currentHash, policy)
+                ).pipe(
+                  Effect.either,
+                  Effect.ensuring(Ref.set(autoReplacingRef, false)),
+                  Effect.flatMap((replaced) => {
+                    if (replaced._tag === "Left") {
+                      return Effect.void;
+                    }
+
+                    const newHash = replaced.right;
+                    return Effect.all([
+                      Ref.set(currentHashRef, newHash),
+                      Ref.set(blocksElapsedRef, 0),
+                      Ref.set(startedAtMsRef, now),
+                      Ref.update(autoAttemptsRef, (n) => n + 1),
+                      setReplacedState(
+                        currentHash,
+                        newHash,
+                        replacementStrategy === "cancel" ? "cancelled" : "repriced"
+                      ),
+                      setSubmittedState(newHash),
+                    ]).pipe(Effect.asVoid);
+                  })
+                )
+              )
+            );
+
+          const autoReplaceIfStuck = (currentHash: Hash) => {
+            if (replacementStrategy === "none") {
+              return Effect.void;
+            }
+
+            return Effect.all({
+              alreadyReplacing: Ref.get(autoReplacingRef),
+              attempts: Ref.get(autoAttemptsRef),
+              now: Clock.currentTimeMillis,
+              startedAt: Ref.get(startedAtMsRef),
+            }).pipe(
+              Effect.flatMap(({ alreadyReplacing, attempts, now, startedAt }) => {
+                const elapsed = startedAt > 0 ? now - startedAt : 0;
+                const stuck = elapsed >= stuckMs;
+                const allowed = attempts < maxAttempts && !alreadyReplacing;
+                return stuck && allowed ? performAutoReplacement(currentHash, now) : Effect.void;
               })
-            )
-          )
-        );
+            );
+          };
 
-      const autoReplaceIfStuck = (currentHash: Hash) => {
-        if (replacementStrategy === "none") {
-          return Effect.void;
-        }
+          const onPendingBlock = Effect.gen(function* () {
+            const currentHash = yield* Ref.get(currentHashRef);
+            if (!currentHash) {
+              return;
+            }
 
-        return Effect.all({
-          alreadyReplacing: Ref.get(autoReplacingRef),
-          attempts: Ref.get(autoAttemptsRef),
-          now: Clock.currentTimeMillis,
-          startedAt: Ref.get(startedAtMsRef),
-        }).pipe(
-          Effect.flatMap(({ alreadyReplacing, attempts, now, startedAt }) => {
-            const elapsed = startedAt > 0 ? now - startedAt : 0;
-            const stuck = elapsed >= stuckMs;
-            const allowed = attempts < maxAttempts && !alreadyReplacing;
-            return stuck && allowed ? performAutoReplacement(currentHash, now) : Effect.void;
-          })
-        );
-      };
-
-      const onPendingBlock = Effect.gen(function* () {
-        const currentHash = yield* Ref.get(currentHashRef);
-        if (!currentHash) {
-          return;
-        }
-
-        yield* updatePendingState(currentHash);
-        yield* autoReplaceIfStuck(currentHash);
-      });
-
-      const pendingFiber = yield* Stream.runForEach(
-        Stream.async<bigint, unknown>((emit) => {
-          const unwatch = publicClient.watchBlockNumber({
-            onBlockNumber: (blockNumber: bigint) => emit.single(blockNumber),
-            onError: (error) => emit.fail(error as unknown),
-            pollingInterval: policy.pollingInterval,
+            yield* updatePendingState(currentHash);
+            yield* autoReplaceIfStuck(currentHash);
           });
 
-          return Effect.sync(() => {
-            unwatch();
-          });
-        }),
-        () => onPendingBlock
-      ).pipe(Effect.forkScoped);
+          const pendingFiber = yield* Stream.runForEach(
+            Stream.async<bigint, unknown>((emit) => {
+              const unwatch = publicClient.watchBlockNumber({
+                onBlockNumber: (blockNumber: bigint) => emit.single(blockNumber),
+                onError: (error) => emit.fail(error as unknown),
+                pollingInterval: policy.pollingInterval,
+              });
 
-      failurePhase = "receipt";
-      const receipt = yield* Effect.gen(function* () {
-        let waitHash = hash;
+              return Effect.sync(() => {
+                unwatch();
+              });
+            }),
+            () => onPendingBlock
+          ).pipe(Effect.forkScoped);
 
-        while (true) {
-          const exit = yield* txManager
-            .waitForReceipt(params.chainId, waitHash, policy)
-            .pipe(Effect.either);
+          failurePhase = "receipt";
+          const receipt = yield* Effect.gen(function* () {
+            let waitHash = hash;
 
-          if (exit._tag === "Right") {
-            return exit.right;
+            while (true) {
+              const exit = yield* txManager
+                .waitForReceipt(params.chainId, waitHash, policy)
+                .pipe(Effect.either);
+
+              if (exit._tag === "Right") {
+                return exit.right;
+              }
+
+              const error = exit.left;
+              if (error._tag === "TxReplacedError") {
+                const newHash = error.newHash as Hash;
+                const now = yield* Clock.currentTimeMillis;
+
+                yield* Ref.set(currentHashRef, newHash);
+                yield* Ref.set(blocksElapsedRef, 0);
+                yield* Ref.set(startedAtMsRef, now);
+                yield* setReplacedState(error.oldHash as Hash, newHash, error.reason);
+                yield* setSubmittedState(newHash);
+
+                waitHash = newHash;
+                continue;
+              }
+
+              return yield* Effect.fail(error);
+            }
+          }).pipe(Effect.ensuring(Fiber.interrupt(pendingFiber)));
+
+          // Confirm the nonce as soon as the tx is mined — a reverted tx still
+          // consumes its nonce on-chain, so confirming only on success would leak
+          // it in the manager's pending set forever. This runs before the revert
+          // check below.
+          if (nonceReservation.reserved) {
+            yield* nonceService.confirm({
+              address: params.account,
+              chainId: params.chainId,
+              nonce: nonceToBigInt(nonceReservation.nonce),
+            });
           }
 
-          const error = exit.left;
-          if (error._tag === "TxReplacedError") {
-            const newHash = error.newHash as Hash;
-            const now = yield* Clock.currentTimeMillis;
-
-            yield* Ref.set(currentHashRef, newHash);
-            yield* Ref.set(blocksElapsedRef, 0);
-            yield* Ref.set(startedAtMsRef, now);
-            yield* setReplacedState(error.oldHash as Hash, newHash, error.reason);
-            yield* setSubmittedState(newHash);
-
-            waitHash = newHash;
-            continue;
+          // Fail if the transaction was mined but reverted
+          if (receipt.status === "reverted") {
+            return yield* Effect.fail(
+              new TxFailedError({
+                hash: receipt.transactionHash as Hash,
+                message: `Transaction ${receipt.transactionHash} reverted onchain`,
+              })
+            );
           }
 
-          return yield* Effect.fail(error);
-        }
-      }).pipe(Effect.ensuring(Fiber.interrupt(pendingFiber)));
+          yield* tracker.update(
+            (prev) =>
+              ({
+                effectiveGasPrice: receipt.effectiveGasPrice,
+                hash: receipt.transactionHash as Hash,
+                preflightWarning: prev.preflightWarning,
+                receipt,
+                status: "mined",
+                tx: prev.tx,
+              }) as TxState
+          );
 
-      // Fail if the transaction was mined but reverted
-      if (receipt.status === "reverted") {
-        return yield* Effect.fail(
-          new TxFailedError({
-            hash: receipt.transactionHash as Hash,
-            message: `Transaction ${receipt.transactionHash} reverted onchain`,
-          })
-        );
-      }
-
-      yield* tracker.update(
-        (prev) =>
-          ({
-            effectiveGasPrice: receipt.effectiveGasPrice,
-            hash: receipt.transactionHash as Hash,
-            preflightWarning: prev.preflightWarning,
+          failurePhase = "event-decode";
+          const events = (yield* eventStream.decodeReceipt(
             receipt,
-            status: "mined",
-            tx: prev.tx,
-          }) as TxState
+            params.abi
+          )) as WriteAndTrackResult<TAbi>["events"];
+
+          return {
+            _tag: "success",
+            events,
+            hash: receipt.transactionHash as Hash,
+            receipt,
+          } as WriteAndTrackTerminal<TAbi>;
+        })
       );
-
-      if (nonceReservation.reserved) {
-        yield* nonceService.confirm({
-          address: params.account,
-          chainId: params.chainId,
-          nonce: nonceToBigInt(nonceReservation.nonce),
-        });
-      }
-
-      failurePhase = "event-decode";
-      const events = (yield* eventStream.decodeReceipt(
-        receipt,
-        params.abi
-      )) as WriteAndTrackResult<TAbi>["events"];
-
-      return {
-        _tag: "success",
-        events,
-        hash: receipt.transactionHash as Hash,
-        receipt,
-      } as WriteAndTrackTerminal<TAbi>;
     }).pipe(
       Effect.catchAll((error) =>
         Effect.gen(function* () {
@@ -385,6 +406,11 @@ export const makeWriteAndTrack = (deps: WriteAndTrackDeps) =>
           ? Deferred.succeed(terminalDeferred, either.right)
           : Deferred.fail(terminalDeferred, either.left)
       ),
+      // If the tracking scope closes mid-flight this fiber is interrupted before the
+      // Deferred resolves; interrupt the Deferred so an out-of-scope `terminal`
+      // awaiter fails with interruption instead of hanging forever. No-op once the
+      // Deferred is already completed above.
+      Effect.ensuring(Deferred.interrupt(terminalDeferred)),
       Effect.forkScoped
     );
 

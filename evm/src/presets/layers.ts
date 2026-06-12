@@ -1,7 +1,18 @@
 import { FetchHttpClient } from "@effect/platform";
 import { Effect, Layer, Option } from "effect";
 import type { Chain, PublicClient, Transport, WalletClient } from "viem";
-import { createPublicClient, createWalletClient, custom, fallback, webSocket } from "viem";
+import {
+  BaseError,
+  createPublicClient,
+  createWalletClient,
+  custom,
+  fallback,
+  HttpRequestError,
+  SocketClosedError,
+  TimeoutError,
+  WebSocketRequestError,
+  webSocket,
+} from "viem";
 import type { BalanceService } from "#src/balance/index.js";
 import { BalanceServiceLive } from "#src/balance/index.js";
 import type { BlockService } from "#src/block/index.js";
@@ -166,6 +177,40 @@ const safeMethodAllowlist = new Set([
 const stableStringify = (value: unknown): string =>
   JSON.stringify(value, (_, v) => (typeof v === "bigint" ? v.toString() : v));
 
+const noop = (): void => {
+  // Intentionally empty: used to swallow rejections on derived promise chains.
+};
+
+/**
+ * Classify whether a rejection is a transport-level failure worth counting toward
+ * the circuit breaker.
+ *
+ * Only physical transport failures (connection refused, timeouts, non-2xx HTTP,
+ * dropped sockets) should trip the breaker. JSON-RPC application errors — e.g. a
+ * quoter contract that reverts on `eth_call`, surfaced by viem as `RpcRequestError`
+ * / `ExecutionRevertedError` over a healthy HTTP 200 — are expected outcomes and
+ * must NOT count, or a handful of reverts would black-hole all RPC traffic.
+ *
+ * viem's error classes all extend `BaseError` directly (no shared `RpcError` base):
+ *   - The transport classes (`HttpRequestError`, `TimeoutError`, ...) DO count.
+ *   - Every other viem `BaseError` (RPC/execution errors) does NOT count.
+ *   - Anything that is not a viem `BaseError` is a raw transport-layer throw (fetch
+ *     failure, `ECONNRESET`, custom transport error) and counts.
+ */
+const isTransportFailure = (error: unknown): boolean => {
+  if (
+    error instanceof HttpRequestError ||
+    error instanceof TimeoutError ||
+    error instanceof SocketClosedError ||
+    error instanceof WebSocketRequestError
+  ) {
+    return true;
+  }
+  // Any other viem application/RPC error (RpcRequestError, ExecutionRevertedError,
+  // ContractFunctionRevertedError, ...) is an expected outcome — never count it.
+  return !(error instanceof BaseError);
+};
+
 const withDedup =
   (transport: Transport): Transport =>
   (args) => {
@@ -189,7 +234,12 @@ const withDedup =
       const promise = inner.request(rpcRequest as never);
       inflight.set(key, promise);
 
-      (promise as Promise<unknown>).finally(() => {
+      // Swallow rejection on the derived cleanup chain only. `.finally()` returns a
+      // new promise that nobody awaits; if the underlying request rejects, that
+      // derived promise rejects too and surfaces as an unhandled rejection (fatal
+      // under `--unhandled-rejections=strict`). Handle it here, then evict the key.
+      // The original `promise` is still returned so real callers observe the error.
+      (promise as Promise<unknown>).then(noop, noop).then(() => {
         inflight.delete(key);
       });
 
@@ -214,7 +264,11 @@ const withCircuitBreaker = (
 
   const noteFailure = () => {
     consecutiveFailures += 1;
-    if (consecutiveFailures >= failureThreshold && openedAtMs === undefined) {
+    // Re-stamp on every threshold breach, not just the first. Stamping only when
+    // `openedAtMs` is undefined meant that once the reset window elapsed, continued
+    // transport failures never re-opened the breaker during the same failure
+    // episode — and a half-open trial that fails could never re-open either.
+    if (consecutiveFailures >= failureThreshold) {
       openedAtMs = Date.now();
     }
   };
@@ -223,6 +277,23 @@ const withCircuitBreaker = (
     consecutiveFailures = 0;
     openedAtMs = undefined;
   };
+
+  // Settle one request outcome: count transport failures, reset on success, and
+  // leave application-level rejections (e.g. expected reverts) untouched so they
+  // neither trip nor reset the breaker.
+  const settle = <T>(result: Promise<T>): Promise<T> =>
+    result.then(
+      (resultValue) => {
+        noteSuccess();
+        return resultValue;
+      },
+      (e) => {
+        if (isTransportFailure(e)) {
+          noteFailure();
+        }
+        throw e;
+      }
+    );
 
   return (args) => {
     const inner = transport(args);
@@ -234,17 +305,9 @@ const withCircuitBreaker = (
         >;
       }
 
-      const result = inner.request(rpcRequest as never);
-      return (result as Promise<unknown>).then(
-        (resultValue) => {
-          noteSuccess();
-          return resultValue;
-        },
-        (e) => {
-          noteFailure();
-          throw e;
-        }
-      ) as ReturnType<typeof inner.request>;
+      return settle(inner.request(rpcRequest as never) as Promise<unknown>) as ReturnType<
+        typeof inner.request
+      >;
     }) as unknown as typeof inner.request;
 
     const value = (() => {
@@ -267,19 +330,11 @@ const withCircuitBreaker = (
 
       return {
         ...(v as Record<string, unknown>),
-        subscribe: async (...subscribeArgs: readonly unknown[]) => {
+        subscribe: (...subscribeArgs: readonly unknown[]) => {
           if (isOpen()) {
-            throw new Error("RPC circuit breaker is open");
+            return Promise.reject(new Error("RPC circuit breaker is open"));
           }
-
-          try {
-            const result = await subscribe(...subscribeArgs);
-            noteSuccess();
-            return result;
-          } catch (e) {
-            noteFailure();
-            throw e;
-          }
+          return settle(subscribe(...subscribeArgs));
         },
       };
     })();
@@ -349,13 +404,17 @@ const makePublicTransportForChain = (config: ChainConfig): Transport => {
       };
     })();
 
-  const deduped = config.rpcMiddleware?.dedup ? withDedup(baseTransport) : baseTransport;
-  const circuitBreaker =
+  // Apply the breaker BELOW dedup (breaker wraps the base transport; dedup wraps the
+  // breaker). Dedup coalesces concurrent safe-method callers into a single in-flight
+  // physical request, so the breaker's success/failure accounting runs exactly once
+  // per shared promise rather than once per waiter — otherwise N waiters on one
+  // failing RPC would increment the breaker N times.
+  const guarded =
     config.rpcMiddleware?.circuitBreaker !== undefined
-      ? withCircuitBreaker(deduped, config.rpcMiddleware.circuitBreaker)
-      : deduped;
+      ? withCircuitBreaker(baseTransport, config.rpcMiddleware.circuitBreaker)
+      : baseTransport;
 
-  return circuitBreaker;
+  return config.rpcMiddleware?.dedup ? withDedup(guarded) : guarded;
 };
 
 /**

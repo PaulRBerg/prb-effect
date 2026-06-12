@@ -209,13 +209,19 @@ function updatePendingState(params: {
   const { currentHash, confirmationsRef, tracker } = params;
 
   return Effect.gen(function* () {
-    const confirmations = yield* Ref.modify(confirmationsRef, (n) => [n + 1, n + 1] as const);
+    // The ref counts blocks elapsed while the tx is still unmined; it feeds stuck-tx
+    // detection, not the published confirmation count. A tx that has not yet been
+    // mined has zero confirmations, so publishing the block counter as
+    // `confirmations` was wrong (consumers rendered "pending, confirmations: 7" for
+    // an unmined tx). Keep the internal counter, but always publish `confirmations: 0`
+    // while pending.
+    const blocksElapsed = yield* Ref.modify(confirmationsRef, (n) => [n + 1, n + 1] as const);
     yield* tracker.set({
-      confirmations,
+      confirmations: 0,
       hash: currentHash,
       status: "pending",
     });
-    return confirmations;
+    return blocksElapsed;
   });
 }
 
@@ -304,28 +310,68 @@ function waitForReceiptWithReplacement(params: {
   const { client, hash, pendingFiber, policy } = params;
   let replacement: ReplacementInfo | undefined;
 
-  return Effect.either(
-    Effect.tryPromise({
-      catch: (e) => e,
-      try: () =>
-        client.waitForTransactionReceipt({
-          hash,
-          onReplaced: (info) => {
-            replacement = {
-              newHash: info.transaction.hash,
-              oldHash: info.replacedTransaction.hash,
-              reason: info.reason,
-            };
-          },
-          pollingInterval: policy.pollingInterval,
-          timeout: policy.receiptTimeout,
-        }),
-    })
-  ).pipe(
+  const totalTimeout = policy.receiptTimeout ?? DEFAULT_RECEIPT_TIMEOUT;
+
+  // Each attempt captures its own replacement and fails with a classified
+  // TxFailedError so the shared receipt-retry schedule can distinguish transient
+  // transport blips (retryable) from terminal failures. Without this retry, a single
+  // network hiccup marks the tracked tx `failed` forever — and poisons rehydration,
+  // which would persist `failed` for an in-flight tx after a transient blip. The
+  // retry budget mirrors `waitForReceipt`: a shared deadline caps total time and
+  // each attempt only gets the remaining budget, so retries cannot multiply the wait.
+  const waitForReceiptWithBudget = Effect.gen(function* () {
+    const start = yield* Clock.currentTimeMillis;
+
+    const attempt = Effect.gen(function* () {
+      const now = yield* Clock.currentTimeMillis;
+      const remaining = totalTimeout - (now - start);
+      const timeout = remaining > 0 ? remaining : 1;
+
+      return yield* Effect.tryPromise({
+        catch: (cause) =>
+          new TxFailedError({
+            cause,
+            hash,
+            message: cause instanceof Error ? cause.message : `Failed to get receipt for ${hash}`,
+          }),
+        try: () => {
+          replacement = undefined;
+          return client.waitForTransactionReceipt({
+            hash,
+            onReplaced: (info) => {
+              replacement = {
+                newHash: info.transaction.hash,
+                oldHash: info.replacedTransaction.hash,
+                reason: info.reason,
+              };
+            },
+            pollingInterval: policy.pollingInterval,
+            timeout,
+          });
+        },
+      });
+    });
+
+    return yield* attempt.pipe(
+      Effect.retry(makeReceiptRetrySchedule()),
+      Effect.timeoutFail({
+        duration: Duration.millis(totalTimeout),
+        onTimeout: () =>
+          new TxFailedError({
+            cause: new WaitForTransactionReceiptTimeoutError({ hash }),
+            hash,
+            message: `Receipt timeout exceeded (${totalTimeout}ms)`,
+          }),
+      })
+    );
+  });
+
+  return waitForReceiptWithBudget.pipe(
+    Effect.either,
     Effect.ensuring(Fiber.interrupt(pendingFiber)),
     Effect.map((result) =>
       result._tag === "Left"
-        ? { _tag: "Left", cause: result.left }
+        ? { _tag: "Left", cause: result.left.cause ?? result.left }
         : { _tag: "Right", receipt: result.right, replacement }
     )
   );

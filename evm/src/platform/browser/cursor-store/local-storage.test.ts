@@ -3,7 +3,7 @@ import { Effect, Fiber, Layer, TestClock } from "effect";
 import type { StreamCursor } from "#src/events/index.js";
 import { CursorStore } from "#src/events/index.js";
 import { LocalStorageCursorStoreLive } from "#src/platform/browser/cursor-store/index.js";
-import { BrowserStorage } from "#src/platform/browser/storage/index.js";
+import { BrowserStorage, StorageQuotaExceededError } from "#src/platform/browser/storage/index.js";
 import { TEST_ADDRESS, TEST_CHAIN_ID } from "#src/testing-kit/index.js";
 
 /**
@@ -327,6 +327,169 @@ describe("LocalStorageCursorStore", () => {
       Effect.provide(LocalStorageCursorStoreLive),
       Effect.provide(makeMockBrowserStorageLayer(mockStorage))
     );
+  });
+
+  it.effect("set -> delete -> set still persists the final value (no wedge)", () => {
+    const mockStorage = makeMockLocalStorage();
+    return Effect.gen(function* () {
+      const store = yield* CursorStore;
+      const key = "wedge-test";
+
+      // First set, let it flush.
+      yield* store.set(key, { ...testCursor, lastBlockNumber: 100n });
+      yield* TestClock.adjust("300 millis");
+
+      // Delete the key. The original flush has already completed; this clears the
+      // slot. The old two-Ref implementation left a stale timer behind here.
+      yield* store.delete(key);
+      yield* TestClock.adjust("300 millis");
+
+      // A fresh set must still schedule and flush a write.
+      yield* store.set(key, { ...testCursor, lastBlockNumber: 500n });
+      yield* TestClock.adjust("300 millis");
+
+      const retrieved = yield* store.get(key);
+      expect(retrieved?.lastBlockNumber).toBe(500n);
+    }).pipe(
+      Effect.provide(LocalStorageCursorStoreLive),
+      Effect.provide(makeMockBrowserStorageLayer(mockStorage))
+    );
+  });
+
+  it.effect("delete during the throttle window does not wedge later writes", () => {
+    const mockStorage = makeMockLocalStorage();
+    return Effect.gen(function* () {
+      const store = yield* CursorStore;
+      const key = "wedge-during-window";
+
+      // Set then delete before the flush fires (slot is taken by delete).
+      yield* store.set(key, { ...testCursor, lastBlockNumber: 100n });
+      yield* store.delete(key);
+      yield* TestClock.adjust("300 millis");
+
+      // Nothing should have been written.
+      expect(mockStorage.getItem("ew3:v1:cursor:wedge-during-window")).toBeNull();
+
+      // A subsequent set must still flush — the key is not wedged.
+      yield* store.set(key, { ...testCursor, lastBlockNumber: 700n });
+      yield* TestClock.adjust("300 millis");
+
+      const retrieved = yield* store.get(key);
+      expect(retrieved?.lastBlockNumber).toBe(700n);
+    }).pipe(
+      Effect.provide(LocalStorageCursorStoreLive),
+      Effect.provide(makeMockBrowserStorageLayer(mockStorage))
+    );
+  });
+
+  it.effect("rapid set during an in-flight flush persists the latest value", () => {
+    const mockStorage = makeMockLocalStorage();
+    return Effect.gen(function* () {
+      const store = yield* CursorStore;
+      const key = "reflush-test";
+
+      const writes: bigint[] = [];
+      const originalSet = mockStorage.setItem.bind(mockStorage);
+      mockStorage.setItem = (k: string, v: string) => {
+        if (k === "ew3:v1:cursor:reflush-test") {
+          writes.push(JSON.parse(v).lastBlockNumber as unknown as bigint);
+        }
+        originalSet(k, v);
+      };
+
+      // First set flushes at 250ms.
+      yield* store.set(key, { ...testCursor, lastBlockNumber: 100n });
+      yield* TestClock.adjust("300 millis");
+
+      // A new set after the first flush re-arms a fresh flush for the latest value.
+      yield* store.set(key, { ...testCursor, lastBlockNumber: 200n });
+      yield* TestClock.adjust("300 millis");
+
+      // Latest value wins and is the last thing written.
+      const retrieved = yield* store.get(key);
+      expect(retrieved?.lastBlockNumber).toBe(200n);
+      expect(writes.at(-1)).toBe("200");
+    }).pipe(
+      Effect.provide(LocalStorageCursorStoreLive),
+      Effect.provide(makeMockBrowserStorageLayer(mockStorage))
+    );
+  });
+
+  it.effect("flush storage error is logged and does not wedge the key", () => {
+    const mockStorage = makeMockLocalStorage();
+    // First set() write fails; subsequent writes succeed.
+    let failNext = true;
+    const failingStorageLayer = Layer.succeed(
+      BrowserStorage,
+      BrowserStorage.of({
+        get: (key: string) => Effect.succeed(mockStorage.getItem(key)),
+        remove: (key: string) => Effect.sync(() => mockStorage.removeItem(key)),
+        set: (key: string, value: string) =>
+          Effect.suspend(() => {
+            if (failNext && key === "ew3:v1:cursor:error-test") {
+              failNext = false;
+              return Effect.fail(new StorageQuotaExceededError({ key, message: "quota exceeded" }));
+            }
+            return Effect.sync(() => mockStorage.setItem(key, value));
+          }),
+      })
+    );
+
+    return Effect.gen(function* () {
+      const store = yield* CursorStore;
+      const key = "error-test";
+
+      // This write fails inside the flush; the failure must be caught/logged,
+      // not crash the daemon, and not wedge the key.
+      yield* store.set(key, { ...testCursor, lastBlockNumber: 100n });
+      yield* TestClock.adjust("300 millis");
+
+      // Nothing persisted yet (the write failed).
+      expect(mockStorage.getItem("ew3:v1:cursor:error-test")).toBeNull();
+
+      // A later set must still flush successfully — the key is not wedged.
+      yield* store.set(key, { ...testCursor, lastBlockNumber: 900n });
+      yield* TestClock.adjust("300 millis");
+
+      const retrieved = yield* store.get(key);
+      expect(retrieved?.lastBlockNumber).toBe(900n);
+    }).pipe(Effect.provide(LocalStorageCursorStoreLive), Effect.provide(failingStorageLayer));
+  });
+
+  it.effect("delete during an in-flight flush write does not resurrect the key", () => {
+    const mockStorage = makeMockLocalStorage();
+    // storage.set takes 100ms so a delete can land while the write is in flight.
+    const slowStorageLayer = Layer.succeed(
+      BrowserStorage,
+      BrowserStorage.of({
+        get: (key: string) => Effect.succeed(mockStorage.getItem(key)),
+        remove: (key: string) => Effect.sync(() => mockStorage.removeItem(key)),
+        set: (key: string, value: string) =>
+          Effect.sleep("100 millis").pipe(
+            Effect.zipRight(Effect.sync(() => mockStorage.setItem(key, value)))
+          ),
+      })
+    );
+
+    return Effect.gen(function* () {
+      const store = yield* CursorStore;
+      const key = "resurrect-test";
+
+      yield* store.set(key, { ...testCursor, lastBlockNumber: 100n });
+
+      // Wake the flush at 250ms: it drains the cursor and enters the slow write
+      // (which completes at 350ms).
+      yield* TestClock.adjust("250 millis");
+
+      // Delete while the write is in flight. The tombstone makes the flush undo
+      // its own write instead of resurrecting the deleted key.
+      yield* store.delete(key);
+      yield* TestClock.adjust("200 millis");
+
+      expect(mockStorage.getItem("ew3:v1:cursor:resurrect-test")).toBeNull();
+      const retrieved = yield* store.get(key);
+      expect(retrieved).toBeNull();
+    }).pipe(Effect.provide(LocalStorageCursorStoreLive), Effect.provide(slowStorageLayer));
   });
 
   it.effect("updates to same key reset throttle timer", () => {

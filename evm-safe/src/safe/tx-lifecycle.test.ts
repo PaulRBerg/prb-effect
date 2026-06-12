@@ -208,9 +208,85 @@ describe("waitForSafeMultisigTx", () => {
       expect(result).toEqual({
         _tag: "failed",
         error: `Transaction ${TEST_ONCHAIN_HASH} reverted on-chain`,
-        onchainHash: null,
+        onchainHash: TEST_ONCHAIN_HASH,
         safeTxHash: TEST_SAFE_TX_HASH,
       });
+    }).pipe(
+      Effect.provide(
+        makeSafeAppsServiceLayer(() =>
+          Effect.succeed({
+            confirmations: 2,
+            confirmationsRequired: 2,
+            onchainHash: Option.some(TEST_ONCHAIN_HASH),
+            status: "SUCCESS",
+          })
+        )
+      )
+    )
+  );
+
+  it.effect("performs at least one poll when maxWait < interval", () =>
+    Effect.gen(function* () {
+      let polls = 0;
+      const layer = makeSafeAppsServiceLayer(() =>
+        Effect.sync(() => {
+          polls += 1;
+          return {
+            confirmations: 2,
+            confirmationsRequired: 2,
+            onchainHash: Option.some(TEST_ONCHAIN_HASH),
+            status: "SUCCESS",
+          };
+        })
+      );
+
+      // maxWait (3s) < interval (5s default) => floor(3/5) === 0; Math.max(1, …) keeps one poll.
+      const result = yield* waitForSafeMultisigTx(TEST_SAFE_TX_HASH, getReceiptOk, {
+        maxWait: "3 seconds",
+      }).pipe(Effect.provide(layer));
+
+      expect(polls).toBe(1);
+      expect(result).toEqual({
+        _tag: "success",
+        onchainHash: TEST_ONCHAIN_HASH,
+        receipt: TEST_RECEIPT,
+        safeTxHash: TEST_SAFE_TX_HASH,
+      });
+    })
+  );
+
+  it.effect("invokes onProgress with each successful poll's info", () =>
+    Effect.gen(function* () {
+      const seen: string[] = [];
+      const result = yield* waitForSafeMultisigTx(TEST_SAFE_TX_HASH, getReceiptOk, {
+        ...DEFAULT_OPTIONS,
+        onProgress: (info) => Effect.sync(() => seen.push(info.status)),
+      });
+
+      expect(seen).toEqual(["SUCCESS"]);
+      expect(result._tag).toBe("success");
+    }).pipe(
+      Effect.provide(
+        makeSafeAppsServiceLayer(() =>
+          Effect.succeed({
+            confirmations: 2,
+            confirmationsRequired: 2,
+            onchainHash: Option.some(TEST_ONCHAIN_HASH),
+            status: "SUCCESS",
+          })
+        )
+      )
+    )
+  );
+
+  it.effect("swallows onProgress failures without aborting polling", () =>
+    Effect.gen(function* () {
+      const result = yield* waitForSafeMultisigTx(TEST_SAFE_TX_HASH, getReceiptOk, {
+        ...DEFAULT_OPTIONS,
+        onProgress: () => Effect.fail("boom" as never),
+      });
+
+      expect(result._tag).toBe("success");
     }).pipe(
       Effect.provide(
         makeSafeAppsServiceLayer(() =>

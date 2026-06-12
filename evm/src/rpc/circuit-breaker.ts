@@ -82,7 +82,7 @@ export const makeCircuitBreaker = (
   const {
     failureThreshold = 5,
     resetTimeout = DEFAULT_MAX_DELAY,
-    successThreshold = 2,
+    successThreshold = 3,
   } = config ?? {};
 
   return Effect.gen(function* () {
@@ -147,25 +147,39 @@ export const makeCircuitBreaker = (
     ): Effect.Effect<A, E | CircuitOpenError, R> =>
       Effect.gen(function* () {
         const now = yield* Clock.currentTimeMillis;
-        const currentState = yield* Ref.get(stateRef);
 
-        // Check if we should attempt to recover
-        if (currentState.state === "open" && now - currentState.lastFailureTime >= resetTimeout) {
-          yield* Ref.update(stateRef, (s) => ({
-            ...s,
-            state: "half-open" as const,
-            successes: 0,
-          }));
-        }
-
-        const state = yield* Ref.get(stateRef);
+        // Atomically decide admission and perform the open -> half-open promotion in
+        // a single Ref.modify. Doing the read, promote, and reject check as separate
+        // steps allows concurrent fibers to race (TOCTOU): the modify collapses them
+        // into one coherent transition so the half-open promotion happens exactly once.
+        type Admission =
+          | { readonly admitted: true }
+          | { readonly admitted: false; readonly openedAt: number };
+        const admission = yield* Ref.modify(
+          stateRef,
+          (state): readonly [Admission, CircuitBreakerState] => {
+            if (state.state === "open") {
+              if (now - state.lastFailureTime >= resetTimeout) {
+                // Recovery window elapsed: promote to half-open and admit this probe.
+                return [
+                  { admitted: true },
+                  { ...state, state: "half-open" as const, successes: 0 },
+                ];
+              }
+              // Still open: reject without mutating state.
+              return [{ admitted: false, openedAt: state.lastFailureTime }, state];
+            }
+            // Closed or half-open: admit.
+            return [{ admitted: true }, state];
+          }
+        );
 
         // Reject if circuit is open
-        if (state.state === "open") {
+        if (!admission.admitted) {
           return yield* Effect.fail(
             new CircuitOpenError({
               message: "Circuit breaker is open",
-              openedAt: state.lastFailureTime,
+              openedAt: admission.openedAt,
             })
           );
         }

@@ -1,11 +1,12 @@
 import { describe, expect, it } from "@effect/vitest";
-import { Effect, Exit, Layer, Stream, SubscriptionRef } from "effect";
+import { Chunk, Effect, Exit, Layer, Stream, SubscriptionRef } from "effect";
 import type { Abi, Hash, TransactionReceipt } from "viem";
 import { erc20Abi } from "viem";
 import { ContractPipeline, ContractPipelineLive, ContractWriterLive } from "#src/contract/index.js";
 import { ClientNotFoundError, EventDecodeError, ReceiptTimeoutError } from "#src/core/index.js";
 import type { DecodedEvent } from "#src/events/index.js";
 import { EventStream } from "#src/events/index.js";
+import { NonceService } from "#src/nonce/index.js";
 import {
   makeMockGasServiceLayer,
   makeMockNonceServiceLayer,
@@ -100,8 +101,37 @@ function expectSuccessTerminal<TAbi extends Abi>(
   return terminal;
 }
 
-const makeContractPipelineTestLayer = (config: PipelineTestConfig = {}) =>
-  Layer.provide(
+const makeAdapterLayer = (adapter: NonNullable<PipelineTestConfig["adapter"]>) =>
+  Layer.succeed(
+    WriteExecutionAdapter,
+    WriteExecutionAdapter.of({
+      canHandle: () => Effect.succeed(adapter.canHandle),
+      writeAndTrack: (params) =>
+        adapter.writeAndTrack
+          ? adapter.writeAndTrack(params)
+          : Effect.gen(function* () {
+              const stateRef = yield* SubscriptionRef.make({
+                status: "idle",
+              } as any);
+              return {
+                actions: {
+                  cancel: () => Effect.succeed(TEST_TX_HASH),
+                  speedup: () => Effect.succeed(TEST_TX_HASH),
+                },
+                stateRef,
+                terminal: Effect.succeed({
+                  _tag: "success",
+                  events: [],
+                  hash: TEST_TX_HASH,
+                  receipt: DEFAULT_RECEIPT,
+                }),
+              };
+            }),
+    })
+  );
+
+const makeContractPipelineTestLayer = (config: PipelineTestConfig = {}) => {
+  const pipelineLayer = Layer.provide(
     ContractPipelineLive,
     Layer.mergeAll(
       Layer.provideMerge(
@@ -137,38 +167,17 @@ const makeContractPipelineTestLayer = (config: PipelineTestConfig = {}) =>
             (<_TAbi extends Abi>() => Effect.succeed([] as any)),
           watch: config.eventStream?.watch ?? (() => Effect.succeed(Stream.empty as any)),
         } as any)
-      ),
-      config.adapter
-        ? Layer.succeed(
-            WriteExecutionAdapter,
-            WriteExecutionAdapter.of({
-              canHandle: () => Effect.succeed(config.adapter?.canHandle ?? false),
-              writeAndTrack: (params) =>
-                config.adapter?.writeAndTrack
-                  ? config.adapter.writeAndTrack(params)
-                  : Effect.gen(function* () {
-                      const stateRef = yield* SubscriptionRef.make({
-                        status: "idle",
-                      } as any);
-                      return {
-                        actions: {
-                          cancel: () => Effect.succeed(TEST_TX_HASH),
-                          speedup: () => Effect.succeed(TEST_TX_HASH),
-                        },
-                        stateRef,
-                        terminal: Effect.succeed({
-                          _tag: "success",
-                          events: [],
-                          hash: TEST_TX_HASH,
-                          receipt: DEFAULT_RECEIPT,
-                        }),
-                      };
-                    }),
-            })
-          )
-        : Layer.empty
+      )
     )
   );
+
+  // A9: the adapter is provided ALONGSIDE the pipeline (in the caller's context),
+  // not beneath ContractPipelineLive. The pipeline resolves it at call time via
+  // `serviceOption`, mirroring the consumer's `provideMerge(safeLayer, baseLayer)`.
+  return config.adapter
+    ? Layer.merge(pipelineLayer, makeAdapterLayer(config.adapter))
+    : pipelineLayer;
+};
 
 describe("ContractPipeline", () => {
   describe("writeAndWait", () => {
@@ -1225,6 +1234,357 @@ describe("ContractPipeline", () => {
             publicClient: {
               estimateContractGas: () => Promise.resolve(50000n),
               simulateContract: () => Promise.resolve({ request: {}, result: true }),
+            },
+            walletClient: {
+              writeContract: () => Promise.resolve(TEST_TX_HASH),
+            },
+          })
+        ),
+        Effect.scoped
+      )
+    );
+
+    // A9: the adapter must be resolved from the caller's context at call time, not
+    // captured at layer-build time. Here the pipeline layer is built WITHOUT the
+    // adapter in its build context; the adapter is provided alongside it at the call
+    // site — mirroring the consumer's natural `provideMerge(safeLayer, baseLayer)`.
+    it.effect("resolves adapter provided at call time even when absent at build time", () =>
+      Effect.gen(function* () {
+        const pipeline = yield* ContractPipeline;
+
+        const { terminal, stateRef } = yield* pipeline.writeAndTrack({
+          abi: erc20Abi,
+          account: TEST_ADDRESS,
+          address: TEST_ADDRESS,
+          args: [TEST_ADDRESS_2, 100n],
+          chainId: TEST_CHAIN_ID,
+          functionName: "transfer",
+        });
+
+        const finalTerminal = yield* terminal;
+        const final = expectSuccessTerminal(finalTerminal);
+        const current = yield* stateRef.get;
+
+        // Adapter handled the write: its stateRef starts "idle" and the default
+        // wallet write path (which rejects below) is never hit.
+        expect(final.hash).toBe(TEST_TX_HASH);
+        expect(current.status).toBe("idle");
+      }).pipe(
+        Effect.provide(
+          // Pipeline layer has NO adapter in its build context.
+          makeContractPipelineTestLayer({
+            walletClient: {
+              writeContract: () => Promise.reject(new Error("Should not hit default write path")),
+            },
+          })
+        ),
+        // Adapter is provided at call time, outside the pipeline's build context.
+        Effect.provide(makeAdapterLayer({ canHandle: true })),
+        Effect.scoped
+      )
+    );
+
+    it.effect("uses default EOA path when no adapter is present in the call context", () =>
+      Effect.gen(function* () {
+        const pipeline = yield* ContractPipeline;
+
+        const { terminal } = yield* pipeline.writeAndTrack({
+          abi: erc20Abi,
+          account: TEST_ADDRESS,
+          address: TEST_ADDRESS,
+          args: [TEST_ADDRESS_2, 100n],
+          chainId: TEST_CHAIN_ID,
+          functionName: "transfer",
+        });
+
+        const finalTerminal = yield* terminal;
+        const final = expectSuccessTerminal(finalTerminal);
+        expect(final.hash).toBe(TEST_TX_HASH);
+      }).pipe(
+        Effect.provide(
+          makeContractPipelineTestLayer({
+            publicClient: {
+              estimateContractGas: () => Promise.resolve(50000n),
+              simulateContract: () => Promise.resolve({ request: {}, result: true }),
+            },
+            walletClient: {
+              writeContract: () => Promise.resolve(TEST_TX_HASH),
+            },
+          })
+        ),
+        Effect.scoped
+      )
+    );
+  });
+
+  describe("nonce reservation lifecycle", () => {
+    // Pipeline layer with controllable nonce mock, wallet write outcome, and receipt
+    // result. Built with `provideMerge` so the mock services (NonceService in
+    // particular) stay reachable from the test program after the write.
+    const makeNonceLifecycleTestLayer = (config: {
+      nonceLayer: Layer.Layer<NonceService>;
+      receipt: TransactionReceipt;
+      writeContract: () => Promise<Hash>;
+    }) => {
+      const deps = Layer.mergeAll(
+        Layer.provideMerge(
+          ContractWriterLive,
+          Layer.mergeAll(
+            makeMockPublicClientLayer({
+              estimateContractGas: () => Promise.resolve(50000n),
+              simulateContract: () => Promise.resolve({ request: {}, result: true }),
+            }),
+            makeMockWalletClientLayer({ writeContract: config.writeContract })
+          )
+        ),
+        makeMockGasServiceLayer({}, TEST_CHAIN_ID),
+        config.nonceLayer,
+        Layer.succeed(
+          TxReplacement,
+          TxReplacement.of({
+            cancel: () => Effect.succeed(TEST_TX_HASH),
+            speedup: () => Effect.succeed(TEST_TX_HASH),
+          })
+        ),
+        Layer.succeed(
+          TxManager,
+          TxManager.of({
+            getConfirmations: () => Effect.succeed(0n),
+            track: () =>
+              Effect.fail(new ClientNotFoundError({ chainId: TEST_CHAIN_ID, message: "unused" })),
+            waitForReceipt: () => Effect.succeed(config.receipt),
+          } as any)
+        ),
+        Layer.succeed(
+          EventStream,
+          EventStream.of({
+            decodeReceipt: () => Effect.succeed([] as any),
+            watch: () => Effect.succeed(Stream.empty as any),
+          } as any)
+        )
+      );
+
+      return Layer.provideMerge(ContractPipelineLive, deps);
+    };
+
+    // A1: a wallet rejection (write failure) must release the reserved nonce
+    // immediately — when the write's own scope closes — not at the caller's
+    // long-lived tracking-scope close. The freed nonce must be re-reservable at the
+    // same value so a retry does not open a nonce gap.
+    it.effect("releases the reserved nonce immediately when the write fails", () => {
+      const reserved = new Set<bigint>();
+      let nextNonce = 0n;
+
+      const reserve = () =>
+        Effect.sync(() => {
+          let candidate = 0n;
+          while (reserved.has(candidate) || candidate < nextNonce) {
+            candidate += 1n;
+          }
+          reserved.add(candidate);
+          return candidate;
+        });
+      const release = (params: { nonce: bigint }) =>
+        Effect.sync(() => {
+          reserved.delete(params.nonce);
+        });
+      const confirm = (params: { nonce: bigint }) =>
+        Effect.sync(() => {
+          reserved.delete(params.nonce);
+          nextNonce = params.nonce + 1n;
+        });
+
+      const nonceLayer = makeMockNonceServiceLayer({ confirm, release, reserve }, TEST_CHAIN_ID);
+
+      return Effect.gen(function* () {
+        const pipeline = yield* ContractPipeline;
+
+        // First write: nonce 0 is reserved, then the wallet rejects the prompt.
+        const exit = yield* pipeline
+          .writeAndWait({
+            abi: erc20Abi,
+            account: TEST_ADDRESS,
+            address: TEST_ADDRESS,
+            args: [TEST_ADDRESS_2, 100n],
+            chainId: TEST_CHAIN_ID,
+            functionName: "transfer",
+          })
+          .pipe(Effect.exit);
+
+        expect(Exit.isFailure(exit)).toBe(true);
+
+        // The reservation's release finalizer fired with the write's scope close, so
+        // the manager holds no pending nonces.
+        expect(reserved.size).toBe(0);
+
+        // A retry re-reserves the SAME nonce (0) rather than opening a gap at 1.
+        const nonceService = yield* NonceService;
+        const reReserved = yield* nonceService.reserve({
+          address: TEST_ADDRESS,
+          chainId: TEST_CHAIN_ID,
+        });
+        expect(reReserved).toBe(0n);
+      }).pipe(
+        Effect.provide(
+          makeNonceLifecycleTestLayer({
+            nonceLayer,
+            receipt: DEFAULT_RECEIPT,
+            writeContract: () => Promise.reject(new Error("User rejected the request")),
+          })
+        )
+      );
+    });
+
+    // A1: a reverted tx still consumes its nonce on-chain, so `confirm` must run for
+    // reverted receipts too — otherwise the nonce leaks in the manager's pending set.
+    it.effect("confirms the nonce when the receipt reverts", () => {
+      const confirmed: bigint[] = [];
+      const confirm = (params: { nonce: bigint }) =>
+        Effect.sync(() => {
+          confirmed.push(params.nonce);
+        });
+
+      const revertedReceipt: TransactionReceipt = { ...DEFAULT_RECEIPT, status: "reverted" };
+      const nonceLayer = makeMockNonceServiceLayer(
+        { confirm, reserve: () => Effect.succeed(7n) },
+        TEST_CHAIN_ID
+      );
+
+      return Effect.gen(function* () {
+        const pipeline = yield* ContractPipeline;
+
+        const exit = yield* pipeline
+          .writeAndWait({
+            abi: erc20Abi,
+            account: TEST_ADDRESS,
+            address: TEST_ADDRESS,
+            args: [TEST_ADDRESS_2, 100n],
+            chainId: TEST_CHAIN_ID,
+            functionName: "transfer",
+          })
+          .pipe(Effect.exit);
+
+        // The tx reverted, so the terminal fails...
+        expect(Exit.isFailure(exit)).toBe(true);
+        // ...but the nonce was still confirmed (consumed on-chain).
+        expect(confirmed).toEqual([7n]);
+      }).pipe(
+        Effect.provide(
+          makeNonceLifecycleTestLayer({
+            nonceLayer,
+            receipt: revertedReceipt,
+            writeContract: () => Promise.resolve(TEST_TX_HASH),
+          })
+        )
+      );
+    });
+  });
+
+  describe("terminal lifecycle", () => {
+    // B2 (evm): if the tracking scope closes mid-flight, the forked pipeline fiber is
+    // interrupted before resolving `terminalDeferred`. The `Deferred.interrupt`
+    // finalizer must make an out-of-scope `terminal` awaiter fail with interruption
+    // instead of hanging forever.
+    it.effect("terminal awaiter fails with interruption when the scope closes mid-flight", () =>
+      Effect.gen(function* () {
+        const pipeline = yield* ContractPipeline;
+
+        // Acquire the execution inside a scope we control, then close that scope
+        // while `waitForReceipt` is still blocked. Capture the terminal effect so we
+        // can await it AFTER the scope has closed.
+        const terminal = yield* Effect.scoped(
+          Effect.gen(function* () {
+            const execution = yield* pipeline.writeAndTrack({
+              abi: erc20Abi,
+              account: TEST_ADDRESS,
+              address: TEST_ADDRESS,
+              args: [TEST_ADDRESS_2, 100n],
+              chainId: TEST_CHAIN_ID,
+              functionName: "transfer",
+            });
+
+            // Let the forked fiber advance toward the blocked receipt wait.
+            yield* Effect.yieldNow();
+            return execution.terminal;
+          })
+        );
+
+        // Scope is now closed; the forked fiber was interrupted before resolving the
+        // Deferred. Awaiting must terminate (with interruption), not hang.
+        const exit = yield* terminal.pipe(Effect.exit);
+        expect(Exit.isInterrupted(exit)).toBe(true);
+      }).pipe(
+        Effect.provide(
+          makeContractPipelineTestLayer({
+            publicClient: {
+              estimateContractGas: () => Promise.resolve(50000n),
+              simulateContract: () => Promise.resolve({ request: {}, result: true }),
+            },
+            txManager: {
+              // Never resolves: keeps the pipeline blocked at the receipt wait so the
+              // scope closes mid-flight.
+              waitForReceipt: () => Effect.never as any,
+            },
+            walletClient: {
+              writeContract: () => Promise.resolve(TEST_TX_HASH),
+            },
+          })
+        )
+      )
+    );
+  });
+
+  describe("pending confirmations", () => {
+    // A6 (pipeline side): an unmined tx has zero confirmations. The internal
+    // blocks-elapsed counter (stuck-tx detection) must not be published as
+    // `confirmations` — the old code reported "pending, confirmations: 7".
+    it.live("publishes confirmations: 0 while the tx is still pending", () =>
+      Effect.gen(function* () {
+        const pipeline = yield* ContractPipeline;
+
+        const { stateRef } = yield* pipeline.writeAndTrack({
+          abi: erc20Abi,
+          account: TEST_ADDRESS,
+          address: TEST_ADDRESS,
+          args: [TEST_ADDRESS_2, 100n],
+          chainId: TEST_CHAIN_ID,
+          functionName: "transfer",
+        });
+
+        // Blocks tick every 5ms while the receipt wait takes 40ms, so several
+        // pending updates fire (blocksElapsed climbs past 1) before mining.
+        const states = Chunk.toArray(
+          yield* stateRef.changes.pipe(
+            Stream.takeUntil((state) => state.status === "mined"),
+            Stream.runCollect
+          )
+        );
+
+        const pendings = states.filter((state) => state.status === "pending");
+        expect(pendings.length).toBeGreaterThan(0);
+        for (const pending of pendings) {
+          if (pending.status === "pending") {
+            expect(pending.confirmations).toBe(0);
+          }
+        }
+      }).pipe(
+        Effect.provide(
+          makeContractPipelineTestLayer({
+            publicClient: {
+              estimateContractGas: () => Promise.resolve(50000n),
+              simulateContract: () => Promise.resolve({ request: {}, result: true }),
+              watchBlockNumber: (params: unknown) => {
+                const { onBlockNumber } = params as { onBlockNumber: (n: bigint) => void };
+                let blockNumber = 100n;
+                const id = setInterval(() => {
+                  blockNumber += 1n;
+                  onBlockNumber(blockNumber);
+                }, 5);
+                return () => clearInterval(id);
+              },
+            },
+            txManager: {
+              waitForReceipt: () => Effect.succeed(DEFAULT_RECEIPT).pipe(Effect.delay("40 millis")),
             },
             walletClient: {
               writeContract: () => Promise.resolve(TEST_TX_HASH),

@@ -20,7 +20,6 @@ export const ContractPipelineLive = Layer.effect(
     const txReplacement = yield* TxReplacement;
     const publicClientService = yield* PublicClientService;
     const gasService = yield* GasService;
-    const adapterOption = yield* Effect.serviceOption(WriteExecutionAdapter);
 
     const writeAndTrackDeps = {
       eventStream,
@@ -36,6 +35,13 @@ export const ContractPipelineLive = Layer.effect(
 
     const writeAndTrack: ContractPipelineShape["writeAndTrack"] = (params) =>
       Effect.gen(function* () {
+        // Resolve the adapter from the caller's context at call time, not from the
+        // layer build context. Consumers compose the Safe layer the natural way up
+        // (`Layer.provideMerge(safeExecutionLayer, baseLayer)`), so it is not visible
+        // beneath ContractPipelineLive at build time. `serviceOption` adds no `R`
+        // requirement, so the service shape is unchanged.
+        const adapterOption = yield* Effect.serviceOption(WriteExecutionAdapter);
+
         if (Option.isNone(adapterOption)) {
           return yield* defaultWriteAndTrack(params);
         }

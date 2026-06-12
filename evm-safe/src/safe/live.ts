@@ -1,6 +1,6 @@
 import { isUserRejectedError, UserRejectedError } from "@prb/effect-evm/core/errors";
 import { TxManager } from "@prb/effect-evm/tx";
-import { Effect, Layer, Option, Ref } from "effect";
+import { Duration, Effect, Layer, Option, Ref } from "effect";
 import type { Hash, Hex } from "viem";
 import { isAddress, isHash, isHex } from "viem";
 import {
@@ -28,7 +28,19 @@ import { pollUntil } from "./internal/poll.js";
 import { SafeAppsService } from "./service.js";
 import type { EIP712TypedData, SafeMultisigInfo, SafeMultisigTx } from "./types.js";
 
-export type SafeAppsServiceConfig = SafeAppsSdkConfig;
+export type SafeAppsServiceConfig = SafeAppsSdkConfig & {
+  /**
+   * Timeout (ms) for the `getInfo` SDK call. The Safe Apps communicator never settles when the
+   * page is embedded in a non-Safe parent (the response is discarded by the SDK's own
+   * `isValidMessage` filter), so without a timeout `getInfo` would hang forever. Defaults to
+   * {@link DEFAULT_GET_INFO_TIMEOUT}. Only `getInfo` is bounded — `sendTxs` / signature calls
+   * legitimately block on user interaction in the Safe UI.
+   */
+  readonly getInfoTimeout?: Duration.DurationInput;
+};
+
+/** Default timeout for the `getInfo` SDK round-trip (see {@link SafeAppsServiceConfig}). */
+const DEFAULT_GET_INFO_TIMEOUT = Duration.seconds(5);
 
 // --- Validation Factory ---
 
@@ -56,11 +68,12 @@ const validateHex = makeValidator(isHex, "hex");
 /** SDK availability error - either SSR environment or SDK load failure */
 type SdkUnavailableError = NotInSafeAppContextError | SafeAppsSdkUnavailableError;
 
-/** Internal SDK state for lazy loading */
-type SdkState<T> =
-  | { readonly _tag: "pending" }
-  | { readonly _tag: "loaded"; readonly sdk: T }
-  | { readonly _tag: "unavailable"; readonly error: SdkUnavailableError };
+/**
+ * Internal SDK state for lazy loading. Only the `loaded` state is cached: SSR/iframe-guard and
+ * transient dynamic-import failures must stay retryable across hydration / network recovery, so
+ * failures are surfaced without being written to the ref.
+ */
+type SdkState<T> = { readonly _tag: "pending" } | { readonly _tag: "loaded"; readonly sdk: T };
 
 // --- SDK Wrapper Helper ---
 
@@ -84,6 +97,8 @@ export const SafeAppsServiceLive = (config?: SafeAppsServiceConfig) =>
 
       const sdkRef = yield* Ref.make<SdkState<SafeAppsSDKInstance>>({ _tag: "pending" });
 
+      const getInfoTimeout = Duration.decode(config?.getInfoTimeout ?? DEFAULT_GET_INFO_TIMEOUT);
+
       /** Get SDK, loading lazily on first call. Fails if not in Safe App context. */
       const getSdk: Effect.Effect<SafeAppsSDKInstance, SdkUnavailableError> = Effect.gen(
         function* () {
@@ -92,34 +107,33 @@ export const SafeAppsServiceLive = (config?: SafeAppsServiceConfig) =>
           if (state._tag === "loaded") {
             return state.sdk;
           }
-          if (state._tag === "unavailable") {
-            return yield* Effect.fail(state.error);
-          }
 
-          // First call - check environment and load SDK
+          // SSR guard — no cache: hydration may make `window` available on a later call.
           if (typeof window === "undefined") {
-            const error = new NotInSafeAppContextError({
-              message: "Safe Apps SDK requires a browser environment (window is undefined)",
-            });
-            yield* Ref.set(sdkRef, { _tag: "unavailable", error });
-            return yield* Effect.fail(error);
+            return yield* Effect.fail(
+              new NotInSafeAppContextError({
+                message: "Safe Apps SDK requires a browser environment (window is undefined)",
+              })
+            );
           }
 
-          // Try to load SDK - catch SDK unavailable error and store it
-          const loadResult = yield* loadSafeSdk(config).pipe(
-            Effect.map((sdk) => ({ _tag: "loaded" as const, sdk })),
-            Effect.catchTag("SafeAppsSdkUnavailableError", (error) =>
-              Effect.succeed({ _tag: "unavailable" as const, error } as const)
-            )
-          );
-
-          yield* Ref.set(sdkRef, loadResult);
-
-          if (loadResult._tag === "unavailable") {
-            return yield* Effect.fail(loadResult.error);
+          // Safe iframe guard — no cache: the embedding context is environmental and the check is
+          // cheap. `safe-apps-sdk`'s communicator postMessages to `window.parent`; in a top-level
+          // window the request echoes back to the same window and is discarded by the SDK's own
+          // `isValidMessage` filter, so the response promise never settles. Fail fast instead.
+          if (window.parent === window) {
+            return yield* Effect.fail(
+              new NotInSafeAppContextError({
+                message: "Safe Apps SDK requires the page to be embedded in a Safe App host",
+              })
+            );
           }
 
-          return loadResult.sdk;
+          // Cache only the loaded SDK. Dynamic imports are memoized by the bundler, so a transient
+          // load failure (e.g. chunk-load error) costs nothing to retry on the next call.
+          const sdk = yield* loadSafeSdk(config);
+          yield* Ref.set(sdkRef, { _tag: "loaded", sdk });
+          return sdk;
         }
       );
 
@@ -141,7 +155,20 @@ export const SafeAppsServiceLive = (config?: SafeAppsServiceConfig) =>
                   message: "Failed to get Safe info from SDK",
                 }),
               try: () => s.safe.getInfo(),
-            }),
+            }).pipe(
+              // The iframe guard in `getSdk` blocks top-level windows, but an embedded-in-non-Safe
+              // parent passes that guard yet never responds (the SDK's `isValidMessage` filter
+              // drops the echoed message). Bound the round-trip so `getInfo` fails instead of
+              // hanging. `sendTxs` / signature calls are intentionally left unbounded — they block
+              // on user interaction in the Safe UI.
+              Effect.timeoutFail({
+                duration: getInfoTimeout,
+                onTimeout: () =>
+                  new SafeMultisigInfoUnavailableError({
+                    message: `Safe getInfo timed out after ${Duration.toMillis(getInfoTimeout)}ms (not embedded in a responsive Safe App host)`,
+                  }),
+              })
+            ),
           (e) => new SafeMultisigInfoUnavailableError({ cause: e, message: e.message })
         );
 

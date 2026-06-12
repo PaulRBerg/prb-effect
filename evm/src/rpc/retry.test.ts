@@ -2,6 +2,7 @@ import { describe, expect, it } from "@effect/vitest";
 import { ConfigProvider, Effect, Exit, Fiber, Layer, TestClock } from "effect";
 import {
   defaultRetryableErrors,
+  isRetryableError,
   makeRetrySchedule,
   RetryConfigFromEnv,
   withRetry,
@@ -197,6 +198,40 @@ describe("retry", () => {
     expect(defaultRetryableErrors).toContain("503");
     expect(defaultRetryableErrors).toContain("502");
     expect(defaultRetryableErrors).toContain("429");
+  });
+
+  describe("isRetryableError word-boundary matching (C6)", () => {
+    it("matches HTTP status codes as standalone tokens", () => {
+      expect(
+        isRetryableError(new Error("HTTP 429 Too Many Requests"), defaultRetryableErrors)
+      ).toBe(true);
+      expect(isRetryableError(new Error("502 Bad Gateway"), defaultRetryableErrors)).toBe(true);
+      expect(isRetryableError("503 service unavailable", defaultRetryableErrors)).toBe(true);
+    });
+
+    it("does not match status-code patterns embedded inside a tx hash", () => {
+      // Hash embeds "429", "502", and "503" as substrings within a contiguous hex run.
+      const hash = "0xa429b502c503d1e2f3a4b5c6d7e8f9012345678901234567890abcdef01234567";
+      expect(isRetryableError(new Error(`reverted in tx ${hash}`), defaultRetryableErrors)).toBe(
+        false
+      );
+    });
+
+    it("still matches errno tokens at word boundaries", () => {
+      expect(isRetryableError(new Error("read ECONNRESET"), defaultRetryableErrors)).toBe(true);
+      expect(isRetryableError(new Error("connect ETIMEDOUT 1.2.3.4"), defaultRetryableErrors)).toBe(
+        true
+      );
+    });
+
+    it("still matches multi-word phrases as substrings", () => {
+      expect(isRetryableError(new Error("Provider rate limit hit"), defaultRetryableErrors)).toBe(
+        true
+      );
+      expect(isRetryableError(new Error("request timeout after 10s"), defaultRetryableErrors)).toBe(
+        true
+      );
+    });
   });
 
   it.effect("works with Error instances", () =>

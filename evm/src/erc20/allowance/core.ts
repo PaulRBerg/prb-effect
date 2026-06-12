@@ -132,8 +132,13 @@ export const Erc20AllowanceServiceLive = Layer.effect(
         } as const;
       }
 
-      if (!zeroFirst || currentAllowance === 0n) {
-        return yield* Effect.fail(directResult.left);
+      // Only the zero-first reset path makes sense for an on-chain approval
+      // revert (ApprovalError). Wallet-level failures — user rejection,
+      // insufficient funds, resource exhaustion, missing client — must pass
+      // through untouched; retrying would re-prompt the user for more signatures.
+      const failure = directResult.left;
+      if (failure._tag !== "ApprovalError" || !zeroFirst || currentAllowance === 0n) {
+        return yield* Effect.fail(failure);
       }
 
       const resetHash = yield* approve({

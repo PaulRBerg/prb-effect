@@ -142,8 +142,9 @@ export function multiplyBigintByDecimal(value: bigint, multiplier: number): Opti
   }
 
   try {
-    // Convert multiplier to basis points to avoid floating point
-    const basisPoints = Math.floor(multiplier * 10_000);
+    // Convert multiplier to basis points to avoid floating point.
+    // Round (not floor) so float representations like 1.005 -> 10050 bp, not 10049.
+    const basisPoints = Math.round(multiplier * 10_000);
     const result = (value * BigInt(basisPoints)) / 10000n;
     return Option.some(result);
   } catch {
@@ -201,25 +202,14 @@ export function fromWei(wei: bigint): BigDecimal.BigDecimal {
 
 /**
  * Convert a BigDecimal to wei (bigint).
- * Returns None if the value has fractional wei (scale < 18).
+ * Returns None if the value carries sub-wei precision (more than 18 decimals).
  */
 export function toWei(value: BigDecimal.BigDecimal): Option.Option<bigint> {
+  // Rescaling to 18 decimals yields a BigDecimal whose `.value` IS the wei amount.
+  // If the rescaled value is no longer equal to the input, the input carried
+  // sub-wei precision (>18 decimals) that `scale` truncated, so reject it.
   const scaled = BigDecimal.scale(value, WEI_DECIMALS);
-
-  // Normalize to check if there's a fractional component
-  const normalized = BigDecimal.normalize(scaled);
-
-  // If scale is negative after normalization, there are fractional parts
-  if (normalized.scale < 0) {
-    return Option.none();
-  }
-
-  try {
-    const result = normalized.value;
-    return Option.some(result);
-  } catch {
-    return Option.none();
-  }
+  return BigDecimal.equals(scaled, value) ? Option.some(scaled.value) : Option.none();
 }
 
 // ============================================================================
@@ -276,11 +266,13 @@ export function tokenAmountBD(
  * Format a gas amount (bigint) as a readable integer.
  */
 export function formatGas(gas: bigint): string {
-  const numericValue = Number(gas);
-  if (!Number.isFinite(numericValue)) {
+  // Number(gas) silently loses precision above 2^53 while staying finite
+  // (isFinite only catches values >= ~1.8e308), so fall back to the exact
+  // bigint string once we exceed the safe-integer range.
+  if (gas > BigInt(Number.MAX_SAFE_INTEGER) || gas < BigInt(Number.MIN_SAFE_INTEGER)) {
     return gas.toString();
   }
-  return integer(numericValue);
+  return integer(Number(gas));
 }
 
 /**

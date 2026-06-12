@@ -3,8 +3,8 @@ import { WriteExecutionAdapter } from "@prb/effect-evm/contract/pipeline";
 import type { TxState } from "@prb/effect-evm/tx";
 import { TxManager } from "@prb/effect-evm/tx";
 import { Effect, Exit, Fiber, Layer, Option, Stream, SubscriptionRef } from "effect";
-import type { Hash, Hex, TransactionReceipt } from "viem";
-import { erc20Abi } from "viem";
+import type { Hash, Hex, Log, TransactionReceipt } from "viem";
+import { encodeEventTopics, erc20Abi, pad, toHex } from "viem";
 import { afterEach, vi } from "vitest";
 import { SafeWriteExecutionAdapterLive } from "./pipeline-adapter.js";
 import type { SafeAppsServiceShape } from "./service.js";
@@ -15,6 +15,37 @@ vi.mock(
   "@prb/effect-evm/contract/pipeline",
   async () => import("../../../evm/src/contract/pipeline/adapter.js")
 );
+
+// The real `@prb/effect-evm/events` barrel transitively imports modules using the evm package's
+// `#src/*` subpath specifiers, which the evm-safe vitest resolver cannot map. Provide a faithful,
+// self-contained `decodeReceiptLogs` (same semantics as evm/src/events/decoder.ts) so the adapter's
+// production codepath is exercised without dragging in the barrel.
+vi.mock("@prb/effect-evm/events", async () => {
+  const { Array: Arr, Effect, Option } = await import("effect");
+  const { decodeEventLog } = await import("viem");
+
+  const tryDecodeLog = (log: Log, abi: readonly unknown[]) => {
+    try {
+      const decoded = decodeEventLog({ abi, data: log.data, topics: log.topics });
+      return Option.some({
+        address: log.address,
+        args: decoded.args,
+        blockNumber: log.blockNumber ?? 0n,
+        eventName: decoded.eventName,
+        logIndex: log.logIndex ?? 0,
+        removed: log.removed ?? false,
+        transactionHash: log.transactionHash ?? "0x",
+      });
+    } catch {
+      return Option.none();
+    }
+  };
+
+  return {
+    decodeReceiptLogs: (receipt: TransactionReceipt, abi: readonly unknown[]) =>
+      Effect.sync(() => Arr.getSomes(receipt.logs.map((log) => tryDecodeLog(log, abi)))),
+  };
+});
 
 const safeWriteAndTrackOverride = vi.hoisted(() => ({
   impl: null as
@@ -85,6 +116,30 @@ const TEST_RECIPIENT = "0x0000000000000000000000000000000000000003";
 const TEST_CHAIN_ID = 1;
 
 const TEST_RECEIPT = {
+  logs: [],
+  status: "success",
+  transactionHash: TEST_ONCHAIN_HASH,
+} as unknown as TransactionReceipt;
+
+const TRANSFER_LOG: Log = {
+  address: TEST_CONTRACT,
+  blockHash: "0x" as Hash,
+  blockNumber: 1n,
+  data: pad(toHex(100n)),
+  logIndex: 0,
+  removed: false,
+  // Both indexed args are provided, so no topic slot is null.
+  topics: encodeEventTopics({
+    abi: erc20Abi,
+    args: { from: TEST_ACCOUNT, to: TEST_RECIPIENT },
+    eventName: "Transfer",
+  }) as [Hex, ...Hex[]],
+  transactionHash: TEST_ONCHAIN_HASH,
+  transactionIndex: 0,
+};
+
+const TEST_RECEIPT_WITH_LOG = {
+  logs: [TRANSFER_LOG],
   status: "success",
   transactionHash: TEST_ONCHAIN_HASH,
 } as unknown as TransactionReceipt;
@@ -214,6 +269,66 @@ describe("SafeWriteExecutionAdapterLive", () => {
       expect(Option.isSome(mined)).toBe(true);
       if (Option.isSome(mined)) {
         expect(mined.value.hash).toBe(TEST_ONCHAIN_HASH);
+      }
+    }).pipe(
+      Effect.provide(
+        makeAdapterRuntimeLayer(() =>
+          Effect.succeed({
+            confirmations: 2,
+            confirmationsRequired: 2,
+            onchainHash: Option.some(TEST_ONCHAIN_HASH),
+            status: "SUCCESS",
+          })
+        )
+      ),
+      Effect.scoped
+    )
+  );
+
+  it.effect("success terminal includes decoded events from the receipt logs", () =>
+    Effect.gen(function* () {
+      safeWriteAndTrackOverride.impl = () =>
+        Effect.gen(function* () {
+          const stateRef = yield* SubscriptionRef.make<SafeWriteAndTrackState>({
+            onchainHash: TEST_ONCHAIN_HASH,
+            receipt: TEST_RECEIPT_WITH_LOG,
+            safeTxHash: TEST_SAFE_TX_HASH,
+            status: "success",
+          });
+
+          return {
+            result: Effect.succeed({
+              _tag: "success" as const,
+              onchainHash: TEST_ONCHAIN_HASH,
+              receipt: TEST_RECEIPT_WITH_LOG,
+              safeTxHash: TEST_SAFE_TX_HASH,
+            }),
+            stateRef,
+          } satisfies SafeWriteAndTrackResult;
+        });
+
+      const adapter = yield* WriteExecutionAdapter;
+
+      const execution = yield* adapter.writeAndTrack({
+        abi: erc20Abi,
+        account: TEST_ACCOUNT,
+        address: TEST_CONTRACT,
+        args: [TEST_RECIPIENT, 100n],
+        chainId: TEST_CHAIN_ID,
+        functionName: "transfer",
+      });
+
+      const terminal = yield* execution.terminal;
+
+      expect(terminal._tag).toBe("success");
+      if (terminal._tag === "success") {
+        expect(terminal.events).toHaveLength(1);
+        expect(terminal.events[0]?.eventName).toBe("Transfer");
+        expect(terminal.events[0]?.args).toMatchObject({
+          from: TEST_ACCOUNT,
+          to: TEST_RECIPIENT,
+          value: 100n,
+        });
       }
     }).pipe(
       Effect.provide(
@@ -369,6 +484,70 @@ describe("SafeWriteExecutionAdapterLive", () => {
           reference: TEST_SAFE_TX_HASH,
           status: "cancelled",
         });
+      }
+    }).pipe(
+      Effect.provide(
+        makeAdapterRuntimeLayer(() =>
+          Effect.succeed({
+            confirmations: 2,
+            confirmationsRequired: 2,
+            onchainHash: Option.some(TEST_ONCHAIN_HASH),
+            status: "SUCCESS",
+          })
+        )
+      ),
+      Effect.scoped
+    )
+  );
+
+  it.effect("failed terminal prefers the on-chain hash over the Safe tx hash", () =>
+    Effect.gen(function* () {
+      safeWriteAndTrackOverride.impl = () =>
+        Effect.gen(function* () {
+          const stateRef = yield* SubscriptionRef.make<SafeWriteAndTrackState>({
+            error: "Transaction reverted on-chain",
+            onchainHash: TEST_ONCHAIN_HASH,
+            safeTxHash: TEST_SAFE_TX_HASH,
+            status: "failed",
+          });
+
+          return {
+            result: Effect.succeed({
+              _tag: "failed" as const,
+              error: "Transaction reverted on-chain",
+              onchainHash: TEST_ONCHAIN_HASH,
+              safeTxHash: TEST_SAFE_TX_HASH,
+            }),
+            stateRef,
+          } satisfies SafeWriteAndTrackResult;
+        });
+
+      const adapter = yield* WriteExecutionAdapter;
+
+      const execution = yield* adapter.writeAndTrack({
+        abi: erc20Abi,
+        account: TEST_ACCOUNT,
+        address: TEST_CONTRACT,
+        args: [TEST_RECIPIENT, 100n],
+        chainId: TEST_CHAIN_ID,
+        functionName: "transfer",
+      });
+
+      // B1 ripple: a reverted Safe tx carries the real on-chain hash; both the
+      // terminal error and the mapped TxState must link it, not the Safe tx hash.
+      // The mocked TxFailedError (see the core/errors mock above) carries `hash`.
+      const error = yield* execution.terminal.pipe(Effect.flip);
+      expect(error).toMatchObject({ hash: TEST_ONCHAIN_HASH });
+
+      const failedState = yield* Stream.runHead(
+        Stream.filter(
+          execution.stateRef.changes,
+          (state): state is Extract<TxState, { status: "failed" }> => state.status === "failed"
+        )
+      );
+      expect(Option.isSome(failedState)).toBe(true);
+      if (Option.isSome(failedState)) {
+        expect(failedState.value.error.hash).toBe(TEST_ONCHAIN_HASH);
       }
     }).pipe(
       Effect.provide(

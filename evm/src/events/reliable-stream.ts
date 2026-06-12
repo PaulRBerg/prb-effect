@@ -1,10 +1,11 @@
-import { Context, Effect, Fiber, Layer, Ref, Schedule, Stream } from "effect";
+import { Cause, Context, Effect, Fiber, Layer, Ref, Schedule, Stream } from "effect";
 import type { Abi, Address, Hash } from "viem";
 import { DEFAULT_POLLING_INTERVAL } from "#src/constants/index.js";
-import type { ClientNotFoundError, EventWatchError } from "#src/core/index.js";
-import { PublicClientService } from "#src/core/index.js";
+import type { ClientNotFoundError } from "#src/core/index.js";
+import { EventWatchError, PublicClientService } from "#src/core/index.js";
 import type { DecodedEvent } from "#src/events/index.js";
 import { EventStream } from "#src/events/index.js";
+import { makeRetrySchedule } from "#src/rpc/index.js";
 import type { ContractEventName } from "#src/types/index.js";
 
 export type ReliableWatchParams<TAbi extends Abi, TEventName extends ContractEventName<TAbi>> = {
@@ -34,9 +35,25 @@ type ReliableState<TAbi extends Abi, TEventName extends string> = {
 
 export type ReliableEventStreamShape = {
   /**
-   * Watch for events with reorg safety
-   * Events are only emitted after reaching the confirmation threshold
-   * Reorged events are filtered out
+   * Watch for events with reorg safety.
+   *
+   * Events are only emitted after reaching the confirmation threshold, and
+   * reorged events are filtered out before emission.
+   *
+   * @remarks
+   * Reorg filtering relies on `removed: true` log notifications, which **only
+   * WebSocket subscriptions deliver**. With HTTP polling a reorged-out event is
+   * still emitted once the height threshold passes — there is no `removed`
+   * notification to evict it from the pending set.
+   *
+   * `confirmations` here means "N blocks **after** the event block": with
+   * `confirmations: 1`, an event in block `B` is emitted once the head reaches
+   * `B + 1`. Note this differs from viem's `getTransactionConfirmations`
+   * convention, which would call that same situation "2 confirmations".
+   *
+   * If the base event stream fails, or the confirmation poller fails terminally
+   * (after retries), the output stream fails with an {@link EventWatchError} so
+   * consumers observe the error instead of hanging on a silently-dead fiber.
    */
   readonly watch: <TAbi extends Abi, TEventName extends ContractEventName<TAbi>>(
     params: ReliableWatchParams<TAbi, TEventName>
@@ -189,7 +206,26 @@ export const ReliableEventStreamLive = Layer.effect(
                 return { locationByKey, pendingByBlock };
               });
 
-            // Process events from base stream
+            // Map any terminal failure/defect from a background fiber into the
+            // stream's error channel so consumers observe it instead of hanging.
+            // Interruption (normal stream shutdown) is intentionally ignored — it
+            // must not surface as a spurious failure.
+            const failStream = (cause: Cause.Cause<unknown>) =>
+              Effect.sync(() => {
+                if (Cause.isInterruptedOnly(cause)) {
+                  return;
+                }
+                emit.fail(
+                  new EventWatchError({
+                    cause: Cause.squash(cause),
+                    chainId: params.chainId,
+                    message: `Reliable event stream failed on chain ${params.chainId}`,
+                  })
+                );
+              });
+
+            // Process events from base stream. If `baseStream` fails, propagate
+            // the error to the consumer rather than letting this fiber die silently.
             const processEvents = yield* Effect.fork(
               Stream.runForEach(baseStream, (event) =>
                 Effect.gen(function* () {
@@ -201,19 +237,37 @@ export const ReliableEventStreamLive = Layer.effect(
                     yield* addPendingEvent(event);
                   }
                 })
-              )
+              ).pipe(Effect.catchAllCause(failStream))
             );
 
-            // Background task: check confirmations periodically
+            // Background task: check confirmations periodically. A single failed
+            // `getBlockNumber` poll is retried, then swallowed as a warning so it
+            // skips the tick instead of killing the loop. A terminal failure of the
+            // repeat itself (a bug) is mapped onto the stream error channel.
             const checkInterval = params.pollingInterval ?? DEFAULT_POLLING_INTERVAL;
             const confirmationChecker = yield* Effect.fork(
               Effect.repeat(
                 Effect.gen(function* () {
-                  const currentBlock = yield* Effect.tryPromise(() => client.getBlockNumber());
-                  yield* emitConfirmedEvents(currentBlock);
+                  const currentBlock = yield* Effect.tryPromise({
+                    catch: (cause) => cause,
+                    try: () => client.getBlockNumber(),
+                  }).pipe(
+                    Effect.retry(makeRetrySchedule()),
+                    Effect.catchAll((cause) =>
+                      Effect.logWarning(
+                        `Confirmation poll failed on chain ${params.chainId}; skipping tick`,
+                        cause
+                      ).pipe(Effect.as(undefined))
+                    )
+                  );
+                  // A skipped tick yields `undefined`; only re-check confirmations
+                  // when we actually fetched a fresh head block.
+                  if (currentBlock !== undefined) {
+                    yield* emitConfirmedEvents(currentBlock);
+                  }
                 }),
                 Schedule.spaced(`${checkInterval} millis`)
-              )
+              ).pipe(Effect.catchAllCause(failStream))
             );
 
             // Clean up on stream end

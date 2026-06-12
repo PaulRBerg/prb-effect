@@ -5,6 +5,7 @@ import type {
 } from "@prb/effect-evm/contract/pipeline";
 import { WriteExecutionAdapter } from "@prb/effect-evm/contract/pipeline";
 import { TxFailedError } from "@prb/effect-evm/core/errors";
+import { decodeReceiptLogs } from "@prb/effect-evm/events";
 import type { TxState } from "@prb/effect-evm/tx";
 import { initialTxState, TxManager } from "@prb/effect-evm/tx";
 import type { ContractFunctionName } from "@prb/effect-evm/types";
@@ -62,7 +63,12 @@ function mapSafeStateToTxState(state: SafeWriteAndTrackState): TxState {
         status: "cancelled",
       };
     case "failed":
-      return toFailedState(state.safeTxHash ?? "unknown", state.error ?? "Safe transaction failed");
+      // Prefer the on-chain hash (known for reverted txs) so consumers link the
+      // real transaction, not the Safe-internal hash.
+      return toFailedState(
+        state.onchainHash ?? state.safeTxHash ?? "unknown",
+        state.error ?? "Safe transaction failed"
+      );
   }
 }
 
@@ -163,12 +169,28 @@ export const SafeWriteExecutionAdapterLive = Layer.effect(
               (safeTerminal): Effect.Effect<WriteAndTrackTerminal<TAbi>, TxFailedError> => {
                 switch (safeTerminal._tag) {
                   case "success":
-                    return Effect.succeed({
-                      _tag: "success",
-                      events: [],
-                      hash: safeTerminal.onchainHash,
-                      receipt: safeTerminal.receipt,
-                    } satisfies WriteAndTrackTerminal<TAbi>);
+                    return decodeReceiptLogs(safeTerminal.receipt, params.abi).pipe(
+                      // Event decoding is best-effort: never fail the terminal over a log we can't
+                      // decode against the ABI. Fall back to `[]` with a debug breadcrumb.
+                      Effect.catchAll((cause) =>
+                        Effect.logDebug("Failed to decode Safe receipt logs").pipe(
+                          Effect.annotateLogs({
+                            hash: safeTerminal.onchainHash,
+                            reason: cause.message,
+                          }),
+                          Effect.as([])
+                        )
+                      ),
+                      Effect.map(
+                        (events) =>
+                          ({
+                            _tag: "success",
+                            events,
+                            hash: safeTerminal.onchainHash,
+                            receipt: safeTerminal.receipt,
+                          }) satisfies WriteAndTrackTerminal<TAbi>
+                      )
+                    );
                   case "queued":
                     return Effect.succeed({
                       _tag: "queued",
@@ -189,7 +211,9 @@ export const SafeWriteExecutionAdapterLive = Layer.effect(
                   case "failed":
                     return Effect.fail(
                       new TxFailedError({
-                        hash: safeTerminal.safeTxHash,
+                        // The on-chain hash is set for reverted txs; fall back to the
+                        // Safe tx hash for pre-submission rejections.
+                        hash: safeTerminal.onchainHash ?? safeTerminal.safeTxHash,
                         message: safeTerminal.error,
                       })
                     );

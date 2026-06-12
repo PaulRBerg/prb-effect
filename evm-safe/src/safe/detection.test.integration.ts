@@ -9,12 +9,17 @@ import { isSafeMultisig } from "./detection.js";
 const SAFE_V1_3_0_SINGLETON = "0xd9Db270c1B5E3Bd161E8c8503c55cEABeE709552" as Address;
 const SAFE_V1_4_1_SINGLETON = "0x41675C099F32341bf84BFc5382aF534df5C7461a" as Address;
 
-// Test layer with Ethereum mainnet RPC
+// Test layer with Ethereum mainnet RPCs. Several public endpoints behind viem's
+// `fallback` transport so a single provider outage does not fail the suite.
 const testLayer = makePublicClientLayer([
   {
     chain: mainnet,
     chainId: 1,
-    rpcUrls: ["https://eth.llamarpc.com"],
+    rpcUrls: [
+      "https://ethereum-rpc.publicnode.com",
+      "https://eth.drpc.org",
+      "https://eth.llamarpc.com",
+    ],
   },
 ]);
 

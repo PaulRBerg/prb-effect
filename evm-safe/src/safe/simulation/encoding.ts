@@ -6,7 +6,7 @@
  * @see https://github.com/safe-global/safe-core-sdk/blob/4f4a0f6/packages/protocol-kit/src/utils/transactions/gas.ts#L353-L358
  */
 import type { Address, Hex } from "viem";
-import { decodeAbiParameters, encodeFunctionData, encodePacked } from "viem";
+import { decodeAbiParameters, encodeFunctionData, encodePacked, isHex } from "viem";
 import { safeAbis } from "./abis.js";
 import type { SafeMultisigSimulationTx } from "./types.js";
 
@@ -37,6 +37,14 @@ type InternalTx = {
  * @see https://github.com/safe-global/safe-smart-account/blob/c4859f4/contracts/common/StorageAccessible.sol#L32-L43
  */
 export function encodeInternalTx(tx: InternalTx): string {
+  // The byte length is `(data.length - 2) / 2`; odd-length or non-hex `data` would silently
+  // truncate that division and produce a malformed multiSend payload. Validate before encoding.
+  if (!isHex(tx.data) || (tx.data.length - 2) % 2 !== 0) {
+    throw new Error(
+      `Invalid transaction data: expected even-length 0x-prefixed hex, got "${tx.data}" (${tx.data.length} characters)`
+    );
+  }
+
   const encoded = encodePacked(
     ["uint8", "address", "uint256", "uint256", "bytes"],
     [tx.operation, tx.to, tx.value, BigInt((tx.data.length - 2) / 2), tx.data]

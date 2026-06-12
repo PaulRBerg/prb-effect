@@ -245,7 +245,7 @@ describe("CircuitBreaker", () => {
     Effect.gen(function* () {
       const breaker = yield* makeCircuitBreaker();
 
-      // Default: failureThreshold=5, resetTimeout=30000, successThreshold=2
+      // Default: failureThreshold=5, resetTimeout=30000, successThreshold=3
       // Verify circuit opens after 5 failures
       for (let i = 0; i < 5; i++) {
         yield* breaker.execute(Effect.fail(new Error("fail"))).pipe(Effect.ignore);
@@ -309,6 +309,61 @@ describe("CircuitBreaker", () => {
 
       state = yield* breaker.getState;
       expect(state).toBe("closed");
+    })
+  );
+
+  it.effect("code default successThreshold is 3 (matches env default)", () =>
+    Effect.gen(function* () {
+      // No successThreshold passed -> code default must be 3 to match the env schema.
+      const breaker = yield* makeCircuitBreaker({ failureThreshold: 2, resetTimeout: 50 });
+
+      // Open the circuit
+      yield* breaker.execute(Effect.fail(new Error("fail1"))).pipe(Effect.ignore);
+      yield* breaker.execute(Effect.fail(new Error("fail2"))).pipe(Effect.ignore);
+
+      yield* TestClock.adjust("60 millis");
+
+      // Two successes must NOT close (default threshold is 3, not 2).
+      yield* breaker.execute(Effect.succeed("ok1"));
+      yield* breaker.execute(Effect.succeed("ok2"));
+      expect(yield* breaker.getState).toBe("half-open");
+
+      // Third closes.
+      yield* breaker.execute(Effect.succeed("ok3"));
+      expect(yield* breaker.getState).toBe("closed");
+    })
+  );
+
+  it.effect("concurrent probes after reset window promote to half-open exactly once", () =>
+    Effect.gen(function* () {
+      // successThreshold high enough that concurrent probes can't accidentally close.
+      const breaker = yield* makeCircuitBreaker({
+        failureThreshold: 2,
+        resetTimeout: 50,
+        successThreshold: 10,
+      });
+
+      // Open the circuit
+      yield* breaker.execute(Effect.fail(new Error("fail1"))).pipe(Effect.ignore);
+      yield* breaker.execute(Effect.fail(new Error("fail2"))).pipe(Effect.ignore);
+      expect(yield* breaker.getState).toBe("open");
+
+      yield* TestClock.adjust("60 millis");
+
+      // Fire many concurrent probes. The atomic promote-and-admit must yield a single
+      // coherent half-open transition (no fiber observes a stale "open" and rejects,
+      // no double promotion corrupts the success counter).
+      const results = yield* Effect.all(
+        Array.from({ length: 8 }, () => breaker.execute(Effect.succeed("ok")).pipe(Effect.either)),
+        { concurrency: "unbounded" }
+      );
+
+      // All probes are admitted (none rejected with CircuitOpenError).
+      for (const r of results) {
+        expect(r._tag).toBe("Right");
+      }
+      // Still half-open since 8 < successThreshold (10).
+      expect(yield* breaker.getState).toBe("half-open");
     })
   );
 

@@ -477,6 +477,14 @@ const program = Effect.gen(function* () {
 If you need reactive UI state, use `writeAndTrack` (scoped): it returns a `SubscriptionRef<TxState>` plus an Effect for
 the final terminal union.
 
+### Write execution adapters
+
+`ContractPipeline` can delegate the write to a `WriteExecutionAdapter` (for example, the Safe multisig adapter). The
+pipeline resolves the adapter from the **call-time context**, so the adapter may be provided anywhere in the final
+context — there is no composition-order requirement. Composing it the natural way up (e.g.
+`Layer.provideMerge(safeExecutionLayer, baseLayer)`) works; it does not need to sit beneath `ContractPipelineLive`. When
+no adapter is present, or its `canHandle` returns `false`, writes fall back to the default EOA path.
+
 ### Preflight modes
 
 `ContractPipeline` defaults to strict preflight (`estimate + simulate`, fail on either).
@@ -652,6 +660,18 @@ const program = Effect.gen(function* () {
 
 Use `ReliableEventStream` when you want confirmation-gated / reorg-filtered emissions.
 
+### Reliable stream semantics
+
+- **Confirmations count blocks _after_ the event block.** `confirmations: 1` (the default) emits an event from block `B`
+  once the chain head reaches `B + 1`. This differs from viem's `getTransactionConfirmations` convention, which would
+  call that same situation "2 confirmations".
+- **Reorg filtering needs `removed: true` log notifications, which only WebSocket subscriptions deliver.** With HTTP
+  polling there is no `removed` notification, so a reorged-out event is still emitted once the confirmation height
+  threshold passes. Use a WebSocket transport if you need reorged events evicted before emission.
+- **Failures surface on the stream, not silently.** If the underlying event stream fails, or the confirmation poller
+  fails terminally (transient `getBlockNumber` errors are retried and skipped), the output stream fails with an
+  `EventWatchError` instead of hanging.
+
 ## Subscriptions
 
 Use `SubscriptionService` when you want raw block/log/pending-tx streams (no ABI decoding).
@@ -719,6 +739,17 @@ import { browser } from "effect-evm";
 
 const CursorLayer = browser.makeLocalStorageCursorStoreLayer({ key: "my-cursors" });
 ```
+
+`CursorStream.watchWithCursor` / `syncWithCursor` resume semantics:
+
+- **Resume is inclusive of the cursor's block.** On restart the stream resumes from `lastBlockNumber` (not `+1`) and
+  filters out events at or before `(lastBlockNumber, lastLogIndex)`. This replays events later in the same block as the
+  last-processed one exactly once, instead of skipping them. A genesis cursor (`lastBlockNumber: 0n`) is honored rather
+  than treated as "no cursor".
+- **`syncWithCursor` has no gap between backfill and live watch.** It resolves an explicit head block, backfills up to
+  it, and starts the live watch at `head + 1` — events that land between the two phases are not missed.
+- **The cursor marks delivery, not processing.** It advances in `Stream.tap`, i.e. _before_ your consumer processes the
+  element, so a crash mid-processing drops that event on the next resume. **Consumers must be idempotent.**
 
 ### Transaction Store
 

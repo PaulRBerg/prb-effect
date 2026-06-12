@@ -31,6 +31,13 @@ export type SafeMultisigWaitOptions = {
   readonly interval?: Duration.DurationInput;
   /** Maximum wait time (default: 90 minutes) */
   readonly maxWait?: Duration.DurationInput;
+  /**
+   * Invoked on each successful poll (before any terminal resolution) with the latest tx info.
+   * Lets callers observe non-terminal lifecycle transitions (confirmation counts,
+   * `awaiting_confirmations → awaiting_execution → pending`) that the terminal result alone
+   * cannot expose. Failures here MUST NOT abort polling — the loop swallows them.
+   */
+  readonly onProgress?: (info: SafeMultisigTxInfo) => Effect.Effect<void>;
 };
 
 export type SafeMultisigWaitResult =
@@ -52,7 +59,8 @@ export type SafeMultisigWaitResult =
   | {
       readonly _tag: "failed";
       readonly error: string;
-      readonly onchainHash: null;
+      // Known once the tx reverted on-chain; `null` only when Safe rejected before submission.
+      readonly onchainHash: Hash | null;
       readonly safeTxHash: Hash;
     };
 
@@ -136,7 +144,7 @@ function resolveTerminalWaitResult(
           return Option.some({
             _tag: "failed" as const,
             error: `Transaction ${txHash} reverted on-chain`,
-            onchainHash: null,
+            onchainHash: txHash,
             safeTxHash,
           } satisfies SafeMultisigWaitResult);
         }
@@ -191,7 +199,13 @@ export const waitForSafeMultisigTx = Effect.fn("waitForSafeMultisigTx")(function
     MIN_POLL_INTERVAL
   );
   const maxWait = Duration.decode(options.maxWait ?? DEFAULT_MAX_WAIT);
-  const maxAttempts = Math.floor(Duration.toMillis(maxWait) / Duration.toMillis(interval));
+  // Guarantee at least one poll even when `maxWait < interval` (e.g. `maxWait: "3 seconds"` with
+  // the 5s default interval). Otherwise an already-executed tx would be reported `queued` without
+  // ever calling `getTx`.
+  const maxAttempts = Math.max(
+    1,
+    Math.floor(Duration.toMillis(maxWait) / Duration.toMillis(interval))
+  );
 
   const safeApps = yield* SafeAppsService;
   let lastInfo: SafeMultisigTxInfo | null = null;
@@ -223,6 +237,12 @@ export const waitForSafeMultisigTx = Effect.fn("waitForSafeMultisigTx")(function
           status: queued.status,
         })
       );
+
+      // Surface the per-poll info so callers can observe non-terminal transitions. Hook failures
+      // must not interrupt polling, so swallow them.
+      if (options.onProgress) {
+        yield* options.onProgress(queued).pipe(Effect.catchAllCause(() => Effect.void));
+      }
 
       const terminalResult = yield* resolveTerminalWaitResult(queued, safeTxHash, getReceipt).pipe(
         Effect.catchTag(

@@ -11,3 +11,12 @@ export class EventWatchError extends Schema.TaggedError<EventWatchError>()("Even
   chainId: Schema.Number,
   message: Schema.String,
 }) {}
+
+export class EventBackfillError extends Schema.TaggedError<EventBackfillError>()(
+  "EventBackfillError",
+  {
+    cause: Schema.optional(Schema.Unknown),
+    chainId: Schema.Number,
+    message: Schema.String,
+  }
+) {}
