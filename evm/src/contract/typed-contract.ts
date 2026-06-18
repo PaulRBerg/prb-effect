@@ -24,24 +24,20 @@ type ReadCallOptions = {
   readonly blockTag?: BlockTag | undefined;
 };
 
-type ReadArgsWithOptionsParam<
-  TAbi extends Abi,
-  TFunctionName extends ReadFunctionName<TAbi>,
-> = readonly [] extends ReadArgs<TAbi, TFunctionName>
-  ? [args?: ReadArgs<TAbi, TFunctionName>, options?: ReadCallOptions | undefined]
-  : [args: ReadArgs<TAbi, TFunctionName>, options?: ReadCallOptions | undefined];
+type ReadArgsWithOptionsParam<TAbi extends Abi, TFunctionName extends ReadFunctionName<TAbi>> =
+  readonly [] extends ReadArgs<TAbi, TFunctionName>
+    ? [args?: ReadArgs<TAbi, TFunctionName>, options?: ReadCallOptions | undefined]
+    : [args: ReadArgs<TAbi, TFunctionName>, options?: ReadCallOptions | undefined];
 
 type WriteArgs<
   TAbi extends Abi,
   TFunctionName extends WriteFunctionName<TAbi>,
 > = ContractFunctionArgs<TAbi, "nonpayable" | "payable", TFunctionName>;
 
-type WriteArgsField<
-  TAbi extends Abi,
-  TFunctionName extends WriteFunctionName<TAbi>,
-> = readonly [] extends WriteArgs<TAbi, TFunctionName>
-  ? { readonly args?: WriteArgs<TAbi, TFunctionName> | undefined }
-  : { readonly args: WriteArgs<TAbi, TFunctionName> };
+type WriteArgsField<TAbi extends Abi, TFunctionName extends WriteFunctionName<TAbi>> =
+  readonly [] extends WriteArgs<TAbi, TFunctionName>
+    ? { readonly args?: WriteArgs<TAbi, TFunctionName> | undefined }
+    : { readonly args: WriteArgs<TAbi, TFunctionName> };
 
 type WriteOverrides<TAbi extends Abi, TFunctionName extends WriteFunctionName<TAbi>> = {
   readonly account: Address;

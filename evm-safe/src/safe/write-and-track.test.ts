@@ -101,9 +101,9 @@ describe("safeWriteAndTrack", () => {
       const layer = Layer.merge(makeSafeAppsServiceLayer(getTx), txManagerLayer);
 
       const handle = yield* safeWriteAndTrack({
-        onStateChange: (state) => Ref.update(seen, (xs) => [...xs, state.status]),
         transactions: [TX],
         waitOptions: { interval: "10 millis", maxWait: "5 seconds" },
+        onStateChange: (state) => Ref.update(seen, (xs) => [...xs, state.status]),
       }).pipe(Effect.provide(layer));
 
       const result = yield* handle.result.pipe(Effect.provide(layer));
@@ -149,9 +149,9 @@ describe("safeWriteAndTrack", () => {
       const layer = Layer.merge(makeSafeAppsServiceLayer(getTx), txManagerLayer);
 
       const handle = yield* safeWriteAndTrack({
-        onStateChange: (state) => Ref.update(seen, (xs) => [...xs, state.status]),
         transactions: [TX],
         waitOptions: { interval: "10 millis", maxWait: "5 seconds" },
+        onStateChange: (state) => Ref.update(seen, (xs) => [...xs, state.status]),
       }).pipe(Effect.provide(layer));
 
       const result = yield* handle.result.pipe(Effect.provide(layer));

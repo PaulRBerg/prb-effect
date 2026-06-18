@@ -183,7 +183,7 @@ const checkSignatureStatus = (
 
     if (hasReachedConfirmation(status, commitment)) {
       return {
-        confirmations: status.confirmations !== null ? BigInt(status.confirmations) : null,
+        confirmations: status.confirmations === null ? null : BigInt(status.confirmations),
         signature,
         slot: BigInt(status.slot),
       };

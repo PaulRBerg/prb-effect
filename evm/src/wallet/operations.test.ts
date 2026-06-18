@@ -178,12 +178,12 @@ describe("signTypedData", () => {
 
       const result = yield* signTypedData(provider, {
         account: "0x1234567890123456789012345678901234567890" as Address,
+        message: { test: "value" },
+        primaryType: "Test",
         domain: {
           chainId: mainnet.id,
           name: "Test",
         },
-        message: { test: "value" },
-        primaryType: "Test",
         types: {
           Test: [{ name: "test", type: "string" }],
         },

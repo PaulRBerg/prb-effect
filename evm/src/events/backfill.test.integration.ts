@@ -42,13 +42,13 @@ describe("EventBackfill", () => {
                     data: "0x0000000000000000000000000000000000000000000000000000000000000064",
                     logIndex: 0,
                     removed: false,
+                    transactionHash: "0xtxhash",
+                    transactionIndex: 0,
                     topics: [
                       "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
                       "0x0000000000000000000000001234567890123456789012345678901234567890",
                       "0x0000000000000000000000000987654321098765432109876543210987654321",
                     ],
-                    transactionHash: "0xtxhash",
-                    transactionIndex: 0,
                   },
                 ]);
               },
@@ -88,13 +88,13 @@ describe("EventBackfill", () => {
                     data: "0x0000000000000000000000000000000000000000000000000000000000000064",
                     logIndex: 0,
                     removed: false,
+                    transactionHash: "0xtxhash",
+                    transactionIndex: 0,
                     topics: [
                       "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
                       "0x0000000000000000000000001234567890123456789012345678901234567890",
                       "0x0000000000000000000000000987654321098765432109876543210987654321",
                     ],
-                    transactionHash: "0xtxhash",
-                    transactionIndex: 0,
                   },
                 ]),
             } as any)
@@ -133,13 +133,13 @@ describe("EventBackfill", () => {
                     data: "0x0000000000000000000000000000000000000000000000000000000000000064",
                     logIndex: 0,
                     removed: false,
+                    transactionHash: "0xtxhash",
+                    transactionIndex: 0,
                     topics: [
                       "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
                       "0x0000000000000000000000001234567890123456789012345678901234567890",
                       "0x0000000000000000000000000987654321098765432109876543210987654321",
                     ],
-                    transactionHash: "0xtxhash",
-                    transactionIndex: 0,
                   },
                 ]),
             } as any)

@@ -31,6 +31,7 @@ describe("errors/extract", () => {
     };
 
     expect(extractErrorData(tagged)).toEqual({
+      message: "execution reverted",
       details: {
         address: "0xabc",
         calldata: "0xdeadbeef",
@@ -40,7 +41,6 @@ describe("errors/extract", () => {
         tag: "Reverted",
         value: TEST_VALUE,
       },
-      message: "execution reverted",
     });
   });
 
@@ -63,6 +63,7 @@ describe("errors/extract", () => {
     );
 
     expect(extractErrorData(serialized)).toEqual({
+      message: "execution reverted",
       details: {
         address: "0xabc",
         calldata: "0xdeadbeef",
@@ -72,7 +73,6 @@ describe("errors/extract", () => {
         tag: "ContractWriteError",
         value: TEST_VALUE,
       },
-      message: "execution reverted",
     });
   });
 

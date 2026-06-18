@@ -295,7 +295,7 @@ export const Eip7702ServiceLive = Layer.effect(
         }
 
         const txNonce = params.tx?.nonce;
-        const authorizationNonce = txNonce !== undefined ? txNonce + 1 : undefined;
+        const authorizationNonce = txNonce === undefined ? undefined : txNonce + 1;
 
         const authorization = yield* prepareAuthorizationWithNonceEffect({
           account,

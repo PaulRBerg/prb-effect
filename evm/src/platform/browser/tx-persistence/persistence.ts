@@ -122,6 +122,8 @@ function handleReplacement(options: {
     const updatedTx: PersistedTx = {
       ...(existingTx ?? options.initialTx),
       currentHash: options.state.newHash,
+      status: options.lastStatus,
+      updatedAt: timestamp,
       replacements: [
         ...replacements,
         {
@@ -131,8 +133,6 @@ function handleReplacement(options: {
           reason: options.state.reason,
         },
       ],
-      status: options.lastStatus,
-      updatedAt: timestamp,
     };
 
     yield* options.txStore.upsert(updatedTx).pipe(Effect.catchAll(() => Effect.void));

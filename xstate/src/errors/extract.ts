@@ -30,6 +30,7 @@ function hasTaggedErrorShape(error: unknown): error is TaggedErrorShape {
 
 function toTxError(error: TaggedErrorShape): TxError {
   return {
+    message: error.message,
     details: {
       address: error.address,
       calldata: error.calldata,
@@ -39,7 +40,6 @@ function toTxError(error: TaggedErrorShape): TxError {
       tag: error._tag,
       value: error.value,
     },
-    message: error.message,
   };
 }
 
@@ -79,5 +79,5 @@ export function extractErrorData(error: unknown, fallbackMessage = "Operation fa
   return fallbackMessage;
 }
 
-export { hasTaggedErrorShape };
 export type { TaggedErrorShape };
+export { hasTaggedErrorShape };

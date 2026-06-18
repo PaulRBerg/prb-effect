@@ -50,6 +50,18 @@ export class WalletLifecycle extends Context.Tag("ew3/WalletLifecycle")<
  */
 export function makeWalletLifecycleLive(provider: WalletProvider): Layer.Layer<WalletLifecycle> {
   return Layer.succeed(WalletLifecycle, {
+    isConnected: Effect.gen(function* () {
+      const result = yield* Effect.promise(() =>
+        provider
+          .request({
+            method: "eth_accounts",
+          })
+          .then((accountsResult) => accountsResult as Address[])
+          .catch(() => [] as Address[])
+      );
+
+      return result.length > 0;
+    }),
     addChain: (chain: AddChainParams) =>
       Effect.gen(function* () {
         // Convert chain config to EIP-3085 format
@@ -122,19 +134,6 @@ export function makeWalletLifecycleLive(provider: WalletProvider): Layer.Layer<W
         return Option.getOrElse(parseHexInt(chainIdHex), () => UNKNOWN_CHAIN_ID);
       }),
 
-    isConnected: Effect.gen(function* () {
-      const result = yield* Effect.promise(() =>
-        provider
-          .request({
-            method: "eth_accounts",
-          })
-          .then((accountsResult) => accountsResult as Address[])
-          .catch(() => [] as Address[])
-      );
-
-      return result.length > 0;
-    }),
-
     switchChain: (chainId: number) =>
       Effect.gen(function* () {
         yield* Effect.tryPromise({
@@ -178,6 +177,24 @@ export const WalletLifecycleFromProviderRefLive = Layer.effect(
     const getProvider = providerRef.get;
 
     return WalletLifecycle.of({
+      isConnected: Effect.gen(function* () {
+        const current = yield* getProvider;
+        if (Option.isNone(current)) {
+          return false;
+        }
+
+        const provider = current.value;
+        const result = yield* Effect.promise(() =>
+          provider
+            .request({
+              method: "eth_accounts",
+            })
+            .then((accountsResult) => accountsResult as Address[])
+            .catch(() => [] as Address[])
+        );
+
+        return result.length > 0;
+      }),
       addChain: (chain: AddChainParams) =>
         Effect.gen(function* () {
           const current = yield* getProvider;
@@ -277,25 +294,6 @@ export const WalletLifecycleFromProviderRefLive = Layer.effect(
 
           return Option.getOrElse(parseHexInt(chainIdHex), () => UNKNOWN_CHAIN_ID);
         }),
-
-      isConnected: Effect.gen(function* () {
-        const current = yield* getProvider;
-        if (Option.isNone(current)) {
-          return false;
-        }
-
-        const provider = current.value;
-        const result = yield* Effect.promise(() =>
-          provider
-            .request({
-              method: "eth_accounts",
-            })
-            .then((accountsResult) => accountsResult as Address[])
-            .catch(() => [] as Address[])
-        );
-
-        return result.length > 0;
-      }),
 
       switchChain: (chainId: number) =>
         Effect.gen(function* () {

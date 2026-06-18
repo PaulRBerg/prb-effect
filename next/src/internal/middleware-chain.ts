@@ -39,15 +39,15 @@ export const createMiddlewareChain = <
         next: tail,
       }) as Effect<A, E, R>;
     }
-    return tag.provides !== undefined
-      ? (Effect_.provideServiceEffect(
+    return tag.provides === undefined
+      ? (Effect_.zipRight(
+          (middleware as NextMiddleware.NextMiddleware<unknown, unknown, unknown>)(options),
+          tail
+        ) as Effect<A, E, R>)
+      : (Effect_.provideServiceEffect(
           tail,
           tag.provides as unknown as Context.Tag<unknown, unknown>,
           (middleware as NextMiddleware.NextMiddleware<unknown, unknown, unknown>)(options)
-        ) as Effect<A, E, R>)
-      : (Effect_.zipRight(
-          (middleware as NextMiddleware.NextMiddleware<unknown, unknown, unknown>)(options),
-          tail
         ) as Effect<A, E, R>);
   };
   return buildChain(0);

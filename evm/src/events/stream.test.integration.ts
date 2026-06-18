@@ -45,13 +45,13 @@ describe("EventStream", () => {
                         data: "0x0000000000000000000000000000000000000000000000000000000000000064",
                         logIndex: 0,
                         removed: false,
+                        transactionHash: "0xtxhash",
+                        transactionIndex: 0,
                         topics: [
                           "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
                           "0x0000000000000000000000001234567890123456789012345678901234567890",
                           "0x0000000000000000000000000987654321098765432109876543210987654321",
                         ],
-                        transactionHash: "0xtxhash",
-                        transactionIndex: 0,
                       },
                     ] satisfies Log[]);
                   }
@@ -125,6 +125,12 @@ describe("EventStream", () => {
           effectiveGasPrice: 1n,
           from: "0xfrom",
           gasUsed: MIN_TX_GAS,
+          logsBloom: "0x",
+          status: "success",
+          to: "0xto",
+          transactionHash: "0xtxhash",
+          transactionIndex: 0,
+          type: "0x2",
           logs: [
             {
               address: TEST_ADDRESS,
@@ -133,21 +139,15 @@ describe("EventStream", () => {
               data: "0x0000000000000000000000000000000000000000000000000000000000000064",
               logIndex: 0,
               removed: false,
+              transactionHash: "0xtxhash",
+              transactionIndex: 0,
               topics: [
                 "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
                 "0x0000000000000000000000001234567890123456789012345678901234567890",
                 "0x0000000000000000000000000987654321098765432109876543210987654321",
               ],
-              transactionHash: "0xtxhash",
-              transactionIndex: 0,
             },
           ],
-          logsBloom: "0x",
-          status: "success",
-          to: "0xto",
-          transactionHash: "0xtxhash",
-          transactionIndex: 0,
-          type: "0x2",
         };
 
         const events = yield* stream.decodeReceipt(mockReceipt, erc20Abi);

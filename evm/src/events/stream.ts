@@ -66,6 +66,7 @@ export const EventStreamLive = Layer.effect(
               eventName: params.eventName,
               fromBlock: params.fromBlock,
               onError: cb.onError,
+              pollingInterval: params.pollingInterval,
               onLogs: (logs) => {
                 for (const log of logs) {
                   const decoded = tryDecodeLog(log, params.abi);
@@ -74,7 +75,6 @@ export const EventStreamLive = Layer.effect(
                   }
                 }
               },
-              pollingInterval: params.pollingInterval,
             }),
         });
       }),

@@ -410,9 +410,9 @@ const makePublicTransportForChain = (config: ChainConfig): Transport => {
   // per shared promise rather than once per waiter — otherwise N waiters on one
   // failing RPC would increment the breaker N times.
   const guarded =
-    config.rpcMiddleware?.circuitBreaker !== undefined
-      ? withCircuitBreaker(baseTransport, config.rpcMiddleware.circuitBreaker)
-      : baseTransport;
+    config.rpcMiddleware?.circuitBreaker === undefined
+      ? baseTransport
+      : withCircuitBreaker(baseTransport, config.rpcMiddleware.circuitBreaker);
 
   return config.rpcMiddleware?.dedup ? withDedup(guarded) : guarded;
 };

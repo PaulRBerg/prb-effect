@@ -193,6 +193,7 @@ export const Erc721ServiceLive = Layer.effect(
             address: params.address,
             args: [params.tokenId],
             chainId: params.chainId,
+            functionName: "tokenURI",
             errorFactory: (cause) =>
               new Erc721MetadataFetchError({
                 address: params.address,
@@ -202,7 +203,6 @@ export const Erc721ServiceLive = Layer.effect(
                 tokenId: params.tokenId,
                 uri: "",
               }),
-            functionName: "tokenURI",
           });
 
           if (!uri || uri === "") {
@@ -288,6 +288,7 @@ export const Erc721ServiceLive = Layer.effect(
           address: params.address,
           args: [params.tokenId],
           chainId: params.chainId,
+          functionName: "ownerOf",
           errorFactory: (cause) =>
             new Erc721OwnerNotFoundError({
               address: params.address,
@@ -295,7 +296,6 @@ export const Erc721ServiceLive = Layer.effect(
               message: `Failed to get owner: ${String(cause)}`,
               tokenId: params.tokenId,
             }),
-          functionName: "ownerOf",
         }).pipe(
           Effect.withSpan(SpanNames.ERC721_OWNER_OF, {
             attributes: {
@@ -321,9 +321,9 @@ export const Erc721ServiceLive = Layer.effect(
               });
 
             const args =
-              params.data !== undefined
-                ? [params.from, params.to, params.tokenId, params.data]
-                : [params.from, params.to, params.tokenId];
+              params.data === undefined
+                ? [params.from, params.to, params.tokenId]
+                : [params.from, params.to, params.tokenId, params.data];
 
             return yield* writeErc721(walletClientService, {
               account,
@@ -441,6 +441,7 @@ export const Erc721ServiceLive = Layer.effect(
               address: params.address,
               args: [params.from, params.to, params.tokenId],
               chainId: params.chainId,
+              functionName: "transferFrom",
               errorFactory: (cause) =>
                 new Erc721TransferError({
                   address: params.address,
@@ -450,7 +451,6 @@ export const Erc721ServiceLive = Layer.effect(
                   to: params.to,
                   tokenId: params.tokenId,
                 }),
-              functionName: "transferFrom",
             });
           })
         ).pipe(

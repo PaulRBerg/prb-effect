@@ -37,9 +37,9 @@ export const TypeId: unique symbol = Symbol.for(NextSymbolKey);
 export type TypeId = typeof TypeId;
 
 interface Any extends Pipeable {
-  readonly [TypeId]: TypeId;
   readonly _tag: string;
   readonly key: string;
+  readonly [TypeId]: TypeId;
 }
 
 type AnyWithProps = {
@@ -72,29 +72,7 @@ export interface Next<
   out L extends Layer.Layer.Any | RuntimeLayer<unknown> | undefined,
   out Middleware extends NextMiddleware.TagClassAny = never,
 > extends Pipeable {
-  new (_: never): object;
-
-  readonly [TypeId]: TypeId;
   readonly _tag: Tag;
-  readonly key: string;
-  readonly middlewares: readonly Middleware[];
-  readonly runtime?: L extends Layer.Layer.Any
-    ? ManagedRuntime.ManagedRuntime<Layer.Layer.Success<L>, Layer.Layer.Error<L>>
-    : ManagedRuntime.ManagedRuntime<unknown, unknown>;
-  readonly paramsSchema?: Schema.Schema.Any;
-  readonly searchParamsSchema?: Schema.Schema.Any;
-
-  /**
-   * Adds a middleware tag to this handler. The middleware must be satisfied by
-   * the environment provided by `L`.
-   *
-   * Note: The type constraint was relaxed to support generic function patterns.
-   * If the middleware is not provided by the Layer, the handler will fail at
-   * runtime with a context resolution error.
-   */
-  middleware<M>(
-    middleware: M
-  ): Next<Tag, L, Middleware | (M extends NextMiddleware.TagClassAny ? M : never)>;
 
   /**
    * Finalizes the handler by supplying an Effect-based implementation and
@@ -113,6 +91,28 @@ export interface Next<
       ? _A | WrappedReturns<Middleware>
       : never
   >;
+  readonly key: string;
+
+  /**
+   * Adds a middleware tag to this handler. The middleware must be satisfied by
+   * the environment provided by `L`.
+   *
+   * Note: The type constraint was relaxed to support generic function patterns.
+   * If the middleware is not provided by the Layer, the handler will fail at
+   * runtime with a context resolution error.
+   */
+  middleware<M>(
+    middleware: M
+  ): Next<Tag, L, Middleware | (M extends NextMiddleware.TagClassAny ? M : never)>;
+  readonly middlewares: readonly Middleware[];
+  readonly paramsSchema?: Schema.Schema.Any;
+  readonly runtime?: L extends Layer.Layer.Any
+    ? ManagedRuntime.ManagedRuntime<Layer.Layer.Success<L>, Layer.Layer.Error<L>>
+    : ManagedRuntime.ManagedRuntime<unknown, unknown>;
+  readonly searchParamsSchema?: Schema.Schema.Any;
+  new (_: never): object;
+
+  readonly [TypeId]: TypeId;
 }
 
 const Proto = {
@@ -259,15 +259,16 @@ type NavigationError = NotFoundError | RedirectError;
  * Signature of the effectful handler accepted by `build`.
  * Navigation errors are always allowed since they're caught by the executor.
  */
-type BuildHandler<P extends Any, A extends readonly unknown[], O> = P extends Next<
-  infer _Tag,
-  infer _Layer,
-  infer _Middleware
->
-  ? (
-      ...args: A
-    ) => Effect.Effect<O, CatchesFromMiddleware<_Middleware> | NavigationError, ExtractProvides<P>>
-  : never;
+type BuildHandler<P extends Any, A extends readonly unknown[], O> =
+  P extends Next<infer _Tag, infer _Layer, infer _Middleware>
+    ? (
+        ...args: A
+      ) => Effect.Effect<
+        O,
+        CatchesFromMiddleware<_Middleware> | NavigationError,
+        ExtractProvides<P>
+      >
+    : never;
 
 /**
  * Computes the wrapped return type produced by middleware implementing the

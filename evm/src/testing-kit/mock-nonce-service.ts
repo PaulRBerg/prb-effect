@@ -100,17 +100,16 @@ export const makeMockNonceServiceLayer = (
   supportedChainId = 1
 ): Layer.Layer<NonceService> =>
   makeMockServiceLayer(NonceService, defaultConfig, config, (merged) => ({
-    // Methods that never fail - they succeed silently for unsupported chains
-    confirm: (params) =>
-      params.chainId === supportedChainId ? merged.confirm(params) : Effect.succeed(undefined),
-
     // Methods that can fail with ClientNotFoundError
     getConfirmedCount: withChainIdCheck(supportedChainId, merged.getConfirmedCount),
     getGaps: withChainIdCheck(supportedChainId, merged.getGaps),
     getNext: withChainIdCheck(supportedChainId, merged.getNext),
     getPendingCount: withChainIdCheck(supportedChainId, merged.getPendingCount),
-    release: (params) =>
-      params.chainId === supportedChainId ? merged.release(params) : Effect.succeed(undefined),
     reserve: withChainIdCheck(supportedChainId, merged.reserve),
     sync: withChainIdCheck(supportedChainId, merged.sync),
+    // Methods that never fail - they succeed silently for unsupported chains
+    confirm: (params) =>
+      params.chainId === supportedChainId ? merged.confirm(params) : Effect.succeed(undefined),
+    release: (params) =>
+      params.chainId === supportedChainId ? merged.release(params) : Effect.succeed(undefined),
   }));

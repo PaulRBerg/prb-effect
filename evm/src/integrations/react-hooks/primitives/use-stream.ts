@@ -57,6 +57,7 @@ export const useStream = <A, E, R>(
       devRef.current = { initial: options.initial, warned: false };
     } else if (!devRef.current.warned && devRef.current.initial !== options.initial) {
       devRef.current.warned = true;
+      // biome-ignore lint/suspicious/noConsole: Dev-only warning for non-reactive initial changes.
       console.warn(
         [
           "[effect-evm] useStream does not react to initial changes after mount.",

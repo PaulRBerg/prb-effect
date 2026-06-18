@@ -14,8 +14,8 @@ export type MulticallBatchOptions = {
  */
 interface MulticallRequest extends Request.Request<unknown, Error> {
   readonly _tag: "MulticallRequest";
-  readonly chainId: number;
   readonly call: MulticallCall;
+  readonly chainId: number;
   readonly options?: MulticallBatchOptions | undefined;
 }
 

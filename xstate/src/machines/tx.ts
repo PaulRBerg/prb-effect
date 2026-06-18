@@ -403,6 +403,8 @@ function createTxMachine<TPayload, TPreprocess, TSignResult, TResult>({
       events: {} as TxMachineEvents<TPayload>,
     },
   }).createMachine({
+    id: `txMachine-${id}`,
+    initial: "initial",
     context: {
       error: null,
       errorMessage: null,
@@ -414,8 +416,6 @@ function createTxMachine<TPayload, TPreprocess, TSignResult, TResult>({
       result: null,
       signResult: null,
     },
-    id: `txMachine-${id}`,
-    initial: "initial",
     states: {
       failure: {
         on: {
@@ -431,26 +431,6 @@ function createTxMachine<TPayload, TPreprocess, TSignResult, TResult>({
       gasCheck: {
         invoke: {
           id: "gasCheck",
-          input: ({ context }) => {
-            return {
-              payload: requireContextValue(context.payload, "Missing payload for gas check"),
-              preprocess: requireContextValue(
-                context.preprocess,
-                "Missing preprocess data for gas check"
-              ),
-            };
-          },
-          onDone: [
-            {
-              actions: "doGasLimitOverflow",
-              guard: "hasGasLimitOverflow",
-              target: "gasLimitOverflow",
-            },
-            {
-              actions: "doGasLimit",
-              target: "signing",
-            },
-          ],
           onError: isGasLimitOverflowError
             ? [
                 {
@@ -468,6 +448,24 @@ function createTxMachine<TPayload, TPreprocess, TSignResult, TResult>({
                 target: "failure",
               },
           src: "doGasCheck",
+          input: ({ context }) => ({
+            payload: requireContextValue(context.payload, "Missing payload for gas check"),
+            preprocess: requireContextValue(
+              context.preprocess,
+              "Missing preprocess data for gas check"
+            ),
+          }),
+          onDone: [
+            {
+              actions: "doGasLimitOverflow",
+              guard: "hasGasLimitOverflow",
+              target: "gasLimitOverflow",
+            },
+            {
+              actions: "doGasLimit",
+              target: "signing",
+            },
+          ],
         },
       },
       gasLimitOverflow: {
@@ -488,15 +486,14 @@ function createTxMachine<TPayload, TPreprocess, TSignResult, TResult>({
       pending: {
         invoke: {
           id: "confirm",
-          input: ({ context }) => {
-            return {
-              payload: requireContextValue(context.payload, "Missing payload for confirmation"),
-              signResult: requireContextValue(
-                context.signResult,
-                "Missing sign result for confirmation"
-              ),
-            };
-          },
+          src: "doConfirm",
+          input: ({ context }) => ({
+            payload: requireContextValue(context.payload, "Missing payload for confirmation"),
+            signResult: requireContextValue(
+              context.signResult,
+              "Missing sign result for confirmation"
+            ),
+          }),
           onDone: {
             actions: "doResult",
             target: "success",
@@ -505,26 +502,11 @@ function createTxMachine<TPayload, TPreprocess, TSignResult, TResult>({
             actions: "doError",
             target: "failure",
           },
-          src: "doConfirm",
         },
       },
       signing: {
         invoke: {
           id: "sign",
-          input: ({ context }) => {
-            return {
-              gasLimit: context.gasLimit,
-              payload: requireContextValue(context.payload, "Missing payload for signing"),
-              preprocess: requireContextValue(
-                context.preprocess,
-                "Missing preprocess data for signing"
-              ),
-            };
-          },
-          onDone: {
-            actions: "doSignResult",
-            target: "pending",
-          },
           onError: isUserRejectedError
             ? [
                 {
@@ -542,30 +524,23 @@ function createTxMachine<TPayload, TPreprocess, TSignResult, TResult>({
                 target: "failure",
               },
           src: "doSign",
+          input: ({ context }) => ({
+            gasLimit: context.gasLimit,
+            payload: requireContextValue(context.payload, "Missing payload for signing"),
+            preprocess: requireContextValue(
+              context.preprocess,
+              "Missing preprocess data for signing"
+            ),
+          }),
+          onDone: {
+            actions: "doSignResult",
+            target: "pending",
+          },
         },
       },
       simulate: {
         invoke: {
           id: "simulate",
-          input: ({ context }) => {
-            return {
-              payload: requireContextValue(context.payload, "Missing payload for simulation"),
-              preprocess: requireContextValue(
-                context.preprocess,
-                "Missing preprocess data for simulation"
-              ),
-            };
-          },
-          onDone: [
-            {
-              actions: "doGasLimitOverflow",
-              guard: "hasGasLimitOverflow",
-              target: "gasLimitOverflow",
-            },
-            {
-              target: "signing",
-            },
-          ],
           onError: isGasLimitOverflowError
             ? [
                 {
@@ -583,6 +558,23 @@ function createTxMachine<TPayload, TPreprocess, TSignResult, TResult>({
                 target: "failure",
               },
           src: "doSimulate",
+          input: ({ context }) => ({
+            payload: requireContextValue(context.payload, "Missing payload for simulation"),
+            preprocess: requireContextValue(
+              context.preprocess,
+              "Missing preprocess data for simulation"
+            ),
+          }),
+          onDone: [
+            {
+              actions: "doGasLimitOverflow",
+              guard: "hasGasLimitOverflow",
+              target: "gasLimitOverflow",
+            },
+            {
+              target: "signing",
+            },
+          ],
         },
       },
       success: {
@@ -601,6 +593,7 @@ function createTxMachine<TPayload, TPreprocess, TSignResult, TResult>({
         // @ts-expect-error - xState v5 type inference limitation with generic functions
         invoke: {
           id: "validate",
+          src: "doValidate",
           input: ({ event }) => {
             if (event.type !== "SUBMIT") {
               throw new Error("Invalid event type for validation");
@@ -627,14 +620,12 @@ function createTxMachine<TPayload, TPreprocess, TSignResult, TResult>({
             actions: "doError",
             target: "failure",
           },
-          src: "doValidate",
         },
       },
     },
   });
 }
 
-export { createTxMachine };
 export type {
   GasLimitOverflow,
   TxMachineConfig,
@@ -642,3 +633,4 @@ export type {
   TxMachineEvents,
   TxMachineServices,
 };
+export { createTxMachine };

@@ -103,7 +103,7 @@ export const LocalStorageCursorStoreLive = Layer.effect(
 
         try {
           return deserializeCursor(value);
-        } catch (_error) {
+        } catch {
           // Log warning about corrupt data
           yield* Effect.logWarning(`Corrupt cursor data for key "${key}", deleting entry`);
 

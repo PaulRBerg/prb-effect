@@ -135,6 +135,8 @@ describe("testing-kit: makeMockSimulationServiceLayer", () => {
               Effect.succeed({
                 gasLimit: 100000n,
                 gasUsed: 50000n,
+                stateDiff: [],
+                success: true,
                 logs: [
                   {
                     address: "0x1234567890123456789012345678901234567890" as Address,
@@ -142,8 +144,6 @@ describe("testing-kit: makeMockSimulationServiceLayer", () => {
                     topics: [],
                   },
                 ],
-                stateDiff: [],
-                success: true,
               }),
           })
         )

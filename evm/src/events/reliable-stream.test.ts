@@ -9,15 +9,15 @@ import { makeMockPublicClientLayer, TEST_ADDRESS, TEST_CHAIN_ID } from "#src/tes
 
 const transferEvent: DecodedEvent<typeof erc20Abi, "Transfer"> = {
   address: TEST_ADDRESS as Address,
-  args: {
-    from: "0x1234567890123456789012345678901234567890" as Address,
-    to: "0x0987654321098765432109876543210987654321" as Address,
-  },
   blockNumber: 1000n,
   eventName: "Transfer",
   logIndex: 0,
   removed: false,
   transactionHash: "0xabc123",
+  args: {
+    from: "0x1234567890123456789012345678901234567890" as Address,
+    to: "0x0987654321098765432109876543210987654321" as Address,
+  },
 };
 
 // EventStream mock that emits a single confirmed event then idles.

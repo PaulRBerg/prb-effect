@@ -382,16 +382,16 @@ describe("ContractPipeline", () => {
                 Effect.succeed([
                   {
                     address: TEST_ADDRESS,
-                    args: {
-                      from: TEST_ADDRESS,
-                      to: TEST_ADDRESS_2,
-                      value: 100n,
-                    },
                     blockNumber: 1000n,
                     eventName: "Transfer" as const,
                     logIndex: 0,
                     removed: false,
                     transactionHash: TEST_TX_HASH,
+                    args: {
+                      from: TEST_ADDRESS,
+                      to: TEST_ADDRESS_2,
+                      value: 100n,
+                    },
                   },
                 ] as unknown as DecodedEvent<TAbi, ContractEventName<TAbi>>[]),
             },
@@ -1112,13 +1112,13 @@ describe("ContractPipeline", () => {
 
         expect(terminal).toEqual({
           _tag: "queued",
+          reason: "awaiting-safe-confirmations",
+          reference: TEST_TX_HASH,
           details: {
             confirmations: 1,
             confirmationsRequired: 2,
             lastStatus: "awaiting_confirmations",
           },
-          reason: "awaiting-safe-confirmations",
-          reference: TEST_TX_HASH,
         });
       }).pipe(
         Effect.provide(
@@ -1138,13 +1138,13 @@ describe("ContractPipeline", () => {
                     stateRef,
                     terminal: Effect.succeed({
                       _tag: "queued",
+                      reason: "awaiting-safe-confirmations",
+                      reference: TEST_TX_HASH,
                       details: {
                         confirmations: 1,
                         confirmationsRequired: 2,
                         lastStatus: "awaiting_confirmations",
                       },
-                      reason: "awaiting-safe-confirmations",
-                      reference: TEST_TX_HASH,
                     }),
                   };
                 }),

@@ -30,13 +30,13 @@ const TEST_IDL: Idl = {
   address: "11111111111111111111111111111111",
   instructions: [
     {
+      args: [{ name: "amount", type: "u64" }],
+      discriminator: [1, 2, 3, 4, 5, 6, 7, 8],
+      name: "transfer",
       accounts: [
         { name: "from", signer: true, writable: true },
         { name: "to", signer: false, writable: true },
       ],
-      args: [{ name: "amount", type: "u64" }],
-      discriminator: [1, 2, 3, 4, 5, 6, 7, 8],
-      name: "transfer",
     },
   ],
   metadata: {
@@ -91,9 +91,9 @@ const makeMockRpc = (config?: {
         value: {
           err: config?.simulationError ?? null,
           logs:
-            config?.viewReturn !== undefined
-              ? [`Program return: ${TEST_PROGRAM_ADDRESS} ${encodeU64(config.viewReturn)}`]
-              : [],
+            config?.viewReturn === undefined
+              ? []
+              : [`Program return: ${TEST_PROGRAM_ADDRESS} ${encodeU64(config.viewReturn)}`],
           returnData:
             config?.includeReturnData === true && config?.viewReturn !== undefined
               ? {
@@ -125,6 +125,8 @@ const makeTestLayer = (config?: {
 
 function makeTestVersionedTransaction(): VersionedTransaction {
   const message = new TransactionMessage({
+    payerKey: new PublicKey(TEST_ADDRESS),
+    recentBlockhash: "GH7ome3EiwEr7tu9JuTh2dpYWBJK3z69Xm1ZE3MEE6JC",
     instructions: [
       new TransactionInstruction({
         data: Buffer.alloc(0),
@@ -132,8 +134,6 @@ function makeTestVersionedTransaction(): VersionedTransaction {
         programId: new PublicKey(TEST_PROGRAM_ADDRESS),
       }),
     ],
-    payerKey: new PublicKey(TEST_ADDRESS),
-    recentBlockhash: "GH7ome3EiwEr7tu9JuTh2dpYWBJK3z69Xm1ZE3MEE6JC",
   }).compileToV0Message();
 
   return new VersionedTransaction(message);
@@ -423,12 +423,12 @@ describe("ProgramReader", () => {
         getRpc: () =>
           Effect.succeed(
             makeMockRpc({
+              viewReturn: 42n,
               onSimulateTransaction: (tx) => {
                 if ("feePayer" in tx) {
                   observedFeePayer = tx.feePayer?.toBase58();
                 }
               },
-              viewReturn: 42n,
             })
           ),
       });
@@ -492,6 +492,7 @@ describe("ProgramReader", () => {
         // Mock a program whose method builder lacks .view()
         const mockProgram = {
           idl: {
+            metadata: { name: "mockProgram" },
             instructions: [
               {
                 accounts: [{ name: "stream", signer: false, writable: false }],
@@ -501,7 +502,6 @@ describe("ProgramReader", () => {
                 returns: "u64",
               },
             ],
-            metadata: { name: "mockProgram" },
           },
           methods: {
             noView: (..._args: unknown[]) => ({
@@ -532,6 +532,7 @@ describe("ProgramReader", () => {
         const reader = yield* ProgramReader;
         const mockProgram = {
           idl: {
+            metadata: { name: "mockProgram" },
             instructions: [
               {
                 accounts: [{ name: "stream", signer: false, writable: false }],
@@ -541,7 +542,6 @@ describe("ProgramReader", () => {
                 returns: "u64",
               },
             ],
-            metadata: { name: "mockProgram" },
           },
           methods: {
             rejectingView: (..._args: unknown[]) => ({
@@ -571,6 +571,7 @@ describe("ProgramReader", () => {
         const reader = yield* ProgramReader;
         const mockProgram = {
           idl: {
+            metadata: { name: "mockProgram" },
             instructions: [
               {
                 accounts: [{ name: "stream", signer: false, writable: false }],
@@ -580,7 +581,6 @@ describe("ProgramReader", () => {
                 returns: "u64",
               },
             ],
-            metadata: { name: "mockProgram" },
           },
           methods: {
             unsupportedView: (..._args: unknown[]) => ({
@@ -610,6 +610,7 @@ describe("ProgramReader", () => {
         const reader = yield* ProgramReader;
         const mockProgram = {
           idl: {
+            metadata: { name: "legacyProgram" },
             instructions: [
               {
                 accounts: [{ isMut: true, isSigner: false, name: "stream" }],
@@ -619,7 +620,6 @@ describe("ProgramReader", () => {
                 returns: "u64",
               },
             ],
-            metadata: { name: "legacyProgram" },
           },
           methods: {
             legacyMutableRead: (..._args: unknown[]) => ({
@@ -649,21 +649,21 @@ describe("ProgramReader", () => {
         const reader = yield* ProgramReader;
         const mockProgram = {
           idl: {
+            metadata: { name: "nestedProgram" },
             instructions: [
               {
+                args: [],
+                discriminator: [8, 7, 6, 5, 4, 3, 2, 1],
+                name: "nestedWritableRead",
+                returns: "u64",
                 accounts: [
                   {
                     accounts: [{ name: "stream", signer: false, writable: true }],
                     name: "group",
                   },
                 ],
-                args: [],
-                discriminator: [8, 7, 6, 5, 4, 3, 2, 1],
-                name: "nestedWritableRead",
-                returns: "u64",
               },
             ],
-            metadata: { name: "nestedProgram" },
           },
           methods: {
             nestedWritableRead: (..._args: unknown[]) => ({
@@ -698,6 +698,7 @@ describe("ProgramReader", () => {
         const reader = yield* ProgramReader;
         const mockProgram = {
           idl: {
+            metadata: { name: "legacyProgram" },
             instructions: [
               {
                 accounts: [{ name: "stream", signer: false, writable: false }],
@@ -706,7 +707,6 @@ describe("ProgramReader", () => {
                 name: "legacyViewWithoutReturns",
               },
             ],
-            metadata: { name: "legacyProgram" },
           },
           methods: {
             legacyViewWithoutReturns: (..._args: unknown[]) => ({
@@ -738,6 +738,7 @@ describe("ProgramReader", () => {
         const reader = yield* ProgramReader;
         const mockProgram = {
           idl: {
+            metadata: { name: "mockProgram" },
             instructions: [
               {
                 accounts: [{ name: "stream", signer: false, writable: false }],
@@ -747,7 +748,6 @@ describe("ProgramReader", () => {
                 returns: "u64",
               },
             ],
-            metadata: { name: "mockProgram" },
           },
           methods: {
             withdrawableAmountOf: (..._args: unknown[]) => ({
@@ -778,6 +778,7 @@ describe("ProgramReader", () => {
         const reader = yield* ProgramReader;
         const mockProgram = {
           idl: {
+            metadata: { name: "fallbackProgram" },
             instructions: [
               {
                 accounts: [{ name: "stream", signer: false, writable: false }],
@@ -787,7 +788,6 @@ describe("ProgramReader", () => {
                 returns: "u64",
               },
             ],
-            metadata: { name: "fallbackProgram" },
           },
           methods: {
             viewValue: (..._args: unknown[]) => ({
@@ -826,6 +826,7 @@ describe("ProgramReader", () => {
         const reader = yield* ProgramReader;
         const mockProgram = {
           idl: {
+            metadata: { name: "fallbackProgram" },
             instructions: [
               {
                 accounts: [{ name: "stream", signer: false, writable: false }],
@@ -835,7 +836,6 @@ describe("ProgramReader", () => {
                 returns: "u64",
               },
             ],
-            metadata: { name: "fallbackProgram" },
           },
           methods: {
             noViewMethod: (..._args: unknown[]) => ({
@@ -878,6 +878,7 @@ describe("ProgramReader", () => {
           const reader = yield* ProgramReader;
           const mockProgram = {
             idl: {
+              metadata: { name: "ambiguousProgram" },
               instructions: [
                 {
                   accounts: [{ name: "stream", signer: false, writable: true }],
@@ -894,7 +895,6 @@ describe("ProgramReader", () => {
                   returns: "u64",
                 },
               ],
-              metadata: { name: "ambiguousProgram" },
             },
             methods: {
               getAmount: (..._args: unknown[]) => ({

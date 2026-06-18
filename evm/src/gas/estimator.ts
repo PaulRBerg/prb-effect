@@ -123,8 +123,8 @@ export function estimateL1FeeImpl(
     const opClient = client.extend(publicActionsL2());
     const request = {
       ...(params.from ? { account: params.from } : {}),
-      ...(params.data !== undefined ? { data: params.data } : {}),
-      ...(params.value !== undefined ? { value: params.value } : {}),
+      ...(params.data === undefined ? {} : { data: params.data }),
+      ...(params.value === undefined ? {} : { value: params.value }),
       chain: client.chain,
       to: params.to,
     } as Parameters<typeof opClient.estimateL1Fee>[0];

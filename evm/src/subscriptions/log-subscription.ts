@@ -28,14 +28,14 @@ export function watchLogs(
         client.watchEvent({
           address: params.address,
           onError: cb.onError,
+          pollingInterval: params.pollingInterval,
+          // @ts-expect-error - topics type is compatible
+          topics: params.topics,
           onLogs: (logs) => {
             for (const log of logs) {
               cb.onData(log);
             }
           },
-          pollingInterval: params.pollingInterval,
-          // @ts-expect-error - topics type is compatible
-          topics: params.topics,
         }),
     });
 

@@ -15,13 +15,13 @@ const TEST_IDL: Idl = {
   address: "11111111111111111111111111111111",
   instructions: [
     {
+      args: [{ name: "amount", type: "u64" }],
+      discriminator: [1, 2, 3, 4, 5, 6, 7, 8],
+      name: "transfer",
       accounts: [
         { name: "from", signer: true, writable: true },
         { name: "to", signer: false, writable: true },
       ],
-      args: [{ name: "amount", type: "u64" }],
-      discriminator: [1, 2, 3, 4, 5, 6, 7, 8],
-      name: "transfer",
     },
   ],
   metadata: {

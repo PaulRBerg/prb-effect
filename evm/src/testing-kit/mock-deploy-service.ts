@@ -133,7 +133,6 @@ export const makeMockDeployServiceLayer = (
   supportedChainId = 1
 ): Layer.Layer<DeployService> =>
   makeMockServiceLayer(DeployService, defaultConfig, config, (merged) => ({
-    computeAddress: (params) => merged.computeAddress(params),
     // Cast to widen error type from ClientNotFoundError to full DeployService errors
     deploy: withChainIdCheck(
       supportedChainId,
@@ -146,4 +145,5 @@ export const makeMockDeployServiceLayer = (
     ) as unknown as DeployServiceShape["deployAndTrack"],
     verifyDeployment: withChainIdCheck(supportedChainId, merged.verifyDeployment),
     verifyDeploymentStrict: withChainIdCheck(supportedChainId, merged.verifyDeploymentStrict),
+    computeAddress: (params) => merged.computeAddress(params),
   }));

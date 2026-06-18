@@ -156,19 +156,20 @@ function createFormMachine<TCheck, TPayload, TResult, TPreprocess = undefined>({
       events: {} as FormMachineEvents<TCheck, TPayload>,
     },
   }).createMachine({
+    id: `formMachine-${id}`,
+    initial: "initial",
     context: {
       error: null,
       payload: null,
       preprocess: null,
       result: null,
     },
-    id: `formMachine-${id}`,
-    initial: "initial",
     states: {
       check: {
         // @ts-expect-error - xState v5 type inference limitation with generic functions
         invoke: {
           id: "check",
+          src: "doCheck",
           input: ({ event }) => {
             if (event.type === "CHECK") {
               return event.payload;
@@ -183,7 +184,6 @@ function createFormMachine<TCheck, TPayload, TResult, TPreprocess = undefined>({
             actions: "doError",
             target: "initial",
           },
-          src: "doCheck",
         },
         on: {
           CHECK: {
@@ -218,6 +218,23 @@ function createFormMachine<TCheck, TPayload, TResult, TPreprocess = undefined>({
       process: {
         invoke: {
           id: "process",
+          onError: isUserRejectedError
+            ? [
+                {
+                  actions: "doReset",
+                  target: "initial",
+                  guard: ({ event }) => isUserRejectedError(event.error),
+                },
+                {
+                  actions: "doError",
+                  target: "failure",
+                },
+              ]
+            : {
+                actions: "doError",
+                target: "failure",
+              },
+          src: "doProcess",
           input: ({ context }) => {
             if (context.payload === null) {
               throw new Error("Missing payload for process");
@@ -234,23 +251,6 @@ function createFormMachine<TCheck, TPayload, TResult, TPreprocess = undefined>({
             actions: "doResult",
             target: "success",
           },
-          onError: isUserRejectedError
-            ? [
-                {
-                  actions: "doReset",
-                  guard: ({ event }) => isUserRejectedError(event.error),
-                  target: "initial",
-                },
-                {
-                  actions: "doError",
-                  target: "failure",
-                },
-              ]
-            : {
-                actions: "doError",
-                target: "failure",
-              },
-          src: "doProcess",
         },
       },
       success: {
@@ -270,6 +270,7 @@ function createFormMachine<TCheck, TPayload, TResult, TPreprocess = undefined>({
         // @ts-expect-error - xState v5 type inference limitation with generic functions
         invoke: {
           id: "validate",
+          src: "doValidate",
           input: ({ context }) => {
             if (context.payload === null) {
               throw new Error("Missing payload for validate");
@@ -284,12 +285,11 @@ function createFormMachine<TCheck, TPayload, TResult, TPreprocess = undefined>({
             actions: "doError",
             target: "failure",
           },
-          src: "doValidate",
         },
       },
     },
   });
 }
 
-export { createFormMachine };
 export type { FormMachineConfig, FormMachineContext, FormMachineEvents, FormMachineServices };
+export { createFormMachine };

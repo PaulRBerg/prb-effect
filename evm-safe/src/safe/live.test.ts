@@ -18,8 +18,8 @@ vi.mock("@prb/effect-evm/core/errors", () => {
   }
 
   return {
-    isUserRejectedError: () => false,
     UserRejectedError: MockUserRejectedError,
+    isUserRejectedError: () => false,
   };
 });
 

@@ -46,6 +46,7 @@ describe("Tenderly simulation", () => {
   it.effect("maps returnValue from transaction.output (not input)", () =>
     Effect.gen(function* () {
       const layer = makeMockHttpClientLayer({
+        status: 200,
         body: {
           logs: [],
           simulation: { id: "sim_1", status: true },
@@ -66,7 +67,6 @@ describe("Tenderly simulation", () => {
             value: "0",
           },
         },
-        status: 200,
       });
 
       const result = yield* simulateTenderly({

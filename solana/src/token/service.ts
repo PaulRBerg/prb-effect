@@ -258,6 +258,7 @@ const getCreateAssociatedTokenIdempotentInstruction = (params: {
 }): TransactionInstruction =>
   new TransactionInstruction({
     data: Buffer.from([1]),
+    programId: new PublicKey(ASSOCIATED_TOKEN_PROGRAM_ADDRESS),
     keys: [
       { isSigner: true, isWritable: true, pubkey: new PublicKey(params.payer) },
       { isSigner: false, isWritable: true, pubkey: new PublicKey(params.ata) },
@@ -266,7 +267,6 @@ const getCreateAssociatedTokenIdempotentInstruction = (params: {
       { isSigner: false, isWritable: false, pubkey: SystemProgram.programId },
       { isSigner: false, isWritable: false, pubkey: new PublicKey(params.tokenProgram) },
     ],
-    programId: new PublicKey(ASSOCIATED_TOKEN_PROGRAM_ADDRESS),
   });
 
 const getTokenTransferInstruction = (params: {
@@ -282,12 +282,12 @@ const getTokenTransferInstruction = (params: {
 
   return new TransactionInstruction({
     data,
+    programId: new PublicKey(params.tokenProgram),
     keys: [
       { isSigner: false, isWritable: true, pubkey: new PublicKey(params.source) },
       { isSigner: false, isWritable: true, pubkey: new PublicKey(params.destination) },
       { isSigner: true, isWritable: false, pubkey: new PublicKey(params.authority) },
     ],
-    programId: new PublicKey(params.tokenProgram),
   });
 };
 

@@ -43,6 +43,7 @@ describe("SignatureService", () => {
       Effect.gen(function* () {
         const service = yield* SignatureService;
         const result = yield* service.hashTypedData({
+          primaryType: "Test",
           domain: {
             chainId: mainnet.id,
             name: "Test",
@@ -50,7 +51,6 @@ describe("SignatureService", () => {
           message: {
             test: "value",
           },
-          primaryType: "Test",
           types: {
             Test: [{ name: "test", type: "string" }],
           },

@@ -71,10 +71,10 @@ function createTestMachine(options: {
   const services = options.services ?? createMockServices();
 
   return createTxMachine<TestPayload, TestPreprocess, TestSignResult, TestResult>({
-    getWalletType: (payload) => (payload.isSafe ? "safe" : "eoa"),
     id: "test",
     isGasLimitOverflowError: options.isGasLimitOverflowError,
     isUserRejectedError: options.isUserRejectedError,
+    getWalletType: (payload) => (payload.isSafe ? "safe" : "eoa"),
     services,
   });
 }
@@ -400,8 +400,8 @@ describe("machines/tx", () => {
         onGasCheck: vi.fn(() => Effect.fail(new Error("Gas limit exceeded"))),
       });
       const machine = createTxMachine<TestPayload, TestPreprocess, TestSignResult, TestResult>({
-        getWalletType: (payload) => (payload.isSafe ? "safe" : "eoa"),
         id: "test-overflow-error",
+        getWalletType: (payload) => (payload.isSafe ? "safe" : "eoa"),
         isGasLimitOverflowError: (error) => {
           if (error instanceof Error && error.message.includes("Gas limit exceeded")) {
             return overflow;
@@ -428,8 +428,8 @@ describe("machines/tx", () => {
         onSimulate: vi.fn(() => Effect.fail(new Error("Simulation: gas exceeded block limit"))),
       });
       const machine = createTxMachine<TestPayload, TestPreprocess, TestSignResult, TestResult>({
-        getWalletType: (payload) => (payload.isSafe ? "safe" : "eoa"),
         id: "test-overflow-error-safe",
+        getWalletType: (payload) => (payload.isSafe ? "safe" : "eoa"),
         isGasLimitOverflowError: (error) => {
           if (error instanceof Error && error.message.includes("gas exceeded")) {
             return overflow;
@@ -454,8 +454,8 @@ describe("machines/tx", () => {
         onGasCheck: vi.fn(() => Effect.fail(new Error("Network error"))),
       });
       const machine = createTxMachine<TestPayload, TestPreprocess, TestSignResult, TestResult>({
-        getWalletType: (payload) => (payload.isSafe ? "safe" : "eoa"),
         id: "test-non-overflow-error",
+        getWalletType: (payload) => (payload.isSafe ? "safe" : "eoa"),
         isGasLimitOverflowError: (error) => {
           // Only match gas limit errors, not network errors
           if (error instanceof Error && error.message.includes("Gas limit")) {
@@ -486,8 +486,8 @@ describe("machines/tx", () => {
         onSign: vi.fn(() => Effect.fail(new Error("User rejected the request"))),
       });
       const machine = createTxMachine<TestPayload, TestPreprocess, TestSignResult, TestResult>({
-        getWalletType: (payload) => (payload.isSafe ? "safe" : "eoa"),
         id: "test-user-rejection",
+        getWalletType: (payload) => (payload.isSafe ? "safe" : "eoa"),
         isUserRejectedError: (error) =>
           error instanceof Error && error.message.includes("User rejected"),
         services,
@@ -510,8 +510,8 @@ describe("machines/tx", () => {
         onSign: vi.fn(() => Effect.fail(new Error("Transaction underpriced"))),
       });
       const machine = createTxMachine<TestPayload, TestPreprocess, TestSignResult, TestResult>({
-        getWalletType: (payload) => (payload.isSafe ? "safe" : "eoa"),
         id: "test-non-user-rejection",
+        getWalletType: (payload) => (payload.isSafe ? "safe" : "eoa"),
         isUserRejectedError: (error) =>
           error instanceof Error && error.message.includes("User rejected"),
         services,
@@ -531,8 +531,8 @@ describe("machines/tx", () => {
         onSign: vi.fn(() => Effect.fail(new Error("User denied transaction signature"))),
       });
       const machine = createTxMachine<TestPayload, TestPreprocess, TestSignResult, TestResult>({
-        getWalletType: (payload) => (payload.isSafe ? "safe" : "eoa"),
         id: "test-clear-context",
+        getWalletType: (payload) => (payload.isSafe ? "safe" : "eoa"),
         isUserRejectedError: (error) =>
           error instanceof Error && error.message.includes("User denied"),
         services,
@@ -599,6 +599,7 @@ describe("machines/tx", () => {
       const snapshot = await waitFor(actor, (s) => s.value === "failure", { timeout: 2000 });
 
       expect(snapshot.context.error).toEqual({
+        message: "write reverted",
         details: {
           address: "0xabc",
           calldata: "0xdeadbeef",
@@ -607,7 +608,6 @@ describe("machines/tx", () => {
           sender: "0xdef",
           tag: "ContractWriteError",
         },
-        message: "write reverted",
       });
       expect(snapshot.context.errorMessage).toBe("write reverted");
     });
@@ -881,8 +881,8 @@ describe("machines/tx", () => {
       });
       // No isUserRejectedError provided
       const machine = createTxMachine<TestPayload, TestPreprocess, TestSignResult, TestResult>({
-        getWalletType: (payload) => (payload.isSafe ? "safe" : "eoa"),
         id: "test-no-user-rejection-handler",
+        getWalletType: (payload) => (payload.isSafe ? "safe" : "eoa"),
         services,
       });
       const actor = createActor(machine).start();
@@ -902,8 +902,8 @@ describe("machines/tx", () => {
       });
       // No isGasLimitOverflowError provided
       const machine = createTxMachine<TestPayload, TestPreprocess, TestSignResult, TestResult>({
-        getWalletType: (payload) => (payload.isSafe ? "safe" : "eoa"),
         id: "test-no-overflow-handler",
+        getWalletType: (payload) => (payload.isSafe ? "safe" : "eoa"),
         services,
       });
       const actor = createActor(machine).start();

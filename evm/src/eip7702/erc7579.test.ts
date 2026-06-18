@@ -53,13 +53,13 @@ describe("EIP-7702 / ERC-7579 helpers", () => {
       const [decoded] = decodeAbiParameters(
         [
           {
+            name: "executions",
+            type: "tuple[]",
             components: [
               { name: "target", type: "address" },
               { name: "value", type: "uint256" },
               { name: "callData", type: "bytes" },
             ],
-            name: "executions",
-            type: "tuple[]",
           },
         ],
         calldata

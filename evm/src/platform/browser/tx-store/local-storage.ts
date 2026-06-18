@@ -113,7 +113,7 @@ function readTx(
     try {
       const tx = JSON.parse(raw) as PersistedTx;
       return tx;
-    } catch (_error) {
+    } catch {
       // Quarantine corrupt data
       const quarantineKey = `${CORRUPT_KEY_PREFIX}${id}:${Date.now()}`;
       yield* storage.set(quarantineKey, raw);

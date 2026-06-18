@@ -130,6 +130,13 @@ export const makeMockSubscriptionServiceLayer = (
   supportedChainId = 1
 ): Layer.Layer<SubscriptionService> =>
   makeMockServiceLayer(SubscriptionService, defaultConfig, config, (merged) => ({
+    // Methods that take params with chainId - use the helper
+    watchBlocks: withChainIdCheck(supportedChainId, merged.watchBlocks),
+    watchBlocksRetrying: withChainIdCheck(supportedChainId, merged.watchBlocksRetrying),
+    watchLogs: withChainIdCheck(supportedChainId, merged.watchLogs),
+    watchLogsRetrying: withChainIdCheck(supportedChainId, merged.watchLogsRetrying),
+    watchPendingTxs: withChainIdCheck(supportedChainId, merged.watchPendingTxs),
+    watchPendingTxsRetrying: withChainIdCheck(supportedChainId, merged.watchPendingTxsRetrying),
     // hasWebSocket takes chainId directly (not a params object), so we handle it separately
     hasWebSocket: (chainId) =>
       chainId === supportedChainId
@@ -140,12 +147,4 @@ export const makeMockSubscriptionServiceLayer = (
               message: `No client configured for chain ID ${chainId}`,
             })
           ),
-
-    // Methods that take params with chainId - use the helper
-    watchBlocks: withChainIdCheck(supportedChainId, merged.watchBlocks),
-    watchBlocksRetrying: withChainIdCheck(supportedChainId, merged.watchBlocksRetrying),
-    watchLogs: withChainIdCheck(supportedChainId, merged.watchLogs),
-    watchLogsRetrying: withChainIdCheck(supportedChainId, merged.watchLogsRetrying),
-    watchPendingTxs: withChainIdCheck(supportedChainId, merged.watchPendingTxs),
-    watchPendingTxsRetrying: withChainIdCheck(supportedChainId, merged.watchPendingTxsRetrying),
   }));

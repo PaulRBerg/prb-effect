@@ -10,6 +10,7 @@ describe("hooks/useTxWorkflow", () => {
   it("exposes structured error and errorMessage from context", () => {
     const send = vi.fn();
     const error = {
+      message: "execution reverted",
       details: {
         address: "0xabc",
         calldata: "0xdeadbeef",
@@ -18,11 +19,12 @@ describe("hooks/useTxWorkflow", () => {
         sender: "0xdef",
         tag: "TxFailedError",
       },
-      message: "execution reverted",
     } as const;
 
     useActorMock.mockReturnValueOnce([
       {
+        matches: vi.fn((value: string) => value === "failure"),
+        value: "failure",
         context: {
           error,
           errorMessage: "execution reverted",
@@ -34,8 +36,6 @@ describe("hooks/useTxWorkflow", () => {
           result: null,
           signResult: { hash: "0x123" },
         },
-        matches: vi.fn((value: string) => value === "failure"),
-        value: "failure",
       },
       send,
     ]);
@@ -53,6 +53,8 @@ describe("hooks/useTxWorkflow", () => {
     const send = vi.fn();
     useActorMock.mockReturnValueOnce([
       {
+        matches: vi.fn((value: string) => value === "initial"),
+        value: "initial",
         context: {
           error: null,
           errorMessage: null,
@@ -64,8 +66,6 @@ describe("hooks/useTxWorkflow", () => {
           result: null,
           signResult: null,
         },
-        matches: vi.fn((value: string) => value === "initial"),
-        value: "initial",
       },
       send,
     ]);

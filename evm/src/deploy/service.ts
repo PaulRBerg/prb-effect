@@ -251,6 +251,60 @@ export const DeployServiceLive = Layer.effect(
         };
       }),
 
+      verifyDeployment: Effect.fn("DeployService.verifyDeployment")(function* (params: {
+        chainId: number;
+        address: Address;
+      }) {
+        const publicClient = yield* publicClientService.get(params.chainId);
+
+        const actualBytecode = yield* Effect.tryPromise({
+          catch: () =>
+            new DeploymentError({
+              message: "Failed to fetch bytecode for verification",
+            }),
+          try: () => publicClient.getBytecode({ address: params.address }),
+        });
+
+        if (!actualBytecode || actualBytecode === "0x") {
+          return false;
+        }
+
+        return true;
+      }),
+
+      verifyDeploymentStrict: Effect.fn("DeployService.verifyDeploymentStrict")(function* (params: {
+        chainId: number;
+        address: Address;
+        expectedBytecode: Hex;
+      }) {
+        const publicClient = yield* publicClientService.get(params.chainId);
+
+        const actualBytecode = yield* Effect.tryPromise({
+          catch: () =>
+            new DeploymentError({
+              message: "Failed to fetch bytecode for strict verification",
+            }),
+          try: () => publicClient.getBytecode({ address: params.address }),
+        });
+
+        if (!actualBytecode || actualBytecode === "0x") {
+          return false;
+        }
+
+        if (actualBytecode !== params.expectedBytecode) {
+          return yield* Effect.fail(
+            new BytecodeMismatchError({
+              actual: actualBytecode,
+              address: params.address,
+              expected: params.expectedBytecode,
+              message: `Bytecode mismatch at ${params.address}`,
+            })
+          );
+        }
+
+        return true;
+      }),
+
       deployAndTrack: <TAbi extends Abi>(
         params: {
           chainId: number;
@@ -391,60 +445,6 @@ export const DeployServiceLive = Layer.effect(
             stateRef: tracker.ref,
           };
         }),
-
-      verifyDeployment: Effect.fn("DeployService.verifyDeployment")(function* (params: {
-        chainId: number;
-        address: Address;
-      }) {
-        const publicClient = yield* publicClientService.get(params.chainId);
-
-        const actualBytecode = yield* Effect.tryPromise({
-          catch: () =>
-            new DeploymentError({
-              message: "Failed to fetch bytecode for verification",
-            }),
-          try: () => publicClient.getBytecode({ address: params.address }),
-        });
-
-        if (!actualBytecode || actualBytecode === "0x") {
-          return false;
-        }
-
-        return true;
-      }),
-
-      verifyDeploymentStrict: Effect.fn("DeployService.verifyDeploymentStrict")(function* (params: {
-        chainId: number;
-        address: Address;
-        expectedBytecode: Hex;
-      }) {
-        const publicClient = yield* publicClientService.get(params.chainId);
-
-        const actualBytecode = yield* Effect.tryPromise({
-          catch: () =>
-            new DeploymentError({
-              message: "Failed to fetch bytecode for strict verification",
-            }),
-          try: () => publicClient.getBytecode({ address: params.address }),
-        });
-
-        if (!actualBytecode || actualBytecode === "0x") {
-          return false;
-        }
-
-        if (actualBytecode !== params.expectedBytecode) {
-          return yield* Effect.fail(
-            new BytecodeMismatchError({
-              actual: actualBytecode,
-              address: params.address,
-              expected: params.expectedBytecode,
-              message: `Bytecode mismatch at ${params.address}`,
-            })
-          );
-        }
-
-        return true;
-      }),
     };
   })
 );

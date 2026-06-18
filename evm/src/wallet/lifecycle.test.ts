@@ -351,13 +351,13 @@ describe("WalletLifecycle", () => {
       Effect.gen(function* () {
         const lifecycle = yield* WalletLifecycle;
         const result = yield* lifecycle.watchAsset({
+          type: "ERC20",
           options: {
             address: "0x1234567890123456789012345678901234567890",
             decimals: 18,
             image: "https://example.com/token.png",
             symbol: "TEST",
           },
-          type: "ERC20",
         } as WatchAssetParams);
 
         expect(result).toBe(true);
@@ -368,13 +368,13 @@ describe("WalletLifecycle", () => {
               request: ({ method, params }) => {
                 if (method === "wallet_watchAsset") {
                   expect(params).toEqual({
+                    type: "ERC20",
                     options: {
                       address: "0x1234567890123456789012345678901234567890",
                       decimals: 18,
                       image: "https://example.com/token.png",
                       symbol: "TEST",
                     },
-                    type: "ERC20",
                   });
                   return Promise.resolve(true);
                 }
@@ -391,12 +391,12 @@ describe("WalletLifecycle", () => {
         const lifecycle = yield* WalletLifecycle;
         const exit = yield* Effect.exit(
           lifecycle.watchAsset({
+            type: "ERC20",
             options: {
               address: "0x1234567890123456789012345678901234567890",
               decimals: 18,
               symbol: "TEST",
             },
-            type: "ERC20",
           } as WatchAssetParams)
         );
 
@@ -428,12 +428,12 @@ describe("WalletLifecycle", () => {
         const lifecycle = yield* WalletLifecycle;
         const exit = yield* Effect.exit(
           lifecycle.watchAsset({
+            type: "ERC20",
             options: {
               address: "0x1234567890123456789012345678901234567890",
               decimals: 18,
               symbol: "TEST",
             },
-            type: "ERC20",
           } as WatchAssetParams)
         );
 

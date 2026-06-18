@@ -540,13 +540,13 @@ describe("LocalStorageTxStore", () => {
         from: "0xSender",
         tags: ["tag1", "tag2"],
         to: "0xRecipient",
+        value: "1000000000000000000",
         txMeta: {
           gas: "21000",
           gasPrice: "1000000000",
           nonce: "42",
           type: "0",
         },
-        value: "1000000000000000000",
       });
 
       yield* store.upsert(tx);

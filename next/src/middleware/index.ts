@@ -174,17 +174,17 @@ export declare namespace TagClass {
    * @category models
    */
   export interface Base<Self, Name extends string, Options, S> extends Context.Tag<Self, S> {
-    new (_: never): Context.TagClassShape<Name, Service<Options>>;
-    readonly [TypeId]: TypeId;
-    readonly failure: FailureSchema<Options>;
     readonly catches: CatchesSchema<Options>;
+    readonly failure: FailureSchema<Options>;
     readonly provides: Options extends { readonly provides: infer P }
       ? P extends { Identifier: unknown }
         ? P
         : undefined
       : undefined;
-    readonly wrap: Wrap<Options>;
     readonly returns: ReturnsSchema<Options>;
+    readonly wrap: Wrap<Options>;
+    new (_: never): Context.TagClassShape<Name, Service<Options>>;
+    readonly [TypeId]: TypeId;
   }
 }
 
@@ -198,13 +198,13 @@ export interface TagClassAny
     | NextMiddleware<unknown, unknown, unknown>
     | NextMiddlewareWrap<unknown, unknown, unknown>
   > {
-  readonly [TypeId]: TypeId;
+  readonly catches: Schema.Schema.All;
+  readonly failure: Schema.Schema.All;
   readonly key: string;
   readonly provides?: { readonly Identifier: unknown } | undefined;
-  readonly failure: Schema.Schema.All;
-  readonly catches: Schema.Schema.All;
-  readonly wrap: boolean;
   readonly returns: Schema.Schema.All;
+  readonly wrap: boolean;
+  readonly [TypeId]: TypeId;
 }
 
 /**
@@ -215,13 +215,13 @@ export interface TagClassAnyWithProps
     unknown,
     NextMiddleware<unknown, unknown, unknown> | NextMiddlewareWrap<unknown, unknown, unknown>
   > {
-  readonly [TypeId]: TypeId;
+  readonly catches: Schema.Schema.All;
+  readonly failure: Schema.Schema.All;
   readonly key: string;
   readonly provides?: { readonly Identifier: unknown } | undefined;
-  readonly failure: Schema.Schema.All;
-  readonly catches: Schema.Schema.All;
-  readonly wrap: boolean;
   readonly returns: Schema.Schema.All;
+  readonly wrap: boolean;
+  readonly [TypeId]: TypeId;
 }
 
 /**

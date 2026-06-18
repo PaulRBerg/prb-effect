@@ -292,7 +292,7 @@ describe("reactCacheWithKey", () => {
     const runtime = ManagedRuntime.make(Layer.empty);
 
     const effectFn = (id: string) =>
-      id !== "invalid" ? Effect.succeed(id) : Effect.fail(new Error("invalid id"));
+      id === "invalid" ? Effect.fail(new Error("invalid id")) : Effect.succeed(id);
 
     const cached = reactCacheWithKey(effectFn, (id) => `key-${id}`, runtime);
 

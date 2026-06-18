@@ -198,14 +198,14 @@ describe("Preset Layers", () => {
             {
               chain: mainnet,
               chainId: mainnet.id,
+              rpcUrls: ["https://eth-mainnet.example.com"],
+              transport: failingTransport,
               rpcMiddleware: {
                 circuitBreaker: {
                   failureThreshold: 1,
                   resetTimeoutMs: 60_000,
                 },
               },
-              rpcUrls: ["https://eth-mainnet.example.com"],
-              transport: failingTransport,
             },
           ])
         )
@@ -248,9 +248,6 @@ describe("Preset Layers", () => {
       const request = getRequest({
         chain: mainnet,
         chainId: mainnet.id,
-        rpcMiddleware: {
-          circuitBreaker: { failureThreshold: 2, resetTimeoutMs: 1000 },
-        },
         rpcUrls: ["https://eth-mainnet.example.com"],
         transport: makeTransport(() => {
           calls += 1;
@@ -258,6 +255,9 @@ describe("Preset Layers", () => {
             new HttpRequestError({ status: 502, url: "https://eth-mainnet.example.com" })
           );
         }),
+        rpcMiddleware: {
+          circuitBreaker: { failureThreshold: 2, resetTimeoutMs: 1000 },
+        },
       });
       const req = await request;
 
@@ -327,9 +327,6 @@ describe("Preset Layers", () => {
       const request = getRequest({
         chain: mainnet,
         chainId: mainnet.id,
-        rpcMiddleware: {
-          circuitBreaker: { failureThreshold: 2, resetTimeoutMs: 60_000 },
-        },
         rpcUrls: ["https://eth-mainnet.example.com"],
         transport: makeTransport(() => {
           calls += 1;
@@ -342,6 +339,9 @@ describe("Preset Layers", () => {
             })
           );
         }),
+        rpcMiddleware: {
+          circuitBreaker: { failureThreshold: 2, resetTimeoutMs: 60_000 },
+        },
       });
       const req = await request;
 
@@ -365,16 +365,16 @@ describe("Preset Layers", () => {
       const request = getRequest({
         chain: mainnet,
         chainId: mainnet.id,
-        rpcMiddleware: {
-          circuitBreaker: { failureThreshold: 2, resetTimeoutMs: 60_000 },
-          dedup: true,
-        },
         rpcUrls: ["https://eth-mainnet.example.com"],
         transport: makeTransport(async () => {
           physicalCalls += 1;
           await new Promise((r) => setTimeout(r, 5));
           throw new HttpRequestError({ status: 503, url: "https://eth-mainnet.example.com" });
         }),
+        rpcMiddleware: {
+          circuitBreaker: { failureThreshold: 2, resetTimeoutMs: 60_000 },
+          dedup: true,
+        },
       });
       const req = await request;
 

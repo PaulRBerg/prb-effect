@@ -36,12 +36,12 @@ export function watchPendingTxs(
       watch: (cb) =>
         client.watchPendingTransactions({
           onError: cb.onError,
+          pollingInterval: params.pollingInterval,
           onTransactions: (hashes) => {
             for (const hash of hashes) {
               cb.onData(hash);
             }
           },
-          pollingInterval: params.pollingInterval,
         }),
     });
 

@@ -32,27 +32,27 @@ const createMockTransferEvent = (
   data: "0x0000000000000000000000000000000000000000000000000000000000000064",
   logIndex,
   removed,
+  transactionHash: txHash,
+  transactionIndex: 0,
   topics: [
     "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
     "0x0000000000000000000000001234567890123456789012345678901234567890",
     "0x0000000000000000000000000987654321098765432109876543210987654321",
   ],
-  transactionHash: txHash,
-  transactionIndex: 0,
 });
 
 // Helper to create a decoded event from a log
 const createDecodedEvent = (log: Log): DecodedEvent<typeof erc20Abi, "Transfer"> => ({
   address: log.address,
-  args: {
-    from: "0x1234567890123456789012345678901234567890" as Address,
-    to: "0x0987654321098765432109876543210987654321" as Address,
-  },
   blockNumber: unwrapNullable(log.blockNumber, "blockNumber"),
   eventName: "Transfer" as const,
   logIndex: unwrapNullable(log.logIndex, "logIndex"),
   removed: log.removed,
   transactionHash: unwrapNullable(log.transactionHash, "transactionHash"),
+  args: {
+    from: "0x1234567890123456789012345678901234567890" as Address,
+    to: "0x0987654321098765432109876543210987654321" as Address,
+  },
 });
 
 describe("ReliableEventStream", () => {

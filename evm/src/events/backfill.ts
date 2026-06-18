@@ -58,7 +58,7 @@ function rpcWithRetry<A>(params: {
   message: string;
   try: () => Promise<A>;
 }): Effect.Effect<A, EventBackfillError> {
-  return Effect.tryPromise({ catch: (cause) => cause, try: params.try }).pipe(
+  return Effect.tryPromise({ try: params.try, catch: (cause) => cause }).pipe(
     Effect.retry(makeRetrySchedule()),
     Effect.mapError(
       (cause) => new EventBackfillError({ cause, chainId: params.chainId, message: params.message })

@@ -95,7 +95,6 @@ export const makeMockSimulationServiceLayer = (
   supportedChainId = 1
 ): Layer.Layer<SimulationService> =>
   makeMockServiceLayer(SimulationService, defaultConfig, config, (merged) => ({
-    getReadableSummary: (result, abi) => merged.getReadableSummary(result, abi),
     // Cast to widen error type from ClientNotFoundError to TenderlyErrors
     simulate: withChainIdCheck(
       supportedChainId,
@@ -105,4 +104,5 @@ export const makeMockSimulationServiceLayer = (
       supportedChainId,
       merged.simulateBundle
     ) as unknown as SimulationServiceShape["simulateBundle"],
+    getReadableSummary: (result, abi) => merged.getReadableSummary(result, abi),
   }));

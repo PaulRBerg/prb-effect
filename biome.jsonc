@@ -1,12 +1,47 @@
 {
   "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
   "root": true,
-  "extends": ["ultracite/core", "@sablier/devkit/biome/base", "@sablier/devkit/biome/ui"],
+  "extends": ["ultracite/biome/core", "@sablier/devkit/biome/base"],
+  "assist": {
+    "actions": {
+      "source": {
+        "noDuplicateClasses": "on",
+        "useSortedAttributes": "on"
+      }
+    }
+  },
+  "css": {
+    "formatter": {
+      "lineWidth": 100
+    },
+    "parser": {
+      "cssModules": true,
+      "tailwindDirectives": true
+    }
+  },
   "files": {
     "includes": ["**/*.{js,json,jsonc,ts,tsx}", "!**/node_modules", "!**/dist"]
   },
   "linter": {
     "rules": {
+      "a11y": {
+        "noSvgWithoutTitle": "off",
+        "useKeyWithClickEvents": "off"
+      },
+      "correctness": {
+        "useExhaustiveDependencies": "off"
+      },
+      "nursery": {
+        "useSortedClasses": "off"
+      },
+      "suspicious": {
+        "noConsole": {
+          "level": "warn",
+          "options": {
+            "allow": ["error"]
+          }
+        }
+      },
       "style": {
         "noRestrictedImports": {
           "level": "error",
@@ -23,6 +58,16 @@
     }
   },
   "overrides": [
+    {
+      "includes": ["**/*.styles.ts"],
+      "assist": {
+        "actions": {
+          "source": {
+            "useSortedKeys": "off"
+          }
+        }
+      }
+    },
     // Allow any imports from index.ts and internal files
     {
       "includes": ["**/index.ts", "**/internal/*.ts"],

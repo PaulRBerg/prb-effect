@@ -304,6 +304,7 @@ export const BalanceServiceLive = Layer.effect(
 
           return Stream.async<bigint, unknown>((emit) => {
             const unwatch = client.watchBlockNumber({
+              pollingInterval: params.pollingInterval,
               onBlockNumber: async (blockNumber) => {
                 try {
                   const balance = await client.getBalance({
@@ -318,7 +319,6 @@ export const BalanceServiceLive = Layer.effect(
               onError: (error) => {
                 emit.fail(error as unknown);
               },
-              pollingInterval: params.pollingInterval,
             });
 
             return Effect.sync(() => {
@@ -341,6 +341,7 @@ export const BalanceServiceLive = Layer.effect(
 
           return Stream.async<bigint, unknown>((emit) => {
             const unwatch = client.watchBlockNumber({
+              pollingInterval: params.pollingInterval,
               onBlockNumber: async (blockNumber) => {
                 try {
                   const result = await client.readContract({
@@ -358,7 +359,6 @@ export const BalanceServiceLive = Layer.effect(
               onError: (error) => {
                 emit.fail(error as unknown);
               },
-              pollingInterval: params.pollingInterval,
             });
 
             return Effect.sync(() => {

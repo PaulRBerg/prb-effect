@@ -285,9 +285,9 @@ export const makeWriteAndTrack = (deps: WriteAndTrackDeps) =>
           const pendingFiber = yield* Stream.runForEach(
             Stream.async<bigint, unknown>((emit) => {
               const unwatch = publicClient.watchBlockNumber({
+                pollingInterval: policy.pollingInterval,
                 onBlockNumber: (blockNumber: bigint) => emit.single(blockNumber),
                 onError: (error) => emit.fail(error as unknown),
-                pollingInterval: policy.pollingInterval,
               });
 
               return Effect.sync(() => {
@@ -415,6 +415,8 @@ export const makeWriteAndTrack = (deps: WriteAndTrackDeps) =>
     );
 
     return {
+      stateRef: tracker.ref,
+      terminal: Deferred.await(terminalDeferred),
       actions: {
         cancel: (overridePolicy?: TxPolicy) =>
           Effect.gen(function* () {
@@ -456,7 +458,5 @@ export const makeWriteAndTrack = (deps: WriteAndTrackDeps) =>
             return newHash;
           }),
       },
-      stateRef: tracker.ref,
-      terminal: Deferred.await(terminalDeferred),
     };
   });

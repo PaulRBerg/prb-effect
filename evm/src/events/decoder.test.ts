@@ -15,11 +15,11 @@ describe("tryDecodeLog", () => {
   it("returns Some(DecodedEvent) for valid Transfer event log", () => {
     const topics = encodeEventTopics({
       abi: erc20Abi,
+      eventName: "Transfer",
       args: {
         from: TEST_ADDRESS,
         to: TEST_ADDRESS_2,
       },
-      eventName: "Transfer",
     });
 
     const log: Log = {
@@ -74,11 +74,11 @@ describe("tryDecodeLog", () => {
   it("returns None for log with wrong ABI", () => {
     const topics = encodeEventTopics({
       abi: erc20Abi,
+      eventName: "Transfer",
       args: {
         from: TEST_ADDRESS,
         to: TEST_ADDRESS_2,
       },
-      eventName: "Transfer",
     });
 
     const log: Log = {
@@ -96,13 +96,13 @@ describe("tryDecodeLog", () => {
     // Use a different ABI
     const wrongAbi = [
       {
+        name: "Approval",
+        type: "event",
         inputs: [
           { indexed: true, name: "owner", type: "address" },
           { indexed: true, name: "spender", type: "address" },
           { indexed: false, name: "value", type: "uint256" },
         ],
-        name: "Approval",
-        type: "event",
       },
     ] as const;
 
@@ -114,11 +114,11 @@ describe("tryDecodeLog", () => {
   it("handles missing blockNumber gracefully (defaults to 0n)", () => {
     const topics = encodeEventTopics({
       abi: erc20Abi,
+      eventName: "Transfer",
       args: {
         from: TEST_ADDRESS,
         to: TEST_ADDRESS_2,
       },
-      eventName: "Transfer",
     });
 
     const log: Log = {
@@ -145,11 +145,11 @@ describe("tryDecodeLog", () => {
   it("handles missing transactionHash gracefully", () => {
     const topics = encodeEventTopics({
       abi: erc20Abi,
+      eventName: "Transfer",
       args: {
         from: TEST_ADDRESS,
         to: TEST_ADDRESS_2,
       },
-      eventName: "Transfer",
     });
 
     const log: Log = {
@@ -179,11 +179,11 @@ describe("decodeLogOrFail", () => {
     Effect.gen(function* () {
       const topics = encodeEventTopics({
         abi: erc20Abi,
+        eventName: "Transfer",
         args: {
           from: TEST_ADDRESS,
           to: TEST_ADDRESS_2,
         },
-        eventName: "Transfer",
       });
 
       const log: Log = {
@@ -242,11 +242,11 @@ describe("decodeLogOrFail", () => {
     Effect.gen(function* () {
       const topics = encodeEventTopics({
         abi: erc20Abi,
+        eventName: "Transfer",
         args: {
           from: TEST_ADDRESS,
           to: TEST_ADDRESS_2,
         },
-        eventName: "Transfer",
       });
 
       const log: Log = {
@@ -264,13 +264,13 @@ describe("decodeLogOrFail", () => {
       // Use a different ABI
       const wrongAbi = [
         {
+          name: "Approval",
+          type: "event",
           inputs: [
             { indexed: true, name: "owner", type: "address" },
             { indexed: true, name: "spender", type: "address" },
             { indexed: false, name: "value", type: "uint256" },
           ],
-          name: "Approval",
-          type: "event",
         },
       ] as const;
 
@@ -289,20 +289,20 @@ describe("decodeReceiptLogs", () => {
     Effect.gen(function* () {
       const topics1 = encodeEventTopics({
         abi: erc20Abi,
+        eventName: "Transfer",
         args: {
           from: TEST_ADDRESS,
           to: TEST_ADDRESS_2,
         },
-        eventName: "Transfer",
       });
 
       const topics2 = encodeEventTopics({
         abi: erc20Abi,
+        eventName: "Transfer",
         args: {
           from: TEST_ADDRESS_2,
           to: TEST_ADDRESS,
         },
-        eventName: "Transfer",
       });
 
       const receipt: TransactionReceipt = {
@@ -313,6 +313,12 @@ describe("decodeReceiptLogs", () => {
         effectiveGasPrice: 1000000000n,
         from: TEST_ADDRESS,
         gasUsed: 50000n,
+        logsBloom: "0x",
+        status: "success",
+        to: TEST_ADDRESS_2,
+        transactionHash: TEST_TX_HASH,
+        transactionIndex: 0,
+        type: "eip1559",
         logs: [
           {
             address: TEST_ADDRESS,
@@ -337,12 +343,6 @@ describe("decodeReceiptLogs", () => {
             transactionIndex: 0,
           },
         ],
-        logsBloom: "0x",
-        status: "success",
-        to: TEST_ADDRESS_2,
-        transactionHash: TEST_TX_HASH,
-        transactionIndex: 0,
-        type: "eip1559",
       };
 
       const events = yield* decodeReceiptLogs(receipt, erc20Abi);
@@ -358,11 +358,11 @@ describe("decodeReceiptLogs", () => {
     Effect.gen(function* () {
       const topics1 = encodeEventTopics({
         abi: erc20Abi,
+        eventName: "Transfer",
         args: {
           from: TEST_ADDRESS,
           to: TEST_ADDRESS_2,
         },
-        eventName: "Transfer",
       });
 
       const receipt: TransactionReceipt = {
@@ -373,6 +373,12 @@ describe("decodeReceiptLogs", () => {
         effectiveGasPrice: 1000000000n,
         from: TEST_ADDRESS,
         gasUsed: 50000n,
+        logsBloom: "0x",
+        status: "success",
+        to: TEST_ADDRESS_2,
+        transactionHash: TEST_TX_HASH,
+        transactionIndex: 0,
+        type: "eip1559",
         logs: [
           {
             address: TEST_ADDRESS,
@@ -397,12 +403,6 @@ describe("decodeReceiptLogs", () => {
             transactionIndex: 0,
           },
         ],
-        logsBloom: "0x",
-        status: "success",
-        to: TEST_ADDRESS_2,
-        transactionHash: TEST_TX_HASH,
-        transactionIndex: 0,
-        type: "eip1559",
       };
 
       const events = yield* decodeReceiptLogs(receipt, erc20Abi);
@@ -421,6 +421,12 @@ describe("decodeReceiptLogs", () => {
         effectiveGasPrice: 1000000000n,
         from: TEST_ADDRESS,
         gasUsed: 50000n,
+        logsBloom: "0x",
+        status: "success",
+        to: TEST_ADDRESS_2,
+        transactionHash: TEST_TX_HASH,
+        transactionIndex: 0,
+        type: "eip1559",
         logs: [
           {
             address: TEST_ADDRESS,
@@ -434,12 +440,6 @@ describe("decodeReceiptLogs", () => {
             transactionIndex: 0,
           },
         ],
-        logsBloom: "0x",
-        status: "success",
-        to: TEST_ADDRESS_2,
-        transactionHash: TEST_TX_HASH,
-        transactionIndex: 0,
-        type: "eip1559",
       };
 
       const events = yield* decodeReceiptLogs(receipt, erc20Abi);
@@ -453,11 +453,11 @@ describe("decodeReceiptLogsByName", () => {
     Effect.gen(function* () {
       const transferTopics = encodeEventTopics({
         abi: erc20Abi,
+        eventName: "Transfer",
         args: {
           from: TEST_ADDRESS,
           to: TEST_ADDRESS_2,
         },
-        eventName: "Transfer",
       });
 
       // Create an Approval event log (even though we don't have it in simplified erc20Abi,
@@ -465,23 +465,23 @@ describe("decodeReceiptLogsByName", () => {
       const extendedAbi = [
         ...erc20Abi,
         {
+          name: "Approval",
+          type: "event",
           inputs: [
             { indexed: true, name: "owner", type: "address" },
             { indexed: true, name: "spender", type: "address" },
             { indexed: false, name: "value", type: "uint256" },
           ],
-          name: "Approval",
-          type: "event",
         },
       ] as const;
 
       const approvalTopics = encodeEventTopics({
         abi: extendedAbi,
+        eventName: "Approval",
         args: {
           owner: TEST_ADDRESS,
           spender: TEST_ADDRESS_2,
         },
-        eventName: "Approval",
       });
 
       const receipt: TransactionReceipt = {
@@ -492,6 +492,12 @@ describe("decodeReceiptLogsByName", () => {
         effectiveGasPrice: 1000000000n,
         from: TEST_ADDRESS,
         gasUsed: 50000n,
+        logsBloom: "0x",
+        status: "success",
+        to: TEST_ADDRESS_2,
+        transactionHash: TEST_TX_HASH,
+        transactionIndex: 0,
+        type: "eip1559",
         logs: [
           {
             address: TEST_ADDRESS,
@@ -516,12 +522,6 @@ describe("decodeReceiptLogsByName", () => {
             transactionIndex: 0,
           },
         ],
-        logsBloom: "0x",
-        status: "success",
-        to: TEST_ADDRESS_2,
-        transactionHash: TEST_TX_HASH,
-        transactionIndex: 0,
-        type: "eip1559",
       };
 
       const transferEvents = yield* decodeReceiptLogsByName(receipt, extendedAbi, "Transfer");
@@ -540,11 +540,11 @@ describe("decodeReceiptLogsByName", () => {
     Effect.gen(function* () {
       const topics = encodeEventTopics({
         abi: erc20Abi,
+        eventName: "Transfer",
         args: {
           from: TEST_ADDRESS,
           to: TEST_ADDRESS_2,
         },
-        eventName: "Transfer",
       });
 
       const receipt: TransactionReceipt = {
@@ -555,6 +555,12 @@ describe("decodeReceiptLogsByName", () => {
         effectiveGasPrice: 1000000000n,
         from: TEST_ADDRESS,
         gasUsed: 50000n,
+        logsBloom: "0x",
+        status: "success",
+        to: TEST_ADDRESS_2,
+        transactionHash: TEST_TX_HASH,
+        transactionIndex: 0,
+        type: "eip1559",
         logs: [
           {
             address: TEST_ADDRESS,
@@ -568,12 +574,6 @@ describe("decodeReceiptLogsByName", () => {
             transactionIndex: 0,
           },
         ],
-        logsBloom: "0x",
-        status: "success",
-        to: TEST_ADDRESS_2,
-        transactionHash: TEST_TX_HASH,
-        transactionIndex: 0,
-        type: "eip1559",
       };
 
       const events = yield* decodeReceiptLogsByName(receipt, erc20Abi, "Approval");

@@ -40,6 +40,7 @@ export const useEffectOnce = <A, E, R>(
       (devRef.current.makeEffect !== makeEffect || devRef.current.initial !== options.initial)
     ) {
       devRef.current.warned = true;
+      // biome-ignore lint/suspicious/noConsole: Dev-only warning for non-reactive input changes.
       console.warn(
         [
           "[effect-solana] useEffectOnce ignores changes after the first render.",

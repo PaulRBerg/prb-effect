@@ -74,11 +74,11 @@ export const makeMockWalletClientLayer = (
 
   // Create mock WalletClient
   const mockWalletClient = {
+    chain: { id: supportedChainId },
     account: {
       address: accountAddress,
       type: "json-rpc",
     },
-    chain: { id: supportedChainId },
     sendTransaction,
     signMessage,
     signTransaction,

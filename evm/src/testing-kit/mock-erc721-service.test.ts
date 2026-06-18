@@ -198,13 +198,13 @@ describe("testing-kit: makeMockErc721ServiceLayer", () => {
       const customLayer = makeMockErc721ServiceLayer({
         fetchMetadata: () =>
           Effect.succeed({
+            description: "Custom NFT",
+            image: "https://example.com/image.png",
+            name: "Custom Token",
             attributes: [
               { trait_type: "Rarity", value: "Legendary" },
               { trait_type: "Level", value: 99 },
             ],
-            description: "Custom NFT",
-            image: "https://example.com/image.png",
-            name: "Custom Token",
           }),
       });
 
@@ -227,11 +227,11 @@ describe("testing-kit: makeMockErc721ServiceLayer", () => {
         const metadata = yield* service.fetchMetadata({
           address: testContract,
           chainId: mainnet.id,
+          tokenId: 1n,
           gateways: {
             arweave: "https://arweave.net",
             ipfs: "https://ipfs.io",
           },
-          tokenId: 1n,
         });
 
         expect(metadata.name).toBe("Mock NFT");

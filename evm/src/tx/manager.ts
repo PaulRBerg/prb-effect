@@ -338,6 +338,7 @@ function waitForReceiptWithReplacement(params: {
           replacement = undefined;
           return client.waitForTransactionReceipt({
             hash,
+            pollingInterval: policy.pollingInterval,
             onReplaced: (info) => {
               replacement = {
                 newHash: info.transaction.hash,
@@ -345,7 +346,6 @@ function waitForReceiptWithReplacement(params: {
                 reason: info.reason,
               };
             },
-            pollingInterval: policy.pollingInterval,
             timeout,
           });
         },

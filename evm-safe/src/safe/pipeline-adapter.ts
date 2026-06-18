@@ -41,14 +41,14 @@ function mapSafeStateToTxState(state: SafeWriteAndTrackState): TxState {
       };
     case "queued":
       return {
+        reason: "awaiting-safe-confirmations",
+        reference: state.safeTxHash,
+        status: "queued",
         details: {
           confirmations: state.confirmations,
           confirmationsRequired: state.confirmationsRequired,
           lastStatus: state.lastStatus,
         },
-        reason: "awaiting-safe-confirmations",
-        reference: state.safeTxHash,
-        status: "queued",
       };
     case "success":
       return {
@@ -194,13 +194,13 @@ export const SafeWriteExecutionAdapterLive = Layer.effect(
                   case "queued":
                     return Effect.succeed({
                       _tag: "queued",
+                      reason: "awaiting-safe-confirmations",
+                      reference: safeTerminal.safeTxHash,
                       details: {
                         confirmations: safeTerminal.confirmations,
                         confirmationsRequired: safeTerminal.confirmationsRequired,
                         lastStatus: safeTerminal.lastStatus,
                       },
-                      reason: "awaiting-safe-confirmations",
-                      reference: safeTerminal.safeTxHash,
                     } satisfies WriteAndTrackTerminal<TAbi>);
                   case "cancelled":
                     return Effect.succeed({

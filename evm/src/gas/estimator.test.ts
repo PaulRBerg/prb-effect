@@ -275,7 +275,6 @@ describe("GasService", () => {
       }).pipe(
         Effect.provide(
           makeGasLayer({
-            estimateMaxPriorityFeePerGas: () => Promise.resolve(DEFAULT_PRIORITY_FEE),
             getBlock: (() => {
               let latestCallCount = 0;
               return (params: unknown) => {
@@ -290,6 +289,7 @@ describe("GasService", () => {
                 return Promise.reject(new Error("Pending not supported"));
               };
             })(),
+            estimateMaxPriorityFeePerGas: () => Promise.resolve(DEFAULT_PRIORITY_FEE),
           })
         )
       )

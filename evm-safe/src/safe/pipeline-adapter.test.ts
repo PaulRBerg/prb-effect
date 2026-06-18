@@ -393,26 +393,26 @@ describe("SafeWriteExecutionAdapterLive", () => {
 
       expect(terminal).toEqual({
         _tag: "queued",
+        reason: "awaiting-safe-confirmations",
+        reference: TEST_SAFE_TX_HASH,
         details: {
           confirmations: 1,
           confirmationsRequired: 2,
           lastStatus: "awaiting_confirmations",
         },
-        reason: "awaiting-safe-confirmations",
-        reference: TEST_SAFE_TX_HASH,
       });
 
       expect(Option.isSome(queued)).toBe(true);
       if (Option.isSome(queued)) {
         expect(queued.value).toEqual({
+          reason: "awaiting-safe-confirmations",
+          reference: TEST_SAFE_TX_HASH,
+          status: "queued",
           details: {
             confirmations: 1,
             confirmationsRequired: 2,
             lastStatus: "awaiting_confirmations",
           },
-          reason: "awaiting-safe-confirmations",
-          reference: TEST_SAFE_TX_HASH,
-          status: "queued",
         });
       }
     }).pipe(

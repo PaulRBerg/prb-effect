@@ -10,24 +10,24 @@ const multisigAbi = [
   {
     inputs: [],
     name: "getOwners",
+    stateMutability: "view",
+    type: "function",
     outputs: [
       {
         name: "",
         type: "address[]",
       },
     ],
-    stateMutability: "view",
-    type: "function",
   },
   {
-    inputs: [
-      { internalType: "address", name: "targetContract", type: "address" },
-      { internalType: "bytes", name: "calldataPayload", type: "bytes" },
-    ],
     name: "simulateAndRevert",
     outputs: [],
     stateMutability: "nonpayable",
     type: "function",
+    inputs: [
+      { internalType: "address", name: "targetContract", type: "address" },
+      { internalType: "bytes", name: "calldataPayload", type: "bytes" },
+    ],
   },
 ] as const;
 
@@ -43,6 +43,9 @@ const multiSendAbi = [
 
 const simulateAccessorAbi = [
   {
+    name: "simulate",
+    stateMutability: "nonpayable",
+    type: "function",
     inputs: [
       { internalType: "address", name: "to", type: "address" },
       { internalType: "uint256", name: "value", type: "uint256" },
@@ -53,14 +56,11 @@ const simulateAccessorAbi = [
         type: "uint8",
       },
     ],
-    name: "simulate",
     outputs: [
       { internalType: "uint256", name: "estimate", type: "uint256" },
       { internalType: "bool", name: "success", type: "bool" },
       { internalType: "bytes", name: "returnData", type: "bytes" },
     ],
-    stateMutability: "nonpayable",
-    type: "function",
   },
 ] as const;
 

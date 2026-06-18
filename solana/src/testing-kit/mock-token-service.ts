@@ -43,6 +43,10 @@ const defaultConfig: Required<MockTokenServiceConfig> = {
   getMint: () =>
     Effect.succeed({
       address: TEST_ADDRESS_2,
+      executable: false,
+      lamports: 0n,
+      programAddress: TEST_ADDRESS_2,
+      space: 0n,
       data: {
         decimals: 0,
         freezeAuthority: null,
@@ -50,10 +54,6 @@ const defaultConfig: Required<MockTokenServiceConfig> = {
         mintAuthority: null,
         supply: 0n,
       },
-      executable: false,
-      lamports: 0n,
-      programAddress: TEST_ADDRESS_2,
-      space: 0n,
     } as MintAccount),
   getOrCreateATA: () =>
     Effect.succeed({
@@ -63,6 +63,10 @@ const defaultConfig: Required<MockTokenServiceConfig> = {
   getTokenAccount: () =>
     Effect.succeed({
       address: TEST_ADDRESS_2,
+      executable: false,
+      lamports: 0n,
+      programAddress: TEST_ADDRESS_2,
+      space: 0n,
       data: {
         amount: 0n,
         closeAuthority: null,
@@ -73,10 +77,6 @@ const defaultConfig: Required<MockTokenServiceConfig> = {
         owner: TEST_ADDRESS_2,
         state: "initialized",
       },
-      executable: false,
-      lamports: 0n,
-      programAddress: TEST_ADDRESS_2,
-      space: 0n,
     } as TokenAccount),
   getTokenBalance: () => Effect.succeed(1000000000n), // 1 token with 9 decimals
   getTransferInstruction: () =>

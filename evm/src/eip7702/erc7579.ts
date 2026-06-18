@@ -13,25 +13,25 @@ export type Erc7579Execution = {
 };
 
 const erc7579ExecutionTuple = {
+  name: "executions",
+  type: "tuple[]",
   components: [
     { name: "target", type: "address" },
     { name: "value", type: "uint256" },
     { name: "callData", type: "bytes" },
   ],
-  name: "executions",
-  type: "tuple[]",
 } as const;
 
 export const erc7579AccountAbi = [
   {
-    inputs: [
-      { name: "mode", type: "bytes32" },
-      { name: "executionCalldata", type: "bytes" },
-    ],
     name: "execute",
     outputs: [],
     stateMutability: "payable",
     type: "function",
+    inputs: [
+      { name: "mode", type: "bytes32" },
+      { name: "executionCalldata", type: "bytes" },
+    ],
   },
 ] as const satisfies Abi;
 

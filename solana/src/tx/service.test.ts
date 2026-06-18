@@ -99,13 +99,13 @@ describe("TransactionService (Live)", () => {
     return Effect.gen(function* () {
       const service = yield* TransactionService;
       const receipt = yield* service.confirm(TEST_SIGNATURE, {
+        pollInterval: 0,
+        timeout: 1000,
         lifetime: {
           blockhash: TEST_BLOCKHASH,
           expiredStatusGracePeriod: "1 second",
           lastValidBlockHeight: 1000n,
         },
-        pollInterval: 0,
-        timeout: 1000,
       });
 
       expect(receipt.signature).toBe(TEST_SIGNATURE);

@@ -8,13 +8,13 @@ import type { Abi } from "viem";
  */
 export const erc20NoOutputAbi = [
   {
-    inputs: [
-      { name: "spender", type: "address" },
-      { name: "value", type: "uint256" },
-    ],
     name: "approve",
     outputs: [],
     stateMutability: "nonpayable",
     type: "function",
+    inputs: [
+      { name: "spender", type: "address" },
+      { name: "value", type: "uint256" },
+    ],
   },
 ] as const satisfies Abi;

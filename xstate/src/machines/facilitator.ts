@@ -143,13 +143,13 @@ function createFacilitatorMachine<TCheck, TCreate, TTransitive>({
       events: {} as FacilitatorMachineEvents<TCheck, TCreate>,
     },
   }).createMachine({
+    id: `facilitator-${id}`,
+    initial: "idle",
     context: {
       error: null,
       status: "idle",
       transitive: null,
     },
-    id: `facilitator-${id}`,
-    initial: "idle",
     states: {
       checked: {
         on: {
@@ -170,6 +170,7 @@ function createFacilitatorMachine<TCheck, TCreate, TTransitive>({
         // @ts-expect-error - xState v5 type inference limitation with generic functions
         invoke: {
           id: "check",
+          src: "doCheck",
           input: ({ event }) => {
             if (event.type === "CHECK") {
               return event.payload;
@@ -184,7 +185,6 @@ function createFacilitatorMachine<TCheck, TCreate, TTransitive>({
             actions: "doError",
             target: "failed",
           },
-          src: "doCheck",
         },
         on: {
           CHECK: {
@@ -205,6 +205,7 @@ function createFacilitatorMachine<TCheck, TCreate, TTransitive>({
       creating: {
         invoke: {
           id: "create",
+          src: "doCreate",
           input: ({ event, context }) => {
             if (event.type === "CREATE") {
               return {
@@ -221,7 +222,6 @@ function createFacilitatorMachine<TCheck, TCreate, TTransitive>({
             actions: "doError",
             target: "failed",
           },
-          src: "doCreate",
         },
         on: {
           RESET: {
@@ -251,7 +251,6 @@ function createFacilitatorMachine<TCheck, TCreate, TTransitive>({
   });
 }
 
-export { createFacilitatorMachine };
 export type {
   EligibilityStatus,
   FacilitatedResult,
@@ -260,3 +259,4 @@ export type {
   FacilitatorMachineEvents,
   FacilitatorMachineServices,
 };
+export { createFacilitatorMachine };
