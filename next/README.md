@@ -1,4 +1,4 @@
-# effect-next
+# @prb/effect-next
 
 > [!WARNING]
 >
@@ -29,7 +29,7 @@ bun add @prb/effect-next effect @effect/platform
 
 ### Optional Dependencies
 
-- `@effect/opentelemetry` for `effect-next/telemetry/otel`
+- `@effect/opentelemetry` for `@prb/effect-next/telemetry/otel`
 
 ## Quick Start
 
@@ -39,9 +39,9 @@ Convert Next.js route handlers into Effect workflows:
 
 ```typescript
 // app/api/users/[id]/route.ts
-import { Next } from "effect-next/handlers";
+import { Next } from "@prb/effect-next/handlers";
 import { Effect } from "effect";
-import { RouteParams } from "effect-next/params";
+import { RouteParams } from "@prb/effect-next/params";
 
 const Route = Next.make("UsersRoute", AppLayer);
 
@@ -64,7 +64,7 @@ Create type-safe server actions with automatic error handling:
 // app/actions.ts
 "use server";
 
-import { runServerAction } from "effect-next/action";
+import { runServerAction } from "@prb/effect-next/action";
 import { Effect } from "effect";
 
 export async function createUser() {
@@ -101,7 +101,7 @@ Run Effects in client components:
 ```typescript
 "use client";
 
-import { useEffectMemo, useEffectNextRuntime } from "effect-next/react-hooks";
+import { useEffectMemo, useEffectNextRuntime } from "@prb/effect-next/react-hooks";
 import { Effect } from "effect";
 
 function UserProfile({ userId }: { userId: string }) {
@@ -126,8 +126,8 @@ function UserProfile({ userId }: { userId: string }) {
 Compose middleware using Effect layers:
 
 ```typescript
-import { Next } from "effect-next/handlers";
-import { RequestTimingMiddleware, makeRequestTimingMiddleware } from "effect-next/middleware/request-timing";
+import { Next } from "@prb/effect-next/handlers";
+import { RequestTimingMiddleware, makeRequestTimingMiddleware } from "@prb/effect-next/middleware/request-timing";
 import { Effect, Layer } from "effect";
 
 const AppLayerWithTiming = Layer.mergeAll(AppLayer, makeRequestTimingMiddleware());
@@ -146,7 +146,7 @@ Use React's cache() with Effect for request deduplication:
 
 ```typescript
 // lib/data.ts
-import { reactCache } from "effect-next/react-cache";
+import { reactCache } from "@prb/effect-next/react-cache";
 import { Effect } from "effect";
 
 export const getUser = reactCache((id: string) =>
@@ -165,7 +165,7 @@ export const getUser = reactCache((id: string) =>
 ### Route Handlers
 
 ```typescript
-import { Next } from "effect-next/handlers";
+import { Next } from "@prb/effect-next/handlers";
 
 const Route = Next.make("Route", layer);
 
@@ -176,7 +176,7 @@ export const POST = Route.build(() => effect);
 ### Server Actions
 
 ```typescript
-import { runServerAction, runServerActionOrThrow } from "effect-next/action";
+import { runServerAction, runServerActionOrThrow } from "@prb/effect-next/action";
 
 export const myAction = () => runServerAction(effect.pipe(Effect.provide(layer)));
 export const myActionOrThrow = () => runServerActionOrThrow(effect.pipe(Effect.provide(layer)));
@@ -194,7 +194,7 @@ import {
   useStream,
   useStreamLatest,
   useSubscriptionRef,
-} from "effect-next/react-hooks";
+} from "@prb/effect-next/react-hooks";
 
 // Provide runtime to app
 <EffectNextProvider runtime={runtime}>
@@ -225,7 +225,7 @@ const value = useSubscriptionRef(ref, runtime);
 
 ```typescript
 import { Effect } from "effect";
-import { reactCache } from "effect-next/react-cache";
+import { reactCache } from "@prb/effect-next/react-cache";
 
 const getUser = reactCache((id: string) => effect);
 const user = await Effect.runPromise(getUser("user-1"));
@@ -234,7 +234,7 @@ const user = await Effect.runPromise(getUser("user-1"));
 ### Headers & Cookies
 
 ```typescript
-import { Headers, Cookies } from "effect-next/headers";
+import { Headers, Cookies } from "@prb/effect-next/headers";
 
 Effect.gen(function* () {
   const headers = yield* Headers;
@@ -248,7 +248,7 @@ Effect.gen(function* () {
 ### Params
 
 ```typescript
-import { RouteParams, SearchParams } from "effect-next/params";
+import { RouteParams, SearchParams } from "@prb/effect-next/params";
 
 Effect.gen(function* () {
   const params = yield* RouteParams;
@@ -262,7 +262,7 @@ Effect.gen(function* () {
 ### Navigation
 
 ```typescript
-import { redirect, rewrite, notFound } from "effect-next/navigation";
+import { redirect, rewrite, notFound } from "@prb/effect-next/navigation";
 
 Effect.gen(function* () {
   yield* redirect("/login");
@@ -274,7 +274,7 @@ Effect.gen(function* () {
 ### Environment
 
 ```typescript
-import { isProduction, resolveEnvironment } from "effect-next/env";
+import { isProduction, resolveEnvironment } from "@prb/effect-next/env";
 
 const env = resolveEnvironment();
 if (isProduction()) {
@@ -286,7 +286,7 @@ if (isProduction()) {
 
 ```typescript
 import { Effect } from "effect";
-import { createTelemetryLayer, TelemetryService } from "effect-next/telemetry";
+import { createTelemetryLayer, TelemetryService } from "@prb/effect-next/telemetry";
 
 const layer = createTelemetryLayer({
   captureException: (error) => console.error(error),
@@ -310,7 +310,7 @@ import {
   runExpectSuccess,
   runExpectFailure,
   makeMockRuntime,
-} from "effect-next/testing-kit";
+} from "@prb/effect-next/testing-kit";
 
 // Test success cases
 test("should succeed", async () => {
@@ -332,54 +332,19 @@ test("should create user", async () => {
 });
 ```
 
-## Project Structure
-
-```
-effect-next/
-├── src/
-│   ├── action/          # Server actions
-│   ├── cache/           # Request-scoped cache
-│   ├── env/             # Environment helpers
-│   ├── handlers/        # Route handlers
-│   ├── headers/         # Headers & cookies
-│   ├── middleware/      # Middleware
-│   ├── navigation/      # Navigation utilities
-│   ├── params/          # Route & search params
-│   ├── react-cache/     # React cache integration
-│   ├── react-hooks/     # Client-side hooks
-│   ├── runtime/         # Runtime utilities
-│   ├── server-actions/  # Server action helpers
-│   ├── telemetry/       # Telemetry adapters
-│   ├── testing-kit/     # Testing utilities
-├── tests/               # Test suite
-├── package.json
-├── tsconfig.json
-└── README.md
-```
-
-## Examples
-
-See the [examples](./examples) directory for complete examples:
-
-- Basic route handlers
-- Server actions with form handling
-- Client components with hooks
-- Middleware composition
-- Testing patterns
-
 ## Contributing
 
-Contributions are welcome! Please read [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
+For package-specific commands and conventions, see [AGENTS.md](./AGENTS.md).
 
 ## License
 
-MIT
+MIT. See [LICENSE](../LICENSE).
 
 ## Related Projects
 
 - [Effect](https://github.com/Effect-TS/effect) - The Effect runtime
 - [Next.js](https://nextjs.org) - The React framework
-- [effect-evm](https://github.com/PaulRBerg/prb-effect/tree/main/evm) - Effect integration for EVM
+- [@prb/effect-evm](https://github.com/PaulRBerg/prb-effect/tree/main/evm) - Effect integration for EVM
 
 ## Credits
 

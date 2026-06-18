@@ -1,6 +1,6 @@
-# effect-evm-safe
+# @prb/effect-evm-safe
 
-[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](../LICENSE)
 [![Effect](https://img.shields.io/badge/Effect-v3-7C3AED)](https://effect.website)
 
 > [!WARNING]
@@ -19,12 +19,13 @@ bun add @prb/effect-evm-safe @prb/effect-evm @safe-global/safe-apps-sdk
 
 Peer dependencies
 
-- `effect@^3`
-- `@effect/platform@^0.93`
-- `@prb/effect-evm@^1.0.0`
+- `effect@^3.21.3`
+- `@effect/platform@^0.96.1`
+- `@prb/effect-evm@^2.0.0`
 - `@safe-global/safe-apps-sdk@9.1.0`
 - `viem@^2.43`
 - Optional: `@wagmi/core@>=2.0.0` (for hooks using wagmi)
+- Optional: `wagmi@^2.19.5` (for hooks using wagmi)
 - Optional: `react@>=18.2.0`, `react-dom@>=18.2.0` (for React hooks)
 
 ## Usage
@@ -45,6 +46,10 @@ const layer = Layer.provideMerge(SafeAppsServiceLive(), baseLayer);
 - Safe simulation: `SafeMultisigSimulationService`, `SafeMultisigSimulationServiceLive`
 - Types + errors: `safe/*`
 - React hooks: `@prb/effect-evm-safe/react-hooks`
+
+## Contributing
+
+For package-specific commands and conventions, see [AGENTS.md](./AGENTS.md).
 
 ## License
 

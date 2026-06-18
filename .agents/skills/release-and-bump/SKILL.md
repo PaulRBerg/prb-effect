@@ -25,6 +25,7 @@ package to release using `AskUserQuestion` with these options:
 - @prb/effect-evm
 - @prb/effect-evm-safe
 - @prb/effect-next
+- @prb/effect-solana
 - @prb/effect-xstate
 
 Then `cd` into the package directory before continuing.

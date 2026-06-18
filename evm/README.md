@@ -1,6 +1,6 @@
-# effect-evm
+# @prb/effect-evm
 
-[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](../LICENSE)
 [![Effect](https://img.shields.io/badge/Effect-v3-7C3AED)](https://effect.website)
 [![viem](https://img.shields.io/badge/viem-v2-1E1E1E)](https://viem.sh)
 
@@ -20,18 +20,18 @@ bun add @prb/effect-evm
 
 **Peer dependencies**
 
-- `effect@^3.19.11`
-- `@effect/platform@^0.93.7`
-- `viem@^2.0.0`
-- Optional: `@wagmi/core@^2.0.0` (for `effect-evm/wagmi`)
-- Optional: `react@>=18.2.0`, `react-dom@>=18.2.0` (for `effect-evm/react-hooks`)
+- `effect@^3.21.3`
+- `@effect/platform@^0.96.1`
+- `viem@^2.43`
+- Optional: `@wagmi/core@>=2.0.0` (for `@prb/effect-evm/wagmi`)
+- Optional: `react@>=18.2.0`, `react-dom@>=18.2.0` (for `@prb/effect-evm/react-hooks`)
 
 ## 🚀 Usage
 
 ```typescript
 import { Effect } from "effect";
 import { mainnet } from "viem/chains";
-import { ContractReader, erc20Abi, makeEffectEvmLayer, type ChainConfig } from "effect-evm";
+import { ContractReader, erc20Abi, makeEffectEvmLayer, type ChainConfig } from "@prb/effect-evm";
 
 // 1. Configure chains
 const configs: ChainConfig[] = [{ chainId: 1, chain: mainnet, rpcUrls: ["https://rpc.example"] }];
@@ -65,11 +65,11 @@ Effect.runPromise(program.pipe(Effect.provide(EvmLayer)));
 - **Signatures + simulation** — `SignatureService`, `SimulationService` (Tenderly)
 - **Subscriptions** — `SubscriptionService` (blocks/logs/pending tx)
 - **EIP-7702** — Delegation and atomic batching for EOAs
-- **React hooks** — `effect-evm/react-hooks` (primitives + convenience hooks)
+- **React hooks** — `@prb/effect-evm/react-hooks` (primitives + convenience hooks)
 - **Safe App + Safe multisig** — `useIsSafeAppContext`, `useIsHostSafeApp`, `useIsSafeMultisigWallet`
-- **Wagmi integration** — `effect-evm/wagmi` (build layers from wagmi config)
+- **Wagmi integration** — `@prb/effect-evm/wagmi` (build layers from wagmi config)
 - **Browser persistence** — `browser` namespace (localStorage-backed stores)
-- **Testing** — `effect-evm/testing-kit` (mocks + `makeEffectEvmTestLayer`)
+- **Testing** — `@prb/effect-evm/testing-kit` (mocks + `makeEffectEvmTestLayer`)
 
 ## ⚙️ Write Preflight Modes
 
@@ -101,6 +101,7 @@ Only operational errors (preflight/submission/receipt/decode) use `Effect.fail`.
 
 - **Usage and examples**: [DOCS.md](./DOCS.md)
 - **Contributing**: [CONTRIBUTING.md](./CONTRIBUTING.md)
+- **Agent guidance**: [AGENTS.md](./AGENTS.md)
 
 ## 📄 License
 
