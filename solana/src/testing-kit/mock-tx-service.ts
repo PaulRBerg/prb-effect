@@ -4,10 +4,13 @@ import type { Transaction, TransactionWithLifetime } from "@solana/transactions"
 import type { Layer } from "effect";
 import { Effect } from "effect";
 import type {
+  BlockhashExpiredError,
   SimulationFailedError,
   TransactionFailedError,
   TransactionSendError,
   TransactionTimeoutError,
+  UserRejectedError,
+  WalletCapabilityError,
   WalletNotConnectedError,
 } from "#src/core/errors/index.js";
 import type {
@@ -15,7 +18,9 @@ import type {
   SignableTransactionMessage,
   TransactionBatchItem,
   TransactionBatchOpts,
+  TransactionBuildOpts,
   TransactionReceipt,
+  WalletSendOpts,
 } from "#src/tx/index.js";
 import { TransactionService } from "#src/tx/index.js";
 import { TEST_SIGNATURE } from "./_fixtures/addresses.js";
@@ -53,7 +58,10 @@ export type MockTransactionServiceConfig = {
   confirm?: (
     signature: Signature,
     opts?: ConfirmOpts
-  ) => Effect.Effect<TransactionReceipt, TransactionTimeoutError | TransactionFailedError>;
+  ) => Effect.Effect<
+    TransactionReceipt,
+    TransactionTimeoutError | TransactionFailedError | BlockhashExpiredError
+  >;
   sendAndConfirm?: (
     instructions: readonly Instruction[],
     opts?: ConfirmOpts
@@ -63,6 +71,27 @@ export type MockTransactionServiceConfig = {
     | WalletNotConnectedError
     | TransactionTimeoutError
     | TransactionFailedError
+    | BlockhashExpiredError
+  >;
+  sendWithWallet?: (
+    tx: SignableTransactionMessage,
+    opts?: WalletSendOpts
+  ) => Effect.Effect<
+    Signature,
+    TransactionSendError | WalletNotConnectedError | WalletCapabilityError | UserRejectedError
+  >;
+  sendAndConfirmWithWallet?: (
+    instructions: readonly Instruction[],
+    opts?: ConfirmOpts & TransactionBuildOpts & WalletSendOpts
+  ) => Effect.Effect<
+    TransactionReceipt,
+    | TransactionSendError
+    | WalletNotConnectedError
+    | WalletCapabilityError
+    | UserRejectedError
+    | TransactionTimeoutError
+    | TransactionFailedError
+    | BlockhashExpiredError
   >;
   sendAndConfirmBatch?: (
     items: readonly TransactionBatchItem[],
@@ -73,6 +102,7 @@ export type MockTransactionServiceConfig = {
     | WalletNotConnectedError
     | TransactionTimeoutError
     | TransactionFailedError
+    | BlockhashExpiredError
   >;
   simulate?: <T extends SignableTransactionMessage>(
     tx: T
@@ -103,6 +133,13 @@ const defaultConfig: Required<MockTransactionServiceConfig> = {
         slot: 1000n,
       }))
     ),
+  sendAndConfirmWithWallet: () =>
+    Effect.succeed({
+      confirmations: 10n,
+      signature: TEST_SIGNATURE as Signature,
+      slot: 1000n,
+    }),
+  sendWithWallet: () => Effect.succeed(TEST_SIGNATURE as Signature),
   sign: () => Effect.succeed({} as Transaction & TransactionWithLifetime),
   signAll: (txs) => Effect.succeed(txs.map(() => ({}) as Transaction & TransactionWithLifetime)),
   simulate: () => Effect.void,

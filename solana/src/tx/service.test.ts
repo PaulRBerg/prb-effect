@@ -2,18 +2,26 @@ import { describe, expect, it } from "@effect/vitest";
 import type { Instruction } from "@solana/kit";
 import type { Transaction, TransactionWithLifetime } from "@solana/transactions";
 import bs58 from "bs58";
-import { Effect } from "effect";
+import { Effect, Layer } from "effect";
 import { COMPUTE_BUDGET_PROGRAM_ADDRESS, SYSTEM_PROGRAM_ADDRESS } from "#src/constants/index.js";
 import {
+  expectTaggedFailure,
   makeEffectSolanaTestLayer,
   makeMockRpc,
+  makeMockRpcServiceLayer,
+  makeMockSignerServiceLayer,
   TEST_SIGNATURE,
   TEST_WALLET,
 } from "#src/testing-kit/index.js";
-import { TransactionService } from "#src/tx/index.js";
+import {
+  TransactionService,
+  TransactionServiceWithWalletLive,
+  WalletSendService,
+} from "#src/tx/index.js";
 
 const TEST_SIGNATURE_2 =
   "6VERv8NMvzbJMEkV8xnrLkEaWRtSz9CosKDYjCJjBRnbJLgp8uirBgmQpjKhoR4tjF3ZpRzrFmBV6UjKdiSZkQUW";
+const APPKIT_SIGNATURE = TEST_SIGNATURE;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Solana RPC types use branded types that can't be constructed from literals
 const makeRpc = () =>
@@ -72,6 +80,160 @@ describe("TransactionService (Live)", () => {
       )
     )
   );
+
+  it.effect("confirm succeeds when status appears after blockhash expiry grace starts", () => {
+    let statusCalls = 0;
+    const rpc = makeMockRpc({
+      getBlockHeight: (() => ({
+        send: () => Promise.resolve(1001n),
+      })) as any,
+      getSignatureStatuses: (() => ({
+        send: () => {
+          statusCalls += 1;
+          return Promise.resolve({
+            context: { slot: 0n },
+            value:
+              statusCalls === 1
+                ? [null]
+                : [
+                    {
+                      confirmationStatus: "confirmed",
+                      confirmations: 1n,
+                      err: null,
+                      slot: 123n,
+                      status: { Ok: null },
+                    },
+                  ],
+          });
+        },
+      })) as any,
+    });
+
+    return Effect.gen(function* () {
+      const service = yield* TransactionService;
+      const receipt = yield* service.confirm(TEST_SIGNATURE, {
+        lifetime: {
+          blockhash: "GH7ome3EiwEr7tu9JuTh2dpYWBJK3z69Xm1ZE3MEE6JC",
+          expiredStatusGracePeriod: "1 second",
+          lastValidBlockHeight: 1000n,
+        },
+        pollInterval: 0,
+        timeout: 1000,
+      });
+
+      expect(receipt.signature).toBe(TEST_SIGNATURE);
+      expect(statusCalls).toBe(2);
+    }).pipe(
+      Effect.provide(
+        makeEffectSolanaTestLayer({
+          rpcService: { getRpc: () => Effect.succeed(rpc) },
+        })
+      )
+    );
+  });
+
+  it.effect("confirm fails when signature status contains an on-chain error", () =>
+    Effect.gen(function* () {
+      const service = yield* TransactionService;
+      const exit = yield* Effect.exit(service.confirm(TEST_SIGNATURE, { pollInterval: 0 }));
+
+      expectTaggedFailure(exit, "TransactionFailedError");
+    }).pipe(
+      Effect.provide(
+        makeEffectSolanaTestLayer({
+          rpcService: {
+            getRpc: () =>
+              Effect.succeed(
+                makeMockRpc({
+                  getSignatureStatuses: (() => ({
+                    send: async () => ({
+                      context: { slot: 0n },
+                      value: [
+                        {
+                          confirmationStatus: "confirmed",
+                          confirmations: 1n,
+                          err: { InstructionError: [0, "Custom"] },
+                          slot: 123n,
+                          status: { Err: { InstructionError: [0, "Custom"] } },
+                        },
+                      ],
+                    }),
+                  })) as any,
+                })
+              ),
+          },
+        })
+      )
+    )
+  );
+
+  it.effect("sendAndConfirmWithWallet returns the wallet provider signature", () => {
+    let blockHeightCalls = 0;
+    let statusCalls = 0;
+    const rpc = makeMockRpc({
+      getBlockHeight: (() => ({
+        send: () => {
+          blockHeightCalls += 1;
+          return Promise.resolve(1001n);
+        },
+      })) as any,
+      getLatestBlockhash: (() => ({
+        send: () =>
+          Promise.resolve({
+            context: { slot: 0n },
+            value: {
+              blockhash: "GH7ome3EiwEr7tu9JuTh2dpYWBJK3z69Xm1ZE3MEE6JC",
+              lastValidBlockHeight: 1000n,
+            },
+          }),
+      })) as any,
+      getSignatureStatuses: (() => ({
+        send: () => {
+          statusCalls += 1;
+          return Promise.resolve({
+            context: { slot: 0n },
+            value:
+              statusCalls === 1
+                ? [null]
+                : [
+                    {
+                      confirmationStatus: "confirmed",
+                      confirmations: 1n,
+                      err: null,
+                      slot: 123n,
+                      status: { Ok: null },
+                    },
+                  ],
+          });
+        },
+      })) as any,
+    });
+    const walletSendLayer = Layer.succeed(
+      WalletSendService,
+      WalletSendService.of({
+        sendTransaction: () => Effect.succeed(APPKIT_SIGNATURE),
+      })
+    );
+    const layer = Layer.provide(
+      TransactionServiceWithWalletLive,
+      Layer.mergeAll(
+        makeMockRpcServiceLayer({ getRpc: () => Effect.succeed(rpc) }),
+        makeMockSignerServiceLayer({ address: TEST_WALLET }),
+        walletSendLayer
+      )
+    );
+
+    return Effect.gen(function* () {
+      const service = yield* TransactionService;
+      const receipt = yield* service.sendAndConfirmWithWallet([makeInstruction()], {
+        commitment: "confirmed",
+        pollInterval: 0,
+      });
+
+      expect(receipt.signature).toBe(APPKIT_SIGNATURE);
+      expect(blockHeightCalls).toBe(1);
+    }).pipe(Effect.provide(layer));
+  });
 
   it.effect("sendAndConfirmBatch returns receipts for each transaction", () =>
     Effect.gen(function* () {

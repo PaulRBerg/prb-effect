@@ -5,6 +5,7 @@ import type {
   TransactionMessageWithFeePayer,
   TransactionMessageWithLifetime,
 } from "@solana/transaction-messages";
+import type { Duration } from "effect";
 
 /**
  * A transaction message shape that is ready to compile/sign/send.
@@ -32,6 +33,55 @@ export type ConfirmOpts = {
    * @default 60000 (60 seconds)
    */
   readonly timeout?: number;
+
+  /**
+   * Delay between confirmation polls.
+   * @default "2 seconds"
+   */
+  readonly pollInterval?: Duration.DurationInput;
+
+  /**
+   * Whether to search transaction history outside the recent status cache.
+   * @default true
+   */
+  readonly searchTransactionHistory?: boolean;
+
+  /**
+   * Optional blockhash lifetime metadata for detecting expiration while still
+   * allowing a final status lookup grace period.
+   */
+  readonly lifetime?: {
+    readonly blockhash: string;
+    readonly lastValidBlockHeight: bigint;
+    readonly expiredStatusGracePeriod?: Duration.DurationInput;
+  };
+};
+
+/**
+ * Options forwarded to a wallet-provider send path.
+ *
+ * @category Types
+ */
+export type WalletSendOpts = {
+  /**
+   * Number of retries for the RPC send path.
+   */
+  readonly maxRetries?: number;
+
+  /**
+   * Minimum context slot for preflight/send.
+   */
+  readonly minContextSlot?: number;
+
+  /**
+   * Commitment used for preflight simulation.
+   */
+  readonly preflightCommitment?: "processed" | "confirmed" | "finalized";
+
+  /**
+   * Whether wallet/provider send should skip preflight.
+   */
+  readonly skipPreflight?: boolean;
 };
 
 /**

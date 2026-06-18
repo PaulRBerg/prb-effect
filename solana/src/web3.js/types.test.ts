@@ -1,7 +1,15 @@
 import { describe, expect, it } from "@effect/vitest";
 import { address } from "@solana/addresses";
 import { PublicKey } from "@solana/web3.js";
-import { addressToPublicKey, publicKeyToAddress } from "./types.js";
+import {
+  addressToPublicKey,
+  getWeb3WalletAddress,
+  hasSendTransaction,
+  hasSignAllTransactions,
+  hasSignTransaction,
+  isWeb3WalletConnected,
+  publicKeyToAddress,
+} from "./types.js";
 
 describe("types (compat)", () => {
   describe("publicKeyToAddress", () => {
@@ -82,6 +90,41 @@ describe("types (compat)", () => {
         const { PublicKey: PK } = await import("@solana/web3.js");
         new PK("ThisIsNotAValidSolanaAddress123");
       }).rejects.toThrow();
+    });
+  });
+
+  describe("capability guards", () => {
+    it("detects send and sign capabilities independently", () => {
+      const provider = {
+        connected: true,
+        publicKey: new PublicKey("11111111111111111111111111111111"),
+        sendTransaction: async () => "signature",
+        signTransaction: async <T>(tx: T) => tx,
+      };
+
+      expect(hasSendTransaction(provider)).toBe(true);
+      expect(hasSignTransaction(provider)).toBe(true);
+      expect(hasSignAllTransactions(provider)).toBe(false);
+    });
+  });
+
+  describe("wallet identity helpers", () => {
+    it("derives address and connection from AppKit account address", () => {
+      const wallet = {
+        account: { address: "DYw8jCTfwHNRJhhmFcbXvVDTqWMEVFBX6ZKUmG5CNSKK" },
+      };
+
+      expect(getWeb3WalletAddress(wallet)).toBe("DYw8jCTfwHNRJhhmFcbXvVDTqWMEVFBX6ZKUmG5CNSKK");
+      expect(isWeb3WalletConnected(wallet)).toBe(true);
+    });
+
+    it("treats an explicit disconnected flag as disconnected", () => {
+      const wallet = {
+        connected: false,
+        publicKey: new PublicKey("11111111111111111111111111111111"),
+      };
+
+      expect(isWeb3WalletConnected(wallet)).toBe(false);
     });
   });
 });

@@ -25,12 +25,12 @@
     "url": "https://github.com/PaulRBerg/prb-effect/issues"
   },
   "dependencies": {
-    "bn.js": "^5.2.1",
+    "bn.js": "^5.2.3",
     "buffer": "^6.0.3"
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:dev",
-    "@coral-xyz/anchor": "^0.31.1",
+    "@coral-xyz/anchor": "^0.32.1",
     "@effect/platform": "catalog:effect",
     "@effect/vitest": "catalog:dev",
     "@sablier/devkit": "catalog:dev",
@@ -38,7 +38,7 @@
     "@solana-program/system": "^0.10.0",
     "@solana-program/token": "^0.9.0",
     "@solana/kit": "^5.4.0",
-    "@solana/web3.js": "^1.95.0",
+    "@solana/web3.js": "^1.98.4",
     "@types/bn.js": "^5.2.0",
     "@types/node": "^25.0.3",
     "@types/react": "catalog:dev",
@@ -78,13 +78,13 @@
     "web3"
   ],
   "peerDependencies": {
-    "@coral-xyz/anchor": "^0.31.1",
+    "@coral-xyz/anchor": "^0.32.1",
     "@effect/platform": "catalog:peers",
     "@solana-program/compute-budget": "^0.12.0",
     "@solana-program/system": "^0.10.0",
     "@solana-program/token": "^0.9.0",
     "@solana/kit": "^5.4.0",
-    "@solana/web3.js": "^1.95.0",
+    "@solana/web3.js": "^1.98.4",
     "effect": "catalog:peers",
     "react": "catalog:peers",
     "react-dom": "catalog:peers"

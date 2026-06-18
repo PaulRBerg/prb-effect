@@ -25,6 +25,7 @@
  * ```
  */
 
+export * from "./appkit-sender.js";
 export * from "./layers.js";
 export * from "./legacy-signer.js";
 export * from "./tx-bridge.js";

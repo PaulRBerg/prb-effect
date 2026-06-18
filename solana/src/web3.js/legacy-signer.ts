@@ -3,8 +3,13 @@ import { SignatureError, WalletNotConnectedError } from "#src/core/errors/index.
 import { SignerService } from "#src/signer/index.js";
 import { SpanNames } from "#src/telemetry/index.js";
 import { fromWeb3Transaction, toWeb3Transaction } from "./tx-bridge.js";
-import type { LegacyWalletAdapter } from "./types.js";
-import { publicKeyToAddress } from "./types.js";
+import type { LegacyWalletAdapter, Web3SignAdapter } from "./types.js";
+import {
+  getWeb3WalletAddress,
+  hasSignAllTransactions,
+  hasSignTransaction,
+  isWeb3WalletConnected,
+} from "./types.js";
 
 /**
  * Create a SignerService layer from a legacy wallet adapter.
@@ -30,8 +35,8 @@ import { publicKeyToAddress } from "./types.js";
  * }));
  * ```
  */
-export function makeSignerServiceFromLegacyAdapter(
-  getAdapter: () => LegacyWalletAdapter
+export function makeSignerServiceFromWeb3Adapter(
+  getAdapter: () => Web3SignAdapter
 ): Layer.Layer<SignerService> {
   return Layer.succeed(
     SignerService,
@@ -39,29 +44,30 @@ export function makeSignerServiceFromLegacyAdapter(
       getAddress: () =>
         Effect.gen(function* () {
           const adapter = getAdapter();
-          if (!(adapter.connected && adapter.publicKey)) {
+          if (!isWeb3WalletConnected(adapter)) {
             return yield* Effect.fail(
               new WalletNotConnectedError({ message: "Wallet not connected" })
             );
           }
 
-          // Runtime validation before type assertion
-          if (
-            typeof adapter.publicKey !== "object" ||
-            adapter.publicKey === null ||
-            typeof (adapter.publicKey as { toBase58?: unknown }).toBase58 !== "function"
-          ) {
-            return yield* Effect.fail(
+          const address = yield* Effect.try({
+            catch: (cause) =>
               new WalletNotConnectedError({
-                message: "Invalid publicKey: missing toBase58 method",
-              })
+                message: cause instanceof Error ? cause.message : "Invalid wallet address",
+              }),
+            try: () => getWeb3WalletAddress(adapter),
+          });
+
+          if (!address) {
+            return yield* Effect.fail(
+              new WalletNotConnectedError({ message: "Wallet address not available" })
             );
           }
 
-          return publicKeyToAddress(adapter.publicKey as { toBase58(): string });
+          return address;
         }).pipe(Effect.withSpan(SpanNames.SIGNER_GET_ADDRESS)),
 
-      isConnected: () => Effect.sync(() => getAdapter().connected),
+      isConnected: () => Effect.sync(() => isWeb3WalletConnected(getAdapter())),
 
       signAllTransactions: (txs) =>
         Effect.gen(function* () {
@@ -71,7 +77,7 @@ export function makeSignerServiceFromLegacyAdapter(
           }
 
           const adapter = getAdapter();
-          if (!adapter.connected) {
+          if (!isWeb3WalletConnected(adapter)) {
             return yield* Effect.fail(
               new WalletNotConnectedError({ message: "Wallet not connected" })
             );
@@ -92,14 +98,24 @@ export function makeSignerServiceFromLegacyAdapter(
             )
           );
 
-          // Sign all with legacy adapter
+          if (!(hasSignAllTransactions(adapter) || hasSignTransaction(adapter))) {
+            return yield* Effect.fail(
+              new SignatureError({
+                message: "Wallet does not support signAllTransactions or signTransaction",
+              })
+            );
+          }
+
           const signedAll = yield* Effect.tryPromise({
             catch: (cause) =>
               new SignatureError({
                 cause,
                 message: cause instanceof Error ? cause.message : "Failed to sign transactions",
               }),
-            try: () => adapter.signAllTransactions(legacyTxs),
+            try: () =>
+              hasSignAllTransactions(adapter)
+                ? adapter.signAllTransactions(legacyTxs)
+                : Promise.all(legacyTxs.map((tx) => adapter.signTransaction(tx))),
           });
 
           // Convert all web3.js → kit
@@ -112,9 +128,15 @@ export function makeSignerServiceFromLegacyAdapter(
       signTransaction: (tx) =>
         Effect.gen(function* () {
           const adapter = getAdapter();
-          if (!adapter.connected) {
+          if (!isWeb3WalletConnected(adapter)) {
             return yield* Effect.fail(
               new WalletNotConnectedError({ message: "Wallet not connected" })
+            );
+          }
+
+          if (!hasSignTransaction(adapter)) {
+            return yield* Effect.fail(
+              new SignatureError({ message: "Wallet does not support signTransaction" })
             );
           }
 
@@ -146,4 +168,10 @@ export function makeSignerServiceFromLegacyAdapter(
         }).pipe(Effect.withSpan(SpanNames.TX_SIGN)),
     })
   );
+}
+
+export function makeSignerServiceFromLegacyAdapter(
+  getAdapter: () => LegacyWalletAdapter
+): Layer.Layer<SignerService> {
+  return makeSignerServiceFromWeb3Adapter(getAdapter);
 }

@@ -4,7 +4,10 @@ import { Effect } from "effect";
 import { SignerService } from "#src/signer/index.js";
 import { expectTaggedFailure } from "#src/testing-kit/index.js";
 import { createLegacyTransaction } from "./_fixtures.js";
-import { makeSignerServiceFromLegacyAdapter } from "./legacy-signer.js";
+import {
+  makeSignerServiceFromLegacyAdapter,
+  makeSignerServiceFromWeb3Adapter,
+} from "./legacy-signer.js";
 import { fromWeb3Transaction } from "./tx-bridge.js";
 import type { LegacyWalletAdapter } from "./types.js";
 
@@ -103,6 +106,26 @@ describe("legacy-signer (compat)", () => {
         // Verify it returned a kit transaction
         expect(signed).toBeDefined();
         expect(typeof signed).toBe("object");
+      }).pipe(Effect.provide(layer));
+    });
+
+    it.effect("supports AppKit-shaped providers with signTransaction", () => {
+      const provider = {
+        account: { address: "DYw8jCTfwHNRJhhmFcbXvVDTqWMEVFBX6ZKUmG5CNSKK" },
+        signTransaction: async <T>(tx: T) => tx,
+      };
+      const layer = makeSignerServiceFromWeb3Adapter(() => provider);
+
+      return Effect.gen(function* () {
+        const legacyTx = createLegacyTx();
+        const kitTx = fromWeb3Transaction(legacyTx);
+
+        const signer = yield* SignerService;
+        const address = yield* signer.getAddress();
+        const signed = yield* signer.signTransaction(kitTx);
+
+        expect(address).toBe("DYw8jCTfwHNRJhhmFcbXvVDTqWMEVFBX6ZKUmG5CNSKK");
+        expect(signed).toBeDefined();
       }).pipe(Effect.provide(layer));
     });
 

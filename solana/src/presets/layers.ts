@@ -12,7 +12,7 @@ import { makeSignerServiceFromAdapter } from "#src/signer/index.js";
 import type { TokenService } from "#src/token/index.js";
 import { TokenServiceLive } from "#src/token/index.js";
 import type { TransactionService } from "#src/tx/index.js";
-import { TransactionServiceLive } from "#src/tx/index.js";
+import { TransactionServiceLive, TransactionServiceWithWalletLive } from "#src/tx/index.js";
 import type { Cluster, ClusterConfig } from "#src/types/index.js";
 
 /**
@@ -113,6 +113,21 @@ export const effectSolanaServices = Layer.mergeAll(
   BalanceServiceLive,
   TokenServiceLive,
   TransactionServiceLive,
+  PdaServiceLive,
+  ProgramReaderLive,
+  ProgramWriterLive
+);
+
+/**
+ * Compose all application services with provider-owned wallet send support.
+ * Requires RpcService, SignerService, and WalletSendService to be provided.
+ *
+ * @category Layers
+ */
+export const effectSolanaServicesWithWalletSend = Layer.mergeAll(
+  BalanceServiceLive,
+  TokenServiceLive,
+  TransactionServiceWithWalletLive,
   PdaServiceLive,
   ProgramReaderLive,
   ProgramWriterLive

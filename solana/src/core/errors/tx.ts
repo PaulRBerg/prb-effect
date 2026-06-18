@@ -82,7 +82,19 @@ const USER_REJECTION_CODE = 4001;
 /**
  * Fallback message fragments if code is not available.
  */
-const USER_REJECTION_MESSAGES = ["user rejected", "rejected the request"];
+const USER_REJECTION_MESSAGES = [
+  "cancelled",
+  "canceled",
+  "denied the request",
+  "declined",
+  "request rejected",
+  "rejected the request",
+  "signature request denied",
+  "signing rejected",
+  "transaction rejected",
+  "user denied",
+  "user rejected",
+];
 
 function isRejectionCode(code: unknown): boolean {
   return code === USER_REJECTION_CODE || code === `${USER_REJECTION_CODE}`;
@@ -137,7 +149,15 @@ function checkCause(cause: unknown, depth: number): boolean {
  * - SignatureError with code 4001 or rejection message in cause
  */
 export function isLikelyUserRejectedError(error: unknown): boolean {
-  if (!error || typeof error !== "object") {
+  if (!error) {
+    return false;
+  }
+
+  if (checkCause(error, 0)) {
+    return true;
+  }
+
+  if (typeof error !== "object") {
     return false;
   }
 
@@ -151,8 +171,11 @@ export function isLikelyUserRejectedError(error: unknown): boolean {
     return true;
   }
 
-  // SignatureError - check cause for code 4001 or rejection message
-  if (hasTaggedErrorShape(error) && error._tag === "SignatureError") {
+  // Wrapped wallet/send errors - check cause for code 4001 or rejection message
+  if (
+    hasTaggedErrorShape(error) &&
+    (error._tag === "SignatureError" || error._tag === "TransactionSendError")
+  ) {
     return checkCause((error as { cause?: unknown }).cause, 0);
   }
 
