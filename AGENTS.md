@@ -11,6 +11,21 @@ AI agents working on prb-effect MUST follow these guidelines.
 - **Linter and Formatter**: Biome (JS/TS/JSON), Prettier (MD/YAML)
 - **Testing**: Vitest with @effect/vitest
 
+## Prerequisites
+
+- [Node.js](https://nodejs.org) v20+
+- [Bun](https://bun.sh) package manager
+- [Just](https://github.com/casey/just) command runner
+- [Ni](https://github.com/antfu-collective/ni) package manager resolver (`na`, `ni`, `nr`, etc.)
+
+## Setup
+
+```bash
+git clone https://github.com/PaulRBerg/prb-effect.git
+cd prb-effect
+bun install
+```
+
 ## Lint Rules
 
 After generating code, run these commands **in order**.
@@ -45,7 +60,10 @@ prb-effect/
 ## Commands
 
 ```bash
+just --list            # Show all available commands
 just full-check          # Run all code checks (prettier + biome + type check)
+just full-write          # Auto-fix formatting and linting issues
+just biome-check         # Check code with Biome
 just build <package>     # Build a single package (e.g., just build evm)
 just build-all           # Build all packages (.tgz)
 just type-check <package> # TypeScript type check a single package
@@ -54,11 +72,31 @@ just tu                  # Run unit tests
 just ti                  # Run integration tests
 just clean               # Clean dist, tsbuildinfo, tgz artifacts
 just evm::build          # Build @prb/effect-evm
+just evm::test           # Test @prb/effect-evm
+just evm::tui            # Run @prb/effect-evm tests in UI mode
 just evm-safe::build     # Build @prb/effect-evm-safe
 just next::build         # Build @prb/effect-next
+just next::test          # Test @prb/effect-next
 just solana::build       # Build @prb/effect-solana
 just xstate::build       # Build @prb/effect-xstate
 ```
+
+## Development Workflow
+
+For external contributions:
+
+1. Fork the repository and create a feature branch from `main`
+2. Make changes following this file and the nearest package `AGENTS.md`
+3. Add tests for new features or behavior changes
+4. Run `just full-check` before committing or opening a PR
+5. Submit a pull request with a clear description of the change
+
+## Quality Gates
+
+Before submitting a pull request, ensure:
+
+- Code is linted and formatted (`just full-check`)
+- Unit tests pass (`just tu`)
 
 ## Environment Variables (dotenvx)
 

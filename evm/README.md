@@ -100,8 +100,7 @@ Only operational errors (preflight/submission/receipt/decode) use `Effect.fail`.
 ## 📖 Documentation
 
 - **Usage and examples**: [DOCS.md](./DOCS.md)
-- **Contributing**: [CONTRIBUTING.md](./CONTRIBUTING.md)
-- **Agent guidance**: [AGENTS.md](./AGENTS.md)
+- **Development guidance**: [AGENTS.md](./AGENTS.md)
 
 ## 📄 License
 
