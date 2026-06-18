@@ -47,6 +47,50 @@ export function toAnchorArgs(args: readonly unknown[]): unknown[] {
   });
 }
 
+function isAnchorBN(value: unknown): value is BN {
+  try {
+    return BN.isBN(value);
+  } catch {
+    return false;
+  }
+}
+
+function isPublicKeyLike(value: object): boolean {
+  const toBase58 = Reflect.get(value, "toBase58");
+  return typeof toBase58 === "function";
+}
+
+function isPlainObject(value: object): value is Record<string, unknown> {
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+}
+
+/**
+ * Convert Anchor-decoded values to package-boundary values.
+ * Anchor borsh decodes large integers as BN; expose those as native bigint.
+ */
+export function fromAnchorValue(value: unknown): unknown {
+  if (isAnchorBN(value)) {
+    return BigInt(value.toString(10));
+  }
+
+  if (value === null || typeof value !== "object") {
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map(fromAnchorValue);
+  }
+
+  if (ArrayBuffer.isView(value) || isPublicKeyLike(value) || !isPlainObject(value)) {
+    return value;
+  }
+
+  return Object.fromEntries(
+    Object.entries(value).map(([key, nestedValue]) => [key, fromAnchorValue(nestedValue)])
+  );
+}
+
 export function makeProgramConnectionShim(
   connection: Connection,
   serviceName: "ProgramReader" | "ProgramWriter"

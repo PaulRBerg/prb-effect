@@ -236,40 +236,28 @@ describe("ProgramReader", () => {
     it.effect("returns decoded value for a valid readonly method", () =>
       Effect.gen(function* () {
         const reader = yield* ProgramReader;
-        const result = yield* reader.view({
+        const result = yield* reader.view<bigint>({
           accounts: { stream: TEST_ADDRESS },
           args: [],
           idl: VIEW_IDL,
           method: "viewValue",
         });
 
-        if (typeof result === "bigint") {
-          expect(result).toBe(42n);
-          return;
-        }
-
-        expect(result).toBeInstanceOf(BN);
-        expect((result as BN).toString()).toBe("42");
+        expect(result).toBe(42n);
       }).pipe(Effect.provide(makeTestLayer({ viewReturn: 42n })))
     );
 
     it.effect("supports simulation responses that include returnData", () =>
       Effect.gen(function* () {
         const reader = yield* ProgramReader;
-        const result = yield* reader.view({
+        const result = yield* reader.view<bigint>({
           accounts: { stream: TEST_ADDRESS },
           args: [],
           idl: VIEW_IDL,
           method: "viewValue",
         });
 
-        if (typeof result === "bigint") {
-          expect(result).toBe(42n);
-          return;
-        }
-
-        expect(result).toBeInstanceOf(BN);
-        expect((result as BN).toString()).toBe("42");
+        expect(result).toBe(42n);
       }).pipe(Effect.provide(makeTestLayer({ includeReturnData: true, viewReturn: 42n })))
     );
 
@@ -414,6 +402,41 @@ describe("ProgramReader", () => {
         expect(error).toBeInstanceOf(WalletNotConnectedError);
       }).pipe(Effect.provide(layer));
     });
+
+    it.effect("normalizes BN return values before returning", () =>
+      Effect.gen(function* () {
+        const reader = yield* ProgramReader;
+        const mockProgram = {
+          idl: {
+            metadata: { name: "mockProgram" },
+            instructions: [
+              {
+                accounts: [{ name: "stream", signer: false, writable: false }],
+                args: [],
+                discriminator: [8, 7, 6, 5, 4, 3, 2, 1],
+                name: "bnView",
+                returns: "u64",
+              },
+            ],
+          },
+          methods: {
+            bnView: (..._args: unknown[]) => ({
+              accountsPartial: () => ({
+                view: () => Promise.resolve(new BN(42)),
+              }),
+            }),
+          },
+        } as unknown as Program<Idl>;
+
+        const result: bigint = yield* reader.viewWithProgram<Idl, bigint>(mockProgram, {
+          accounts: {},
+          args: [],
+          method: "bnView",
+        });
+
+        expect(result).toBe(42n);
+      }).pipe(Effect.provide(makeTestLayer()))
+    );
 
     it.effect("uses the current signer as fee payer after wallet change", () => {
       let currentAddress: Address = TEST_ADDRESS;

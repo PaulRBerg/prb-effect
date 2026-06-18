@@ -218,6 +218,10 @@ Read on-chain state via Anchor's `.view()` (signer-path reads).
 `.view()` requires a connected wallet — Anchor uses the signer's publicKey as the payer for the simulated transaction.
 For disconnected or low-balance wallets, use the simulator fallback path at the application level.
 
+Anchor `BN` return values are normalized to native `bigint` at the package boundary. Values Anchor already decodes as
+`number`, including small integers and floats, stay `number`. Result generics are caller assertions, not runtime schema
+validation.
+
 ```typescript
 import { Effect } from "effect";
 import { ProgramReader } from "@prb/effect-solana";
@@ -227,7 +231,7 @@ const program = Effect.gen(function* () {
   const reader = yield* ProgramReader;
 
   // Single read
-  const result = yield* reader.view({
+  const result = yield* reader.view<bigint>({
     idl,
     method: "getWithdrawableAmount",
     args: [streamId],
@@ -237,7 +241,7 @@ const program = Effect.gen(function* () {
 
   // Batched reads (reuse the program instance)
   const anchorProgram = yield* reader.createProgram({ idl, programId });
-  const amount = yield* reader.viewWithProgram(anchorProgram, {
+  const amount = yield* reader.viewWithProgram<Idl, bigint>(anchorProgram, {
     method: "getWithdrawableAmount",
     args: [streamId],
     accounts: { stream, streamRecipient },

@@ -28,6 +28,7 @@ import { SignerService } from "#src/signer/index.js";
 import { SpanNames } from "#src/telemetry/index.js";
 import type { Address } from "#src/types/index.js";
 import {
+  fromAnchorValue,
   makeProgramConnectionShim,
   toAnchorAccounts,
   toAnchorArgs,
@@ -327,11 +328,13 @@ export type ProgramReaderShape = {
    *
    * Requires a connected wallet — Anchor uses the signer's publicKey
    * as the payer for the simulated transaction.
+   *
+   * BN return values are normalized to bigint. TResult is caller-asserted.
    */
-  readonly view: (
+  readonly view: <TResult = unknown>(
     params: ViewParams
   ) => Effect.Effect<
-    unknown,
+    TResult,
     | ProgramCreationError
     | InstructionNotFoundError
     | ViewNotSupportedError
@@ -343,12 +346,13 @@ export type ProgramReaderShape = {
    * Call `.view()` on a pre-created Program instance.
    *
    * Useful for batched reads where the program is already constructed.
+   * BN return values are normalized to bigint. TResult is caller-asserted.
    */
-  readonly viewWithProgram: <T extends Idl>(
+  readonly viewWithProgram: <T extends Idl = Idl, TResult = unknown>(
     program: Program<T>,
     params: Pick<ViewParams, "method" | "args" | "accounts">
   ) => Effect.Effect<
-    unknown,
+    TResult,
     InstructionNotFoundError | ViewNotSupportedError | ProgramReadError | WalletNotConnectedError
   >;
 };
@@ -450,11 +454,15 @@ export const ProgramReaderLive = Layer.effect(
           })
         ),
 
-      view: (params) =>
+      view: <TResult = unknown>(params: ViewParams) =>
         Effect.gen(function* () {
           const { idl, method, args, accounts, programId } = params;
           const program = yield* service.createProgram({ idl, programId });
-          return yield* service.viewWithProgram(program, { accounts, args, method });
+          return yield* service.viewWithProgram<typeof idl, TResult>(program, {
+            accounts,
+            args,
+            method,
+          });
         }).pipe(
           Effect.withSpan(SpanNames.PROGRAM_VIEW, {
             attributes: {
@@ -464,7 +472,10 @@ export const ProgramReaderLive = Layer.effect(
           })
         ),
 
-      viewWithProgram: (program, params) =>
+      viewWithProgram: <T extends Idl = Idl, TResult = unknown>(
+        program: Program<T>,
+        params: Pick<ViewParams, "method" | "args" | "accounts">
+      ) =>
         Effect.gen(function* () {
           const { method } = params;
           const idlName = getIdlName(program);
@@ -488,7 +499,7 @@ export const ProgramReaderLive = Layer.effect(
               }
               return makeProgramReadError(method, error);
             },
-            try: () => withAccounts.view(),
+            try: async () => fromAnchorValue(await withAccounts.view()) as TResult,
           });
         }).pipe(
           Effect.withSpan(SpanNames.PROGRAM_VIEW_WITH_PROGRAM, {

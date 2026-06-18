@@ -4,6 +4,7 @@ import BN from "bn.js";
 import { makeMockRpc } from "#src/testing-kit/index.js";
 import type { Address } from "#src/types/index.js";
 import {
+  fromAnchorValue,
   makeProgramConnectionShim,
   toAnchorAccounts,
   toAnchorArgs,
@@ -54,6 +55,73 @@ describe("toAnchorArgs", () => {
     const [value] = toAnchorArgs([3.14]);
 
     expect(value).toBe(3.14);
+  });
+});
+
+describe("fromAnchorValue", () => {
+  it("converts BN scalars to bigint", () => {
+    expect(fromAnchorValue(new BN(42))).toBe(42n);
+    expect(fromAnchorValue(new BN(-42))).toBe(-42n);
+  });
+
+  it("converts BN-like values from another package instance", () => {
+    const value = {
+      constructor: { wordSize: BN.wordSize },
+      words: [42],
+      toString: () => "42",
+    };
+
+    expect(fromAnchorValue(value)).toBe(42n);
+  });
+
+  it("recurses through arrays and plain objects", () => {
+    const result = fromAnchorValue({
+      amount: new BN(42),
+      nested: {
+        fees: [new BN(1), new BN(2)],
+      },
+    }) as {
+      readonly amount: unknown;
+      readonly nested: { readonly fees: readonly unknown[] };
+    };
+
+    expect(result.amount).toBe(42n);
+    expect(result.nested.fees).toEqual([1n, 2n]);
+  });
+
+  it("leaves PublicKey values untouched", () => {
+    const recipient = new PublicKey(TEST_ADDRESS);
+    const result = fromAnchorValue({
+      amount: new BN(42),
+      recipient,
+    }) as {
+      readonly amount: unknown;
+      readonly recipient: unknown;
+    };
+
+    expect(result.amount).toBe(42n);
+    expect(result.recipient).toBe(recipient);
+    expect(result.recipient).toBeInstanceOf(PublicKey);
+    expect((result.recipient as PublicKey).toBase58()).toBe(TEST_ADDRESS);
+  });
+
+  it("leaves byte buffers and non-plain objects untouched", () => {
+    const buffer = Buffer.from([1, 2]);
+    const bytes = new Uint8Array([3, 4]);
+    const date = new Date("2026-06-18T00:00:00.000Z");
+
+    expect(fromAnchorValue(buffer)).toBe(buffer);
+    expect(fromAnchorValue(bytes)).toBe(bytes);
+    expect(fromAnchorValue(date)).toBe(date);
+  });
+
+  it("leaves primitives untouched", () => {
+    expect(fromAnchorValue(42)).toBe(42);
+    expect(fromAnchorValue(3.14)).toBe(3.14);
+    expect(fromAnchorValue("value")).toBe("value");
+    expect(fromAnchorValue(true)).toBe(true);
+    expect(fromAnchorValue(null)).toBeNull();
+    expect(fromAnchorValue(undefined)).toBeUndefined();
   });
 });
 
