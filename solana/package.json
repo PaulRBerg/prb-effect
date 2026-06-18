@@ -34,10 +34,6 @@
     "@effect/platform": "catalog:effect",
     "@effect/vitest": "catalog:dev",
     "@sablier/devkit": "catalog:dev",
-    "@solana-program/compute-budget": "^0.12.0",
-    "@solana-program/system": "^0.10.0",
-    "@solana-program/token": "^0.9.0",
-    "@solana/kit": "^5.4.0",
     "@solana/web3.js": "^1.98.4",
     "@types/bn.js": "^5.2.0",
     "@types/node": "^25.0.3",
@@ -80,10 +76,6 @@
   "peerDependencies": {
     "@coral-xyz/anchor": "^0.32.1",
     "@effect/platform": "catalog:peers",
-    "@solana-program/compute-budget": "^0.12.0",
-    "@solana-program/system": "^0.10.0",
-    "@solana-program/token": "^0.9.0",
-    "@solana/kit": "^5.4.0",
     "@solana/web3.js": "^1.98.4",
     "effect": "catalog:peers",
     "react": "catalog:peers",
@@ -91,9 +83,6 @@
   },
   "peerDependenciesMeta": {
     "@coral-xyz/anchor": {
-      "optional": true
-    },
-    "@solana/web3.js": {
       "optional": true
     },
     "react": {

@@ -12,24 +12,21 @@
 
 import type { Idl } from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
-import type { Address } from "@solana/addresses";
-import type { Rpc, SolanaRpcApi } from "@solana/kit";
-import type { Commitment } from "@solana/rpc-types";
-import type { Base64EncodedWireTransaction } from "@solana/transactions";
 import type {
   Signer as AnchorSigner,
+  Commitment,
+  Connection,
   PublicKey,
   SimulatedTransactionResponse,
   Transaction,
-  TransactionReturnData,
   VersionedTransaction,
 } from "@solana/web3.js";
-import { Buffer } from "buffer";
 import { Cause, Context, Effect, Exit, Layer, Option, Runtime } from "effect";
 import { WalletNotConnectedError } from "#src/core/errors/index.js";
 import { RpcService } from "#src/rpc/index.js";
 import { SignerService } from "#src/signer/index.js";
 import { SpanNames } from "#src/telemetry/index.js";
+import type { Address } from "#src/types/index.js";
 import {
   makeProgramConnectionShim,
   toAnchorAccounts,
@@ -63,20 +60,6 @@ function mutateTransactionForSimulation(
   if (signers && signers.length > 0 && "partialSign" in tx) {
     tx.partialSign(...signers);
   }
-}
-
-function toBase64WireTransaction(
-  tx: Transaction | VersionedTransaction
-): Base64EncodedWireTransaction {
-  const wireTransaction =
-    "version" in tx
-      ? tx.serialize()
-      : tx.serialize({
-          requireAllSignatures: false,
-          verifySignatures: false,
-        });
-
-  return Buffer.from(wireTransaction).toString("base64") as Base64EncodedWireTransaction;
 }
 
 function hasWritableAccounts(accounts: readonly unknown[]): boolean {
@@ -185,26 +168,6 @@ function getTransactionBlockhash(tx: Transaction | VersionedTransaction): string
   return undefined;
 }
 
-function toWeb3SimulationResponse(
-  value: Awaited<ReturnType<ReturnType<Rpc<SolanaRpcApi>["simulateTransaction"]>["send"]>>["value"]
-): Omit<SimulatedTransactionResponse, "err"> {
-  // ProgramReader requests simulation with { encoding: "base64" } only.
-  // We map only the response fields Anchor currently reads (logs/returnData) and
-  // normalize unitsConsumed to web3.js' number shape.
-  const returnData: TransactionReturnData | null = value.returnData
-    ? {
-        data: [value.returnData.data[0], "base64"] as [string, "base64"],
-        programId: String(value.returnData.programId),
-      }
-    : null;
-
-  return {
-    logs: value.logs ?? null,
-    returnData,
-    unitsConsumed: value.unitsConsumed === undefined ? undefined : Number(value.unitsConsumed),
-  };
-}
-
 function formatSimulationError(error: unknown): string {
   const MAX_ERROR_MESSAGE_LENGTH = 500;
 
@@ -244,6 +207,29 @@ function normalizeSimulationCommitment(commitment?: string): Commitment | undefi
     default:
       return undefined;
   }
+}
+
+async function simulateTransaction(
+  connection: Connection,
+  tx: Transaction | VersionedTransaction,
+  commitment?: Commitment
+): Promise<Omit<SimulatedTransactionResponse, "err">> {
+  const simulation =
+    "version" in tx
+      ? await connection.simulateTransaction(tx, {
+          ...(commitment ? { commitment } : {}),
+          sigVerify: false,
+        })
+      : await connection.simulateTransaction(tx);
+
+  if (simulation.value.err) {
+    throw new Error(`View simulation failed: ${formatSimulationError(simulation.value.err)}`, {
+      cause: simulation.value.err,
+    });
+  }
+
+  const { err: _err, ...response } = simulation.value;
+  return response;
 }
 
 function normalizeMethodName(name: string): string {
@@ -447,27 +433,11 @@ export const ProgramReaderLive = Layer.effect(
                     // fee payer when a pre-created Program is reused across wallet changes.
                     const feePayer = await resolveSimulationFeePayer();
                     const transactionBlockhash =
-                      getTransactionBlockhash(tx) ??
-                      (await rpc.getLatestBlockhash().send()).value.blockhash;
+                      getTransactionBlockhash(tx) ?? (await rpc.getLatestBlockhash()).blockhash;
                     mutateTransactionForSimulation(tx, feePayer, transactionBlockhash, signers);
 
-                    const base64WireTransaction = toBase64WireTransaction(tx);
                     const normalizedCommitment = normalizeSimulationCommitment(commitment);
-                    const simulation = await rpc
-                      .simulateTransaction(base64WireTransaction, {
-                        ...(normalizedCommitment ? { commitment: normalizedCommitment } : {}),
-                        encoding: "base64",
-                      })
-                      .send();
-
-                    if (simulation.value.err) {
-                      throw new Error(
-                        `View simulation failed: ${formatSimulationError(simulation.value.err)}`,
-                        { cause: simulation.value.err }
-                      );
-                    }
-
-                    return toWeb3SimulationResponse(simulation.value);
+                    return simulateTransaction(rpc, tx, normalizedCommitment);
                   },
                 } as unknown as Program["provider"]
               ) as unknown as Program<typeof params.idl>,

@@ -1,5 +1,4 @@
-import type { Rpc, RpcSubscriptions, SolanaRpcApi, SolanaRpcSubscriptionsApi } from "@solana/kit";
-import { createSolanaRpc, createSolanaRpcSubscriptions } from "@solana/kit";
+import { Connection } from "@solana/web3.js";
 import { Context, Effect, Layer } from "effect";
 import { ConnectionNotFoundError } from "#src/core/errors/index.js";
 import type { Cluster, ClusterConfig } from "#src/types/index.js";
@@ -13,15 +12,12 @@ export type RpcServiceShape = {
   /**
    * Get the Solana RPC client for making RPC calls.
    */
-  readonly getRpc: () => Effect.Effect<Rpc<SolanaRpcApi>>;
+  readonly getRpc: () => Effect.Effect<Connection>;
 
   /**
-   * Get the Solana RPC subscriptions client for WebSocket subscriptions.
+   * Get a Solana Connection configured with a WebSocket endpoint.
    */
-  readonly getRpcSubscriptions: () => Effect.Effect<
-    RpcSubscriptions<SolanaRpcSubscriptionsApi>,
-    ConnectionNotFoundError
-  >;
+  readonly getRpcSubscriptions: () => Effect.Effect<Connection, ConnectionNotFoundError>;
 
   /**
    * Get the current cluster.
@@ -50,12 +46,15 @@ export const makeRpcServiceLive = (config: ClusterConfig) =>
   Layer.effect(
     RpcService,
     Effect.gen(function* () {
-      // Create RPC client once during layer construction
-      const rpcClient = createSolanaRpc(config.rpcUrl);
+      const rpcClient = new Connection(config.rpcUrl);
 
-      // Memoized WebSocket subscription client - created once on first access
       const getCachedSubscriptions = yield* Effect.cachedFunction((wsUrl: string) =>
-        Effect.sync(() => createSolanaRpcSubscriptions(wsUrl))
+        Effect.sync(
+          () =>
+            new Connection(config.rpcUrl, {
+              wsEndpoint: wsUrl,
+            })
+        )
       );
 
       return RpcService.of({

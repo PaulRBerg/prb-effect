@@ -1,23 +1,37 @@
 /**
  * Type definitions for Solana integration.
  *
- * Re-exports key types from @solana/kit and defines custom types.
+ * Defines package-level aliases around @solana/web3.js types.
  *
  * @module
  */
 
-// =============================================================================
-// Re-exports from @solana/kit
-// =============================================================================
+import type { TransactionInstruction } from "@solana/web3.js";
 
 export type {
-  Address,
   Commitment,
-  Lamports,
-  Signature,
+  Signer as TransactionSigner,
+  Transaction,
   TransactionError,
-} from "@solana/kit";
-export type { TransactionSigner } from "@solana/signers";
+  TransactionInstruction as Instruction,
+  TransactionSignature as Signature,
+  VersionedTransaction,
+} from "@solana/web3.js";
+
+/**
+ * Base58-encoded Solana address.
+ */
+export type Address<TAddress extends string = string> = TAddress;
+
+/**
+ * Lamports represented as bigint at this package boundary.
+ */
+export type Lamports = bigint;
+
+/**
+ * Alias for web3.js transaction instructions.
+ */
+export type Web3Instruction = TransactionInstruction;
 
 // =============================================================================
 // Cluster Configuration

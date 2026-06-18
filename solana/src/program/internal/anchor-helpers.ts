@@ -1,19 +1,16 @@
 /**
  * Shared helpers for Anchor program interaction.
  *
- * Used by both ProgramWriter and ProgramReader to convert between
- * Solana kit types and Anchor's legacy @solana/web3.js types.
+ * Used by both ProgramWriter and ProgramReader to adapt Anchor inputs.
  *
  * @internal
  */
 
 import type { Program } from "@coral-xyz/anchor";
-import type { Address } from "@solana/addresses";
-import type { Rpc, SolanaRpcApi } from "@solana/kit";
-import type { AccountInfo } from "@solana/web3.js";
+import type { Connection } from "@solana/web3.js";
 import { PublicKey } from "@solana/web3.js";
 import BN from "bn.js";
-import { Buffer } from "buffer";
+import type { Address } from "#src/types/index.js";
 import type { AccountsMap } from "../types.js";
 
 /**
@@ -50,48 +47,15 @@ export function toAnchorArgs(args: readonly unknown[]): unknown[] {
   });
 }
 
-export type Base64AccountInfoLike = Readonly<{
-  data: readonly [string, string];
-  executable: boolean;
-  lamports: bigint | number;
-  owner: Address;
-  rentEpoch?: bigint | number;
-}>;
-
-export function decodeBase64ToBuffer(encoded: string): Buffer {
-  return Buffer.from(encoded, "base64");
-}
-
-export function toWeb3AccountInfo(value: Base64AccountInfoLike): AccountInfo<Buffer> {
-  const [encodedData] = value.data;
-
-  return {
-    data: decodeBase64ToBuffer(encodedData),
-    executable: value.executable,
-    // web3.js AccountInfo requires number lamports. Values above Number.MAX_SAFE_INTEGER
-    // can lose precision during conversion, but this boundary is required for compatibility.
-    lamports: Number(value.lamports),
-    owner: toPublicKey(value.owner),
-    rentEpoch: Number(value.rentEpoch ?? 0),
-  };
-}
-
 export function makeProgramConnectionShim(
-  rpc: Rpc<SolanaRpcApi>,
+  connection: Connection,
   serviceName: "ProgramReader" | "ProgramWriter"
 ): Program["provider"]["connection"] {
   const knownConnectionMethods = {
-    getAccountInfo: async (pubkey: PublicKey) => {
-      const response = await rpc
-        .getAccountInfo(pubkey.toBase58() as Address, { encoding: "base64" })
-        .send();
-      return response.value === null
-        ? null
-        : toWeb3AccountInfo(response.value as Base64AccountInfoLike);
-    },
+    getAccountInfo: (pubkey: PublicKey) => connection.getAccountInfo(pubkey),
     getLatestBlockhash: async () => {
-      const { blockhash, lastValidBlockHeight } = (await rpc.getLatestBlockhash().send()).value;
-      return { blockhash, lastValidBlockHeight: Number(lastValidBlockHeight) };
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+      return { blockhash, lastValidBlockHeight };
     },
   };
 

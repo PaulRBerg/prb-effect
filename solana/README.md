@@ -8,7 +8,7 @@
 > This is experimental, beta software. It is provided "as is" without warranty of any kind, express or implied.
 
 Effect-TS integration for the Solana blockchain ecosystem. Type-safe, composable abstractions built on
-[@solana/kit](https://github.com/solana-labs/solana-web3.js) v2.
+[@solana/web3.js](https://github.com/solana-labs/solana-web3.js).
 
 ## 📦 Installation
 
@@ -25,14 +25,11 @@ bun add @prb/effect-solana effect
 Required:
 
 - `effect` ^3.x
-- `@solana-program/system` ^0.8.0
-- `@solana-program/token` ^0.8.0
-- `@solana-program/compute-budget` ^0.8.0
+- `@solana/web3.js` ^1.98.4
 
 Optional:
 
 - `@coral-xyz/anchor` ^0.32.1 (for Anchor IDL support)
-- `@solana/web3.js` ^1.98.4 (for web3.js/AppKit interop)
 - `react`, `react-dom` (for React hooks)
 
 ## 🚀 Quick Start
@@ -40,7 +37,7 @@ Optional:
 ```typescript
 import { Effect, Layer } from "effect";
 import { BalanceService, makeSolanaLayer } from "@prb/effect-solana";
-import type { Address } from "@solana/kit";
+import type { Address } from "@prb/effect-solana";
 
 // Create a complete Solana layer
 const SolanaLayer = makeSolanaLayer(
@@ -180,11 +177,6 @@ const program = Effect.gen(function* () {
 
   // Or all at once
   const receipt2 = yield* tx.sendAndConfirm(instructions, {
-    commitment: "confirmed",
-  });
-
-  // Or sign-and-send through an AppKit/web3.js wallet provider
-  const receipt3 = yield* tx.sendAndConfirmWithWallet(instructions, {
     commitment: "confirmed",
   });
 
@@ -421,48 +413,6 @@ import {
   MEMO_PROGRAM_ADDRESS,
 } from "@prb/effect-solana";
 ```
-
-## 🔗 Reown AppKit And Web3.js Interop
-
-Bridge utilities for `@solana/web3.js` v1 compatibility:
-
-```typescript
-import { makeSolanaLayerWithAppKit, makeSolanaLayerWithLegacyAdapter } from "@prb/effect-solana/web3.js";
-```
-
-### Reown AppKit
-
-Use AppKit's provider-owned `sendTransaction(transaction, connection)` path with the `WithWallet` transaction methods.
-
-```typescript
-import { useAppKitConnection, type Provider } from "@reown/appkit-adapter-solana/react";
-import { useAppKitProvider } from "@reown/appkit/react";
-import { Effect } from "effect";
-import { TransactionService } from "@prb/effect-solana";
-import { makeSolanaLayerWithAppKit } from "@prb/effect-solana/web3.js";
-
-function useSolanaLayer() {
-  const { connection } = useAppKitConnection();
-  const { walletProvider } = useAppKitProvider<Provider>("solana");
-
-  return makeSolanaLayerWithAppKit(
-    { cluster: "devnet" },
-    () => walletProvider,
-    () => connection,
-  );
-}
-
-const program = Effect.gen(function* () {
-  const tx = yield* TransactionService;
-  return yield* tx.sendAndConfirmWithWallet(instructions, {
-    commitment: "confirmed",
-  });
-});
-```
-
-`sendTransaction` signs and sends inside the wallet/provider, so use `sendWithWallet` or `sendAndConfirmWithWallet`. For
-sign-only web3.js wallets, keep using `makeSolanaLayerWithLegacyAdapter` and the existing `sign` + `send` or
-`sendAndConfirm` methods.
 
 ## 📄 License
 

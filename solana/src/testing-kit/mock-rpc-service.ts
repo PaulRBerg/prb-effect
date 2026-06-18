@@ -1,11 +1,10 @@
-import type { Rpc, RpcSubscriptions, SolanaRpcApi, SolanaRpcSubscriptionsApi } from "@solana/kit";
-import { createSolanaRpc } from "@solana/kit";
+import type { AccountInfo, Connection, PublicKey } from "@solana/web3.js";
 import type { Layer } from "effect";
 import { Effect } from "effect";
 import { ConnectionNotFoundError } from "#src/core/errors/index.js";
 import { RpcService } from "#src/rpc/index.js";
 import type { Cluster } from "#src/types/index.js";
-import { TEST_CLUSTER } from "./_fixtures/addresses.js";
+import { TEST_CLUSTER, TEST_SIGNATURE } from "./_fixtures/addresses.js";
 import { makeMockServiceLayer } from "./helpers.js";
 
 /**
@@ -15,85 +14,70 @@ import { makeMockServiceLayer } from "./helpers.js";
  * Override specific methods to customize mock behavior for your tests.
  */
 export type MockRpcServiceConfig = {
-  getRpc?: () => Effect.Effect<Rpc<SolanaRpcApi>>;
-  getRpcSubscriptions?: () => Effect.Effect<
-    RpcSubscriptions<SolanaRpcSubscriptionsApi>,
-    ConnectionNotFoundError
-  >;
-  getCluster?: () => Effect.Effect<Cluster>;
-  getRpcUrl?: () => Effect.Effect<string>;
+  readonly getRpc?: () => Effect.Effect<Connection>;
+  readonly getRpcSubscriptions?: () => Effect.Effect<Connection, ConnectionNotFoundError>;
+  readonly getCluster?: () => Effect.Effect<Cluster>;
+  readonly getRpcUrl?: () => Effect.Effect<string>;
+};
+
+const wrapResponse = <T>(value: T) => ({ context: { slot: 0 }, value });
+
+const defaultTokenAmount = {
+  amount: "1000000000",
+  decimals: 9,
+  uiAmount: 1.0,
+  uiAmountString: "1.0",
 };
 
 /**
- * Wraps a value with the standard RPC response context structure
+ * Create a mock web3.js Connection for testing.
  */
-const wrapResponse = <T>(value: T) => ({ context: { slot: 0n }, value });
-
-/**
- * Create a mock RPC client for testing.
- * Provides a full Rpc<SolanaRpcApi> via createSolanaRpc with safe overrides.
- *
- * Uses type assertion because Solana RPC types use many branded types (Lamports, Signature, etc.)
- * that cannot be created from literals. The mock values are structurally correct at runtime.
- */
-export const makeMockRpc = (overrides: Partial<Rpc<SolanaRpcApi>> = {}): Rpc<SolanaRpcApi> =>
+export const makeMockRpc = (overrides: Partial<Connection> = {}): Connection =>
   ({
-    ...createSolanaRpc("http://localhost"),
-    getAccountInfo: () => ({
-      send: () => Promise.resolve(wrapResponse(null)),
-    }),
-    getBalance: () => ({
-      send: () => Promise.resolve(wrapResponse(1000000000n)),
-    }),
-    getLatestBlockhash: () => ({
-      send: () =>
-        Promise.resolve(
-          wrapResponse({
-            blockhash: "GH7ome3EiwEr7tu9JuTh2dpYWBJK3z69Xm1ZE3MEE6JC",
-            lastValidBlockHeight: 1000n,
-          })
-        ),
-    }),
-    getSignatureStatuses: () => ({
-      send: () =>
-        Promise.resolve(
-          wrapResponse([
-            {
-              confirmationStatus: "confirmed",
-              confirmations: 10n,
-              err: null,
-              slot: 1000n,
-              status: { Ok: null },
-            },
-          ])
-        ),
-    }),
-    getTokenAccountBalance: () => ({
-      send: () =>
-        Promise.resolve(
-          wrapResponse({
-            amount: "1000000000",
-            decimals: 9,
-            uiAmount: 1.0,
-            uiAmountString: "1.0",
-          })
-        ),
-    }),
-    sendTransaction: () => ({
-      send: () => Promise.resolve("mock-signature"),
-    }),
-    simulateTransaction: () => ({
-      send: () =>
-        Promise.resolve(
-          wrapResponse({
+    getAccountInfo: () => Promise.resolve(null),
+    getBalance: () => Promise.resolve(1_000_000_000),
+    getBlockHeight: () => Promise.resolve(1000),
+    getLatestBlockhash: () =>
+      Promise.resolve({
+        blockhash: "GH7ome3EiwEr7tu9JuTh2dpYWBJK3z69Xm1ZE3MEE6JC",
+        lastValidBlockHeight: 1000,
+      }),
+    getSignatureStatuses: () =>
+      Promise.resolve(
+        wrapResponse([
+          {
+            confirmationStatus: "confirmed",
+            confirmations: 10,
             err: null,
-            logs: [] as string[],
-            returnData: null,
-          })
-        ),
-    }),
+            slot: 1000,
+          },
+        ])
+      ),
+    getTokenAccountBalance: () => Promise.resolve(wrapResponse(defaultTokenAmount)),
+    sendRawTransaction: () => Promise.resolve(TEST_SIGNATURE),
+    simulateTransaction: () =>
+      Promise.resolve(
+        wrapResponse({
+          err: null,
+          logs: [] as string[],
+          returnData: null,
+        })
+      ),
     ...overrides,
-  }) as Rpc<SolanaRpcApi>;
+  }) as Connection;
+
+export const makeMockAccountInfo = (
+  data: Buffer,
+  owner: PublicKey,
+  overrides: Partial<AccountInfo<Buffer>> = {}
+): AccountInfo<Buffer> => ({
+  data,
+  executable: false,
+  lamports: 1,
+  owner,
+  rentEpoch: 0,
+  ...overrides,
+});
 
 const defaultConfig: Required<MockRpcServiceConfig> = {
   getCluster: () => Effect.succeed(TEST_CLUSTER),
@@ -112,26 +96,6 @@ const defaultConfig: Required<MockRpcServiceConfig> = {
  * Creates a mock RpcService layer for testing
  *
  * @param config - Optional configuration to override default mock behaviors
- *
- * @example
- * ```typescript
- * // Basic usage with defaults
- * const layer = makeMockRpcServiceLayer();
- *
- * // Override specific methods
- * const layer = makeMockRpcServiceLayer({
- *   getRpc: () => Effect.succeed(myCustomMockRpc),
- *   getCluster: () => Effect.succeed("mainnet-beta"),
- * });
- *
- * // Use in tests
- * Effect.gen(function* () {
- *   const rpcService = yield* RpcService;
- *   const rpc = yield* rpcService.getRpc();
- * }).pipe(
- *   Effect.provide(layer)
- * );
- * ```
  */
 export const makeMockRpcServiceLayer = (
   config: MockRpcServiceConfig = {}

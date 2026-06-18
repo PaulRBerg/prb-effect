@@ -1,6 +1,5 @@
-import type { Instruction } from "@solana/instructions";
-import type { Signature } from "@solana/keys";
-import type { Transaction, TransactionWithLifetime } from "@solana/transactions";
+import type { TransactionInstruction, TransactionSignature } from "@solana/web3.js";
+import { Transaction } from "@solana/web3.js";
 import type { Layer } from "effect";
 import { Effect } from "effect";
 import type {
@@ -9,8 +8,6 @@ import type {
   TransactionFailedError,
   TransactionSendError,
   TransactionTimeoutError,
-  UserRejectedError,
-  WalletCapabilityError,
   WalletNotConnectedError,
 } from "#src/core/errors/index.js";
 import type {
@@ -18,9 +15,7 @@ import type {
   SignableTransactionMessage,
   TransactionBatchItem,
   TransactionBatchOpts,
-  TransactionBuildOpts,
   TransactionReceipt,
-  WalletSendOpts,
 } from "#src/tx/index.js";
 import { TransactionService } from "#src/tx/index.js";
 import { TEST_SIGNATURE } from "./_fixtures/addresses.js";
@@ -33,37 +28,29 @@ import { makeMockServiceLayer } from "./helpers.js";
  * Override specific methods to customize mock behavior for your tests.
  */
 export type MockTransactionServiceConfig = {
-  build?: (
-    instructions: readonly Instruction[]
+  readonly build?: (
+    instructions: readonly TransactionInstruction[]
   ) => Effect.Effect<SignableTransactionMessage, TransactionSendError | WalletNotConnectedError>;
-  signAll?: (
+  readonly signAll?: (
     txs: readonly SignableTransactionMessage[]
-  ) => Effect.Effect<
-    readonly (Transaction & TransactionWithLifetime)[],
-    TransactionSendError | WalletNotConnectedError
-  >;
-  sign?: <T extends SignableTransactionMessage>(
+  ) => Effect.Effect<readonly Transaction[], TransactionSendError | WalletNotConnectedError>;
+  readonly sign?: <T extends SignableTransactionMessage>(
     tx: T
-  ) => Effect.Effect<
-    Transaction & TransactionWithLifetime,
-    TransactionSendError | WalletNotConnectedError
-  >;
-  sendAll?: (
-    txs: readonly (Transaction & TransactionWithLifetime)[],
+  ) => Effect.Effect<T, TransactionSendError | WalletNotConnectedError>;
+  readonly sendAll?: (
+    txs: readonly Transaction[],
     opts?: TransactionBatchOpts
-  ) => Effect.Effect<readonly Signature[], TransactionSendError>;
-  send?: (
-    tx: Transaction & TransactionWithLifetime
-  ) => Effect.Effect<Signature, TransactionSendError>;
-  confirm?: (
-    signature: Signature,
+  ) => Effect.Effect<readonly TransactionSignature[], TransactionSendError>;
+  readonly send?: (tx: Transaction) => Effect.Effect<TransactionSignature, TransactionSendError>;
+  readonly confirm?: (
+    signature: TransactionSignature,
     opts?: ConfirmOpts
   ) => Effect.Effect<
     TransactionReceipt,
     TransactionTimeoutError | TransactionFailedError | BlockhashExpiredError
   >;
-  sendAndConfirm?: (
-    instructions: readonly Instruction[],
+  readonly sendAndConfirm?: (
+    instructions: readonly TransactionInstruction[],
     opts?: ConfirmOpts
   ) => Effect.Effect<
     TransactionReceipt,
@@ -73,27 +60,7 @@ export type MockTransactionServiceConfig = {
     | TransactionFailedError
     | BlockhashExpiredError
   >;
-  sendWithWallet?: (
-    tx: SignableTransactionMessage,
-    opts?: WalletSendOpts
-  ) => Effect.Effect<
-    Signature,
-    TransactionSendError | WalletNotConnectedError | WalletCapabilityError | UserRejectedError
-  >;
-  sendAndConfirmWithWallet?: (
-    instructions: readonly Instruction[],
-    opts?: ConfirmOpts & TransactionBuildOpts & WalletSendOpts
-  ) => Effect.Effect<
-    TransactionReceipt,
-    | TransactionSendError
-    | WalletNotConnectedError
-    | WalletCapabilityError
-    | UserRejectedError
-    | TransactionTimeoutError
-    | TransactionFailedError
-    | BlockhashExpiredError
-  >;
-  sendAndConfirmBatch?: (
+  readonly sendAndConfirmBatch?: (
     items: readonly TransactionBatchItem[],
     opts?: TransactionBatchOpts
   ) => Effect.Effect<
@@ -104,44 +71,26 @@ export type MockTransactionServiceConfig = {
     | TransactionFailedError
     | BlockhashExpiredError
   >;
-  simulate?: <T extends SignableTransactionMessage>(
+  readonly simulate?: <T extends SignableTransactionMessage>(
     tx: T
   ) => Effect.Effect<void, SimulationFailedError | TransactionSendError | WalletNotConnectedError>;
 };
 
+const makeReceipt = (signature: TransactionSignature): TransactionReceipt => ({
+  confirmations: 10n,
+  signature,
+  slot: 1000n,
+});
+
 const defaultConfig: Required<MockTransactionServiceConfig> = {
-  build: () => Effect.succeed({} as SignableTransactionMessage),
-  confirm: (signature) =>
-    Effect.succeed({
-      confirmations: 10n,
-      signature,
-      slot: 1000n,
-    }),
-  send: () => Effect.succeed(TEST_SIGNATURE as Signature),
-  sendAll: (txs) => Effect.succeed(txs.map(() => TEST_SIGNATURE as Signature)),
-  sendAndConfirm: () =>
-    Effect.succeed({
-      confirmations: 10n,
-      signature: TEST_SIGNATURE as Signature,
-      slot: 1000n,
-    }),
-  sendAndConfirmBatch: (items) =>
-    Effect.succeed(
-      items.map(() => ({
-        confirmations: 10n,
-        signature: TEST_SIGNATURE as Signature,
-        slot: 1000n,
-      }))
-    ),
-  sendAndConfirmWithWallet: () =>
-    Effect.succeed({
-      confirmations: 10n,
-      signature: TEST_SIGNATURE as Signature,
-      slot: 1000n,
-    }),
-  sendWithWallet: () => Effect.succeed(TEST_SIGNATURE as Signature),
-  sign: () => Effect.succeed({} as Transaction & TransactionWithLifetime),
-  signAll: (txs) => Effect.succeed(txs.map(() => ({}) as Transaction & TransactionWithLifetime)),
+  build: () => Effect.succeed(new Transaction()),
+  confirm: (signature) => Effect.succeed(makeReceipt(signature)),
+  send: () => Effect.succeed(TEST_SIGNATURE),
+  sendAll: (txs) => Effect.succeed(txs.map(() => TEST_SIGNATURE)),
+  sendAndConfirm: () => Effect.succeed(makeReceipt(TEST_SIGNATURE)),
+  sendAndConfirmBatch: (items) => Effect.succeed(items.map(() => makeReceipt(TEST_SIGNATURE))),
+  sign: (tx) => Effect.succeed(tx),
+  signAll: (txs) => Effect.succeed(txs),
   simulate: () => Effect.void,
 };
 
@@ -149,31 +98,6 @@ const defaultConfig: Required<MockTransactionServiceConfig> = {
  * Creates a mock TransactionService layer for testing
  *
  * @param config - Optional configuration to override default mock behaviors
- *
- * @example
- * ```typescript
- * // Basic usage with defaults
- * const layer = makeMockTransactionServiceLayer();
- *
- * // Override specific methods
- * const layer = makeMockTransactionServiceLayer({
- *   sendAndConfirm: () => Effect.fail(
- *     new TransactionFailedError({
- *       signature: TEST_SIGNATURE,
- *       message: "Transaction failed",
- *       logs: [],
- *     })
- *   ),
- * });
- *
- * // Use in tests
- * Effect.gen(function* () {
- *   const txService = yield* TransactionService;
- *   const receipt = yield* txService.sendAndConfirm(instructions);
- * }).pipe(
- *   Effect.provide(layer)
- * );
- * ```
  */
 export const makeMockTransactionServiceLayer = (
   config: MockTransactionServiceConfig = {}

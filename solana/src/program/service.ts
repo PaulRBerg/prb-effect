@@ -9,13 +9,11 @@
 
 import type { Idl } from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
-import type { Address } from "@solana/addresses";
-import type { Instruction } from "@solana/instructions";
-import { AccountRole } from "@solana/instructions";
 import type { TransactionInstruction } from "@solana/web3.js";
 import { Context, Effect, Layer } from "effect";
 import { RpcService } from "#src/rpc/index.js";
 import { SpanNames } from "#src/telemetry/index.js";
+import type { Address } from "#src/types/index.js";
 import {
   makeProgramConnectionShim,
   toAnchorAccounts,
@@ -23,34 +21,6 @@ import {
 } from "./internal/anchor-helpers.js";
 import type { BuildInstructionParams, CreateProgramParams } from "./types.js";
 import { InstructionBuildError, InstructionNotFoundError, ProgramCreationError } from "./types.js";
-
-// =============================================================================
-// Helpers
-// =============================================================================
-
-/**
- * Get account role from signer and writable flags.
- */
-function getAccountRole(isSigner: boolean, isWritable: boolean): AccountRole {
-  if (isSigner) {
-    return isWritable ? AccountRole.WRITABLE_SIGNER : AccountRole.READONLY_SIGNER;
-  }
-  return isWritable ? AccountRole.WRITABLE : AccountRole.READONLY;
-}
-
-/**
- * Convert Anchor TransactionInstruction to Solana kit Instruction format.
- */
-function toKitInstruction(anchorIx: TransactionInstruction): Instruction {
-  return {
-    accounts: anchorIx.keys.map((key) => ({
-      address: key.pubkey.toBase58() as Address,
-      role: getAccountRole(key.isSigner, key.isWritable),
-    })),
-    data: new Uint8Array(anchorIx.data),
-    programAddress: anchorIx.programId.toBase58() as Address,
-  };
-}
 
 // =============================================================================
 // Service Definition
@@ -83,12 +53,12 @@ export type ProgramWriterShape = {
    *
    * @param program - The Anchor Program instance
    * @param params - Instruction building parameters
-   * @returns The built instruction in Solana kit format
+   * @returns The built web3.js instruction
    */
   readonly buildInstruction: <T extends Idl>(
     program: Program<T>,
     params: BuildInstructionParams
-  ) => Effect.Effect<Instruction, InstructionNotFoundError | InstructionBuildError>;
+  ) => Effect.Effect<TransactionInstruction, InstructionNotFoundError | InstructionBuildError>;
 
   /**
    * Build an instruction directly from IDL (creates program internally).
@@ -105,7 +75,7 @@ export type ProgramWriterShape = {
     params: BuildInstructionParams,
     programId?: Address
   ) => Effect.Effect<
-    Instruction,
+    TransactionInstruction,
     ProgramCreationError | InstructionNotFoundError | InstructionBuildError
   >;
 };
@@ -182,8 +152,7 @@ export const ProgramWriterLive = Layer.effect(
               ).instruction(),
           });
 
-          // Convert to Solana kit format
-          return toKitInstruction(anchorInstruction);
+          return anchorInstruction;
         }).pipe(
           Effect.withSpan(SpanNames.PROGRAM_BUILD_INSTRUCTION, {
             attributes: { method: params.method },

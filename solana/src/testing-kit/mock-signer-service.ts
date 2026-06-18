@@ -1,9 +1,9 @@
-import type { Address } from "@solana/addresses";
-import type { Transaction, TransactionWithLifetime } from "@solana/transactions";
+import type { Transaction } from "@solana/web3.js";
 import { Effect, Layer } from "effect";
 import type { SignatureError } from "#src/core/errors/index.js";
 import { WalletNotConnectedError } from "#src/core/errors/index.js";
 import { SignerService } from "#src/signer/index.js";
+import type { Address } from "#src/types/index.js";
 import { TEST_WALLET } from "./_fixtures/addresses.js";
 
 /**
@@ -16,10 +16,10 @@ export type MockSignerServiceConfig = {
   address?: Address;
   connected?: boolean;
   getAddress?: () => Effect.Effect<Address, WalletNotConnectedError>;
-  signTransaction?: <T extends Transaction & TransactionWithLifetime>(
+  signTransaction?: <T extends Transaction>(
     tx: T
   ) => Effect.Effect<T, SignatureError | WalletNotConnectedError>;
-  signAllTransactions?: <T extends Transaction & TransactionWithLifetime>(
+  signAllTransactions?: <T extends Transaction>(
     txs: readonly T[]
   ) => Effect.Effect<readonly T[], SignatureError | WalletNotConnectedError>;
   isConnected?: () => Effect.Effect<boolean>;
@@ -65,14 +65,12 @@ export const makeMockSignerServiceLayer = (
       ? Effect.succeed(address)
       : Effect.fail(new WalletNotConnectedError({ message: "Wallet not connected" }));
 
-  const defaultSignTransaction = <T extends Transaction & TransactionWithLifetime>(tx: T) =>
+  const defaultSignTransaction = <T extends Transaction>(tx: T) =>
     connected
       ? Effect.succeed(tx)
       : Effect.fail(new WalletNotConnectedError({ message: "Wallet not connected" }));
 
-  const defaultSignAllTransactions = <T extends Transaction & TransactionWithLifetime>(
-    txs: readonly T[]
-  ) =>
+  const defaultSignAllTransactions = <T extends Transaction>(txs: readonly T[]) =>
     connected
       ? Effect.succeed(txs)
       : Effect.fail(new WalletNotConnectedError({ message: "Wallet not connected" }));

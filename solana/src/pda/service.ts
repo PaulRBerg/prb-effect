@@ -1,8 +1,10 @@
-import type { Address, ProgramDerivedAddressBump } from "@solana/addresses";
-import { getAddressEncoder, getProgramDerivedAddress } from "@solana/addresses";
+import { PublicKey } from "@solana/web3.js";
 import { Context, Effect, Layer } from "effect";
 import { SpanNames } from "#src/telemetry/index.js";
+import type { Address } from "#src/types/index.js";
 import { PdaDerivationError } from "./types.js";
+
+export type ProgramDerivedAddressBump = number;
 
 export type PdaSeed = Uint8Array | Address;
 
@@ -39,17 +41,13 @@ export type PdaServiceShape = {
 export class PdaService extends Context.Tag("esolana/PdaService")<PdaService, PdaServiceShape>() {}
 
 /**
- * Convert seed to Uint8Array format required by @solana/addresses.
+ * Convert seed to bytes accepted by web3.js PDA derivation.
  */
 const toSeedBytes = (seed: PdaSeed): Uint8Array => {
   if (seed instanceof Uint8Array) {
     return seed;
   }
-  // Address type - use address encoder
-  const encoder = getAddressEncoder();
-  const encoded = encoder.encode(seed);
-  // Convert ReadonlyUint8Array to Uint8Array
-  return new Uint8Array(encoded);
+  return new PublicKey(seed).toBytes();
 };
 
 const makeService = (): PdaServiceShape => {
@@ -57,18 +55,20 @@ const makeService = (): PdaServiceShape => {
     derive: (seeds, programAddress) =>
       Effect.gen(function* () {
         const seedBytes = seeds.map(toSeedBytes);
-        return yield* Effect.tryPromise({
+        return yield* Effect.try({
           catch: (cause) =>
             new PdaDerivationError({
               cause,
               message: `Failed to derive PDA for program ${programAddress}`,
               programAddress,
             }),
-          try: () =>
-            getProgramDerivedAddress({
-              programAddress,
-              seeds: seedBytes,
-            }),
+          try: () => {
+            const [address, bump] = PublicKey.findProgramAddressSync(
+              seedBytes,
+              new PublicKey(programAddress)
+            );
+            return [address.toBase58() as Address, bump] as const;
+          },
         });
       }).pipe(
         Effect.withSpan(SpanNames.PDA_DERIVE, {

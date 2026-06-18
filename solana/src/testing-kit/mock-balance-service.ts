@@ -1,8 +1,8 @@
-import type { Address, Lamports } from "@solana/kit";
 import type { Layer } from "effect";
 import { Effect, Stream } from "effect";
 import { BalanceService } from "#src/balance/index.js";
 import type { RpcError } from "#src/core/errors/index.js";
+import type { Address, Lamports } from "#src/types/index.js";
 import { makeMockServiceLayer } from "./helpers.js";
 
 /**

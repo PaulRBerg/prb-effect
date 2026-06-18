@@ -1,24 +1,7 @@
-import { pipe } from "@solana/functional";
-import type { Instruction } from "@solana/instructions";
-import type { Signature } from "@solana/keys";
-import {
-  appendTransactionMessageInstructions,
-  createTransactionMessage,
-  setTransactionMessageFeePayer,
-  setTransactionMessageLifetimeUsingBlockhash,
-} from "@solana/transaction-messages";
-import type { Transaction, TransactionWithLifetime } from "@solana/transactions";
-import {
-  compileTransaction,
-  getBase64EncodedWireTransaction,
-  getSignatureFromTransaction,
-} from "@solana/transactions";
-import {
-  getSetComputeUnitLimitInstruction,
-  getSetComputeUnitPriceInstruction,
-} from "@solana-program/compute-budget";
-import { Context, Duration, Effect, Layer, Schedule } from "effect";
-import type { UserRejectedError, WalletNotConnectedError } from "#src/core/errors/index.js";
+import type { Connection, TransactionInstruction, TransactionSignature } from "@solana/web3.js";
+import { ComputeBudgetProgram, PublicKey, Transaction } from "@solana/web3.js";
+import { Context, Duration, Effect, Layer, pipe, Schedule } from "effect";
+import type { WalletNotConnectedError } from "#src/core/errors/index.js";
 import {
   BlockhashExpiredError,
   SignatureError,
@@ -26,11 +9,8 @@ import {
   TransactionFailedError,
   TransactionSendError,
   TransactionTimeoutError,
-  WalletCapabilityError,
 } from "#src/core/errors/index.js";
-import type { RpcServiceShape } from "#src/rpc/index.js";
 import { RpcService } from "#src/rpc/index.js";
-import type { SignerServiceShape } from "#src/signer/index.js";
 import { SignerService } from "#src/signer/index.js";
 import { SpanNames } from "#src/telemetry/index.js";
 import type {
@@ -41,10 +21,7 @@ import type {
   TransactionBatchOpts,
   TransactionBuildOpts,
   TransactionReceipt,
-  WalletSendOpts,
 } from "./types.js";
-import type { WalletSendServiceShape } from "./wallet-send-service.js";
-import { WalletSendService } from "./wallet-send-service.js";
 
 /**
  * Shape of the TransactionService for type inference.
@@ -56,7 +33,7 @@ export type TransactionServiceShape = {
    * Build a transaction from instructions.
    */
   readonly build: (
-    instructions: readonly Instruction[],
+    instructions: readonly TransactionInstruction[],
     opts?: TransactionBuildOpts
   ) => Effect.Effect<SignableTransactionMessage, TransactionSendError | WalletNotConnectedError>;
 
@@ -65,41 +42,33 @@ export type TransactionServiceShape = {
    */
   readonly signAll: (
     txs: readonly SignableTransactionMessage[]
-  ) => Effect.Effect<
-    readonly (Transaction & TransactionWithLifetime)[],
-    TransactionSendError | WalletNotConnectedError
-  >;
+  ) => Effect.Effect<readonly Transaction[], TransactionSendError | WalletNotConnectedError>;
 
   /**
    * Sign a transaction.
    */
   readonly sign: <T extends SignableTransactionMessage>(
     tx: T
-  ) => Effect.Effect<
-    Transaction & TransactionWithLifetime,
-    TransactionSendError | WalletNotConnectedError
-  >;
+  ) => Effect.Effect<T, TransactionSendError | WalletNotConnectedError>;
 
   /**
    * Send multiple signed transactions.
    */
   readonly sendAll: (
-    txs: readonly (Transaction & TransactionWithLifetime)[],
+    txs: readonly Transaction[],
     opts?: TransactionBatchOpts
-  ) => Effect.Effect<readonly Signature[], TransactionSendError>;
+  ) => Effect.Effect<readonly TransactionSignature[], TransactionSendError>;
 
   /**
    * Send a signed transaction.
    */
-  readonly send: (
-    tx: Transaction & TransactionWithLifetime
-  ) => Effect.Effect<Signature, TransactionSendError>;
+  readonly send: (tx: Transaction) => Effect.Effect<TransactionSignature, TransactionSendError>;
 
   /**
    * Confirm a transaction by signature.
    */
   readonly confirm: (
-    signature: Signature,
+    signature: TransactionSignature,
     opts?: ConfirmOpts
   ) => Effect.Effect<
     TransactionReceipt,
@@ -110,40 +79,12 @@ export type TransactionServiceShape = {
    * Build, sign, send, and confirm a transaction.
    */
   readonly sendAndConfirm: (
-    instructions: readonly Instruction[],
+    instructions: readonly TransactionInstruction[],
     opts?: ConfirmOpts & { computeBudget?: ComputeBudgetConfig }
   ) => Effect.Effect<
     TransactionReceipt,
     | TransactionSendError
     | WalletNotConnectedError
-    | TransactionTimeoutError
-    | TransactionFailedError
-    | BlockhashExpiredError
-  >;
-
-  /**
-   * Build-compatible wallet-provider sign-and-send path.
-   */
-  readonly sendWithWallet: (
-    tx: SignableTransactionMessage,
-    opts?: WalletSendOpts
-  ) => Effect.Effect<
-    Signature,
-    TransactionSendError | WalletNotConnectedError | WalletCapabilityError | UserRejectedError
-  >;
-
-  /**
-   * Build, send through the wallet provider, and confirm a transaction.
-   */
-  readonly sendAndConfirmWithWallet: (
-    instructions: readonly Instruction[],
-    opts?: ConfirmOpts & TransactionBuildOpts & WalletSendOpts
-  ) => Effect.Effect<
-    TransactionReceipt,
-    | TransactionSendError
-    | WalletNotConnectedError
-    | WalletCapabilityError
-    | UserRejectedError
     | TransactionTimeoutError
     | TransactionFailedError
     | BlockhashExpiredError
@@ -182,14 +123,18 @@ export class TransactionService extends Context.Tag("esolana/TransactionService"
   TransactionServiceShape
 >() {}
 
-/**
- * Check if a transaction has reached the desired confirmation level.
- */
 type Commitment = "processed" | "confirmed" | "finalized";
+
+type BlockhashLifetime = {
+  readonly blockhash: string;
+  readonly lastValidBlockHeight: number;
+};
+
+const transactionLifetimes = new WeakMap<Transaction, BlockhashLifetime>();
 
 const hasReachedConfirmation = (
   status: {
-    confirmationStatus?: Commitment | null;
+    readonly confirmationStatus?: Commitment | null;
   },
   commitment: Commitment
 ): boolean => {
@@ -202,12 +147,9 @@ const hasReachedConfirmation = (
   return status.confirmationStatus === "finalized";
 };
 
-/**
- * Check signature status and return receipt if confirmed.
- */
 const checkSignatureStatus = (
-  rpc: Effect.Effect.Success<ReturnType<RpcServiceShape["getRpc"]>>,
-  signature: Signature,
+  connection: Connection,
+  signature: TransactionSignature,
   commitment: Commitment,
   searchTransactionHistory: boolean
 ): Effect.Effect<TransactionReceipt | null, TransactionFailedError> =>
@@ -220,10 +162,10 @@ const checkSignatureStatus = (
           message: "Failed to get signature status",
           signature,
         }),
-      try: () => rpc.getSignatureStatuses([signature], { searchTransactionHistory }).send(),
+      try: () => connection.getSignatureStatuses([signature], { searchTransactionHistory }),
     });
 
-    const status = response?.value?.[0];
+    const status = response.value[0];
     if (!status) {
       return null;
     }
@@ -251,8 +193,8 @@ const checkSignatureStatus = (
   });
 
 const getExpiredAt = (
-  rpc: Effect.Effect.Success<ReturnType<RpcServiceShape["getRpc"]>>,
-  signature: Signature,
+  connection: Connection,
+  signature: TransactionSignature,
   commitment: Commitment,
   opts: ConfirmOpts,
   expiredAt: number | null
@@ -270,14 +212,10 @@ const getExpiredAt = (
           message: "Failed to get block height",
           signature,
         }),
-      try: () => rpc.getBlockHeight({ commitment }).send(),
+      try: () => connection.getBlockHeight(commitment),
     });
 
-    if (blockHeight <= opts.lifetime.lastValidBlockHeight) {
-      return null;
-    }
-
-    return Date.now();
+    return blockHeight <= Number(opts.lifetime.lastValidBlockHeight) ? null : Date.now();
   });
 
 const hasExceededExpiredGracePeriod = (
@@ -289,35 +227,18 @@ const hasExceededExpiredGracePeriod = (
   return now - expiredAt >= Duration.toMillis(gracePeriod);
 };
 
-const getBuiltBlockhashLifetime = (
-  tx: SignableTransactionMessage | (Transaction & TransactionWithLifetime)
-): ConfirmOpts["lifetime"] | null => {
-  const { lifetimeConstraint } = tx;
-  if (!("blockhash" in lifetimeConstraint)) {
-    return null;
-  }
-
-  return {
-    blockhash: lifetimeConstraint.blockhash,
-    lastValidBlockHeight: lifetimeConstraint.lastValidBlockHeight,
-  };
-};
-
-const withBuiltBlockhashLifetime = (
-  tx: SignableTransactionMessage | (Transaction & TransactionWithLifetime),
-  opts?: ConfirmOpts
-): ConfirmOpts => {
+const withBuiltBlockhashLifetime = (tx: Transaction, opts?: ConfirmOpts): ConfirmOpts => {
   if (opts?.lifetime) {
     return opts;
   }
 
-  const lifetime = getBuiltBlockhashLifetime(tx);
+  const lifetime = transactionLifetimes.get(tx);
   return lifetime ? { ...opts, lifetime } : (opts ?? {});
 };
 
 const pollForConfirmation = (
-  rpc: Effect.Effect.Success<ReturnType<RpcServiceShape["getRpc"]>>,
-  signature: Signature,
+  connection: Connection,
+  signature: TransactionSignature,
   opts: ConfirmOpts,
   expiredAt: number | null = null
 ): Effect.Effect<TransactionReceipt, TransactionFailedError | BlockhashExpiredError> =>
@@ -327,7 +248,7 @@ const pollForConfirmation = (
     const pollInterval = opts.pollInterval ?? "2 seconds";
 
     const receipt = yield* checkSignatureStatus(
-      rpc,
+      connection,
       signature,
       commitment,
       searchTransactionHistory
@@ -336,7 +257,7 @@ const pollForConfirmation = (
       return receipt;
     }
 
-    const nextExpiredAt = yield* getExpiredAt(rpc, signature, commitment, opts, expiredAt);
+    const nextExpiredAt = yield* getExpiredAt(connection, signature, commitment, opts, expiredAt);
     if (opts.lifetime && nextExpiredAt !== null) {
       const now = Date.now();
       if (hasExceededExpiredGracePeriod(opts, nextExpiredAt, now)) {
@@ -350,71 +271,86 @@ const pollForConfirmation = (
     }
 
     yield* Effect.sleep(pollInterval);
-    return yield* pollForConfirmation(rpc, signature, opts, nextExpiredAt);
+    return yield* pollForConfirmation(connection, signature, opts, nextExpiredAt);
   });
 
-const buildComputeBudgetInstructions = (config?: ComputeBudgetConfig): readonly Instruction[] => {
+const buildComputeBudgetInstructions = (
+  config?: ComputeBudgetConfig
+): readonly TransactionInstruction[] => {
   if (!config) {
     return [];
   }
 
-  const instructions: Instruction[] = [];
+  const instructions: TransactionInstruction[] = [];
 
   if (config.unitLimit !== undefined) {
-    instructions.push(getSetComputeUnitLimitInstruction({ units: config.unitLimit }));
+    instructions.push(ComputeBudgetProgram.setComputeUnitLimit({ units: config.unitLimit }));
   }
 
   if (config.microLamports !== undefined) {
-    instructions.push(getSetComputeUnitPriceInstruction({ microLamports: config.microLamports }));
+    instructions.push(
+      ComputeBudgetProgram.setComputeUnitPrice({ microLamports: config.microLamports })
+    );
   }
 
   return instructions;
 };
 
-const compileSignableTransaction = (
-  tx: SignableTransactionMessage
-): Transaction & TransactionWithLifetime => compileTransaction(tx);
+const mapSignatureError = (error: SignatureError | WalletNotConnectedError) =>
+  error instanceof SignatureError
+    ? new TransactionSendError({ cause: error, message: error.message })
+    : error;
+
+const cloneLifetime = (from: Transaction, to: Transaction): void => {
+  const lifetime = transactionLifetimes.get(from);
+  if (lifetime && from !== to) {
+    transactionLifetimes.set(to, lifetime);
+  }
+};
 
 const makeTransactionService = (
-  rpcService: RpcServiceShape,
-  signerService: SignerServiceShape,
-  walletSendService?: WalletSendServiceShape
+  rpcService: { readonly getRpc: () => Effect.Effect<Connection> },
+  signerService: {
+    readonly getAddress: () => Effect.Effect<string, WalletNotConnectedError>;
+    readonly signTransaction: <T extends Transaction>(
+      tx: T
+    ) => Effect.Effect<T, SignatureError | WalletNotConnectedError>;
+    readonly signAllTransactions: <T extends Transaction>(
+      txs: readonly T[]
+    ) => Effect.Effect<readonly T[], SignatureError | WalletNotConnectedError>;
+  }
 ): TransactionServiceShape => {
   const service: TransactionServiceShape = {
     build: (instructions, opts) =>
       Effect.gen(function* () {
-        const rpc = yield* rpcService.getRpc();
+        const connection = yield* rpcService.getRpc();
         const address = yield* signerService.getAddress();
         const computeBudgetInstructions = buildComputeBudgetInstructions(opts?.computeBudget);
 
-        // Get latest blockhash
-        const { value: latestBlockhash } = yield* Effect.tryPromise({
+        const latestBlockhash = yield* Effect.tryPromise({
           catch: (cause) =>
             new TransactionSendError({
               cause,
               message: "Failed to get latest blockhash",
             }),
-          try: () => rpc.getLatestBlockhash().send(),
+          try: () => connection.getLatestBlockhash(),
         });
 
-        // Build transaction message
-        const message = pipe(
-          createTransactionMessage({ version: 0 }),
-          (m) => setTransactionMessageFeePayer(address, m),
-          (m) => setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, m),
-          (m) =>
-            appendTransactionMessageInstructions([...computeBudgetInstructions, ...instructions], m)
-        );
+        const transaction = new Transaction({
+          feePayer: new PublicKey(address),
+          recentBlockhash: latestBlockhash.blockhash,
+        }).add(...computeBudgetInstructions, ...instructions);
 
-        return message;
+        transactionLifetimes.set(transaction, latestBlockhash);
+        return transaction;
       }).pipe(Effect.withSpan(SpanNames.TX_BUILD)),
 
     confirm: (signature, opts) =>
       Effect.gen(function* () {
-        const rpc = yield* rpcService.getRpc();
+        const connection = yield* rpcService.getRpc();
         const timeout = opts?.timeout ?? 60_000;
 
-        return yield* pollForConfirmation(rpc, signature, opts ?? {}).pipe(
+        return yield* pollForConfirmation(connection, signature, opts ?? {}).pipe(
           Effect.timeout(`${timeout} millis`),
           Effect.catchTag("TimeoutException", () =>
             Effect.fail(
@@ -429,25 +365,15 @@ const makeTransactionService = (
 
     send: (tx) =>
       Effect.gen(function* () {
-        const rpc = yield* rpcService.getRpc();
-        const signature = getSignatureFromTransaction(tx);
-
-        const wireTransaction = getBase64EncodedWireTransaction(tx);
-
-        yield* Effect.tryPromise({
+        const connection = yield* rpcService.getRpc();
+        return yield* Effect.tryPromise({
           catch: (cause) =>
             new TransactionSendError({
               cause,
               message: "Failed to send transaction",
-              signature,
             }),
-          try: () =>
-            rpc
-              .sendTransaction(wireTransaction, { encoding: "base64", skipPreflight: false })
-              .send(),
+          try: () => connection.sendRawTransaction(tx.serialize(), { skipPreflight: false }),
         });
-
-        return signature;
       }).pipe(Effect.withSpan(SpanNames.TX_SEND)),
 
     sendAll: (txs, opts) =>
@@ -455,7 +381,7 @@ const makeTransactionService = (
         const retries = opts?.sendRetries ?? 0;
         const retryDelay = opts?.sendRetryDelay ?? 500;
 
-        const sendWithRetry = (tx: Transaction & TransactionWithLifetime) => {
+        const sendWithRetry = (tx: Transaction) => {
           const sendEffect = service.send(tx);
 
           if (retries <= 0) {
@@ -484,7 +410,7 @@ const makeTransactionService = (
         });
         const signed = yield* service.sign(tx);
         const signature = yield* service.send(signed);
-        return yield* service.confirm(signature, withBuiltBlockhashLifetime(tx, opts));
+        return yield* service.confirm(signature, withBuiltBlockhashLifetime(signed, opts));
       }).pipe(Effect.withSpan(SpanNames.TX_SEND_AND_CONFIRM)),
 
     sendAndConfirmBatch: (items, opts) =>
@@ -499,7 +425,7 @@ const makeTransactionService = (
         const signatures = yield* service.sendAll(signed, opts);
 
         return yield* Effect.forEach(
-          built,
+          signed,
           (tx, index) =>
             Effect.gen(function* () {
               const signature = signatures[index];
@@ -520,73 +446,36 @@ const makeTransactionService = (
         );
       }).pipe(Effect.withSpan(SpanNames.TX_SEND_AND_CONFIRM)),
 
-    sendAndConfirmWithWallet: (instructions, opts) =>
-      Effect.gen(function* () {
-        const tx = yield* service.build(instructions, {
-          computeBudget: opts?.computeBudget,
-        });
-        const signature = yield* service.sendWithWallet(tx, opts);
-        return yield* service.confirm(signature, withBuiltBlockhashLifetime(tx, opts));
-      }).pipe(Effect.withSpan(SpanNames.TX_SEND_AND_CONFIRM)),
-
-    sendWithWallet: (tx, opts) =>
-      Effect.gen(function* () {
-        if (!walletSendService) {
-          return yield* Effect.fail(
-            new WalletCapabilityError({
-              capability: "sendTransaction",
-              message: "Wallet sendTransaction capability is not configured",
-            })
-          );
-        }
-
-        const compiled = compileSignableTransaction(tx);
-        return yield* walletSendService.sendTransaction(compiled, opts);
-      }).pipe(Effect.withSpan(SpanNames.TX_SEND)),
-
     sign: (tx) =>
       Effect.gen(function* () {
-        const compiled = compileSignableTransaction(tx);
-        return yield* signerService
-          .signTransaction(compiled)
-          .pipe(
-            Effect.mapError((error) =>
-              error instanceof SignatureError
-                ? new TransactionSendError({ cause: error, message: error.message })
-                : error
-            )
-          );
+        const signed = yield* signerService
+          .signTransaction(tx)
+          .pipe(Effect.mapError(mapSignatureError));
+        cloneLifetime(tx, signed);
+        return signed;
       }).pipe(Effect.withSpan(SpanNames.TX_SIGN)),
 
     signAll: (txs) =>
       Effect.gen(function* () {
-        const compiled = txs.map(compileSignableTransaction);
-        return (yield* signerService
-          .signAllTransactions(compiled)
-          .pipe(
-            Effect.mapError((error) =>
-              error instanceof SignatureError
-                ? new TransactionSendError({ cause: error, message: error.message })
-                : error
-            )
-          )) as readonly (Transaction & TransactionWithLifetime)[];
+        const signed = yield* signerService
+          .signAllTransactions(txs)
+          .pipe(Effect.mapError(mapSignatureError));
+        txs.forEach((tx, index) => {
+          const signedTx = signed[index];
+          if (signedTx) {
+            cloneLifetime(tx, signedTx);
+          }
+        });
+        return signed;
       }).pipe(Effect.withSpan(SpanNames.TX_SIGN)),
 
     simulate: (tx) =>
       Effect.gen(function* () {
-        const rpc = yield* rpcService.getRpc();
-        const compiled = compileSignableTransaction(tx);
+        const connection = yield* rpcService.getRpc();
         const signed = yield* signerService
-          .signTransaction(compiled)
-          .pipe(
-            Effect.mapError((error) =>
-              error instanceof SignatureError
-                ? new TransactionSendError({ cause: error, message: error.message })
-                : error
-            )
-          );
-
-        const wireTransaction = getBase64EncodedWireTransaction(signed);
+          .signTransaction(tx)
+          .pipe(Effect.mapError(mapSignatureError));
+        cloneLifetime(tx, signed);
 
         const result = yield* Effect.tryPromise({
           catch: (cause) =>
@@ -594,7 +483,7 @@ const makeTransactionService = (
               cause,
               message: "Simulation failed",
             }),
-          try: () => rpc.simulateTransaction(wireTransaction, { encoding: "base64" }).send(),
+          try: () => connection.simulateTransaction(signed),
         });
 
         if (result.value.err) {
@@ -623,23 +512,5 @@ export const TransactionServiceLive = Layer.effect(
     const signerService = yield* SignerService;
 
     return TransactionService.of(makeTransactionService(rpcService, signerService));
-  })
-);
-
-/**
- * Create a TransactionService layer with provider-owned wallet send support.
- *
- * @category Layers
- */
-export const TransactionServiceWithWalletLive = Layer.effect(
-  TransactionService,
-  Effect.gen(function* () {
-    const rpcService = yield* RpcService;
-    const signerService = yield* SignerService;
-    const walletSendService = yield* WalletSendService;
-
-    return TransactionService.of(
-      makeTransactionService(rpcService, signerService, walletSendService)
-    );
   })
 );

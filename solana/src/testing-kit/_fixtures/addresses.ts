@@ -2,7 +2,7 @@
  * Test addresses and constants for effect-solana test suite
  */
 
-import type { Address, Signature } from "@solana/kit";
+import type { Address, Signature } from "#src/types/index.js";
 
 /**
  * Test address - System Program

@@ -4,8 +4,7 @@
  * @module
  */
 
-import type { Address } from "@solana/kit";
-import type { Cluster } from "../types/index.js";
+import type { Address, Cluster } from "../types/index.js";
 
 // =============================================================================
 // Lamport Constants

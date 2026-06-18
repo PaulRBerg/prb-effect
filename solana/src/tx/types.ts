@@ -1,20 +1,12 @@
-import type { Instruction } from "@solana/instructions";
-import type { Signature } from "@solana/keys";
-import type {
-  TransactionMessage,
-  TransactionMessageWithFeePayer,
-  TransactionMessageWithLifetime,
-} from "@solana/transaction-messages";
+import type { Transaction, TransactionInstruction, TransactionSignature } from "@solana/web3.js";
 import type { Duration } from "effect";
 
 /**
- * A transaction message shape that is ready to compile/sign/send.
+ * A web3.js transaction ready to sign/send.
  *
  * @category Types
  */
-export type SignableTransactionMessage = TransactionMessage &
-  TransactionMessageWithFeePayer &
-  TransactionMessageWithLifetime;
+export type SignableTransactionMessage = Transaction;
 
 /**
  * Options for confirming a transaction.
@@ -52,36 +44,9 @@ export type ConfirmOpts = {
    */
   readonly lifetime?: {
     readonly blockhash: string;
-    readonly lastValidBlockHeight: bigint;
+    readonly lastValidBlockHeight: bigint | number;
     readonly expiredStatusGracePeriod?: Duration.DurationInput;
   };
-};
-
-/**
- * Options forwarded to a wallet-provider send path.
- *
- * @category Types
- */
-export type WalletSendOpts = {
-  /**
-   * Number of retries for the RPC send path.
-   */
-  readonly maxRetries?: number;
-
-  /**
-   * Minimum context slot for preflight/send.
-   */
-  readonly minContextSlot?: number;
-
-  /**
-   * Commitment used for preflight simulation.
-   */
-  readonly preflightCommitment?: "processed" | "confirmed" | "finalized";
-
-  /**
-   * Whether wallet/provider send should skip preflight.
-   */
-  readonly skipPreflight?: boolean;
 };
 
 /**
@@ -122,7 +87,7 @@ export type TransactionBatchItem = {
   /**
    * Transaction instructions.
    */
-  readonly instructions: readonly Instruction[];
+  readonly instructions: readonly TransactionInstruction[];
 
   /**
    * Optional compute budget settings.
@@ -169,7 +134,7 @@ export type TransactionReceipt = {
   /**
    * The transaction signature.
    */
-  readonly signature: Signature;
+  readonly signature: TransactionSignature;
 
   /**
    * The slot at which the transaction was confirmed.

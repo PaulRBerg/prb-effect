@@ -1,8 +1,8 @@
-import type { Address, ProgramDerivedAddressBump } from "@solana/addresses";
 import type { Layer } from "effect";
 import { Effect } from "effect";
-import type { PdaSeed, ProgramDerivedAddress } from "#src/pda/index.js";
+import type { PdaSeed, ProgramDerivedAddress, ProgramDerivedAddressBump } from "#src/pda/index.js";
 import { PdaService } from "#src/pda/index.js";
+import type { Address } from "#src/types/index.js";
 import { TEST_ADDRESS } from "./_fixtures/addresses.js";
 import { makeMockServiceLayer } from "./helpers.js";
 

@@ -6,9 +6,9 @@
  * @module program/types
  */
 
-import type { Address } from "@solana/addresses";
-import type { Instruction } from "@solana/instructions";
+import type { TransactionInstruction } from "@solana/web3.js";
 import { Schema } from "effect";
+import type { Address } from "#src/types/index.js";
 
 // =============================================================================
 // Re-exports from Anchor
@@ -54,8 +54,8 @@ export type BuildInstructionParams<TArgs extends readonly unknown[] = readonly u
  * Result of building an instruction.
  */
 export type BuildInstructionResult = {
-  /** The built instruction (Solana kit format) */
-  readonly instruction: Instruction;
+  /** The built instruction. */
+  readonly instruction: TransactionInstruction;
 };
 
 // =============================================================================

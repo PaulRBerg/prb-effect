@@ -1,21 +1,49 @@
-import type { Account, Address, Instruction } from "@solana/kit";
-import { createNoopSigner } from "@solana/signers";
-import type { Mint, Token as TokenAccountData } from "@solana-program/token";
-import {
-  fetchMaybeMint,
-  fetchMaybeToken,
-  findAssociatedTokenPda,
-  getCreateAssociatedTokenIdempotentInstructionAsync,
-  getTransferInstruction,
-} from "@solana-program/token";
+import type { AccountInfo } from "@solana/web3.js";
+import { PublicKey, SystemProgram, TransactionInstruction } from "@solana/web3.js";
+import { Buffer } from "buffer";
 import { Context, Effect, Layer } from "effect";
-import { TOKEN_PROGRAM_ADDRESS } from "#src/constants/index.js";
+import {
+  ASSOCIATED_TOKEN_PROGRAM_ADDRESS,
+  TOKEN_2022_PROGRAM_ADDRESS,
+  TOKEN_PROGRAM_ADDRESS,
+} from "#src/constants/index.js";
 import { AccountNotFoundError, RpcError } from "#src/core/errors/index.js";
 import { RpcService } from "#src/rpc/index.js";
 import { SpanNames } from "#src/telemetry/index.js";
+import type { Address } from "#src/types/index.js";
 
-export type MintAccount = Account<Mint>;
-export type TokenAccount = Account<TokenAccountData>;
+type DecodedAccount<T> = {
+  readonly address: Address;
+  readonly data: T;
+  readonly executable: boolean;
+  readonly lamports: bigint;
+  readonly programAddress: Address;
+  readonly space: bigint;
+};
+
+export type Mint = {
+  readonly decimals: number;
+  readonly freezeAuthority: Address | null;
+  readonly isInitialized: boolean;
+  readonly mintAuthority: Address | null;
+  readonly supply: bigint;
+};
+
+export type TokenAccountData = {
+  readonly amount: bigint;
+  readonly closeAuthority: Address | null;
+  readonly delegate: Address | null;
+  readonly delegatedAmount: bigint;
+  readonly isNative: bigint | null;
+  readonly mint: Address;
+  readonly owner: Address;
+  readonly state: TokenAccountState;
+};
+
+export type TokenAccountState = "uninitialized" | "initialized" | "frozen";
+
+export type MintAccount = DecodedAccount<Mint>;
+export type TokenAccount = DecodedAccount<TokenAccountData>;
 
 export type ATAParams = {
   readonly owner: Address;
@@ -35,8 +63,8 @@ export type TokenServiceShape = {
    */
   readonly getOrCreateATA: (params: ATAParams & { payer: Address }) => Effect.Effect<
     {
-      address: Address;
-      instruction?: Instruction;
+      readonly address: Address;
+      readonly instruction?: TransactionInstruction;
     },
     Error | RpcError
   >;
@@ -69,7 +97,7 @@ export type TokenServiceShape = {
     readonly authority: Address;
     readonly amount: bigint;
     readonly tokenProgram?: Address;
-  }) => Effect.Effect<Instruction>;
+  }) => Effect.Effect<TransactionInstruction>;
 
   /**
    * Check if a token account exists.
@@ -82,6 +110,187 @@ export class TokenService extends Context.Tag("esolana/TokenService")<
   TokenServiceShape
 >() {}
 
+const MINT_SIZE = 82;
+const TOKEN_ACCOUNT_SIZE = 165;
+
+const publicKeyToAddress = (publicKey: PublicKey): Address => publicKey.toBase58() as Address;
+
+const readOptionalPublicKey = (data: Buffer, optionOffset: number, addressOffset: number) => {
+  const option = data.readUInt32LE(optionOffset);
+  return option === 0
+    ? null
+    : publicKeyToAddress(new PublicKey(data.subarray(addressOffset, addressOffset + 32)));
+};
+
+const decodeMint = (data: Buffer): Mint => {
+  if (data.length < MINT_SIZE) {
+    throw new Error(`Invalid mint account data length: ${data.length}`);
+  }
+
+  return {
+    decimals: data.readUInt8(44),
+    freezeAuthority: readOptionalPublicKey(data, 46, 50),
+    isInitialized: data.readUInt8(45) !== 0,
+    mintAuthority: readOptionalPublicKey(data, 0, 4),
+    supply: data.readBigUInt64LE(36),
+  };
+};
+
+const decodeTokenState = (state: number): TokenAccountState => {
+  switch (state) {
+    case 0:
+      return "uninitialized";
+    case 1:
+      return "initialized";
+    case 2:
+      return "frozen";
+    default:
+      throw new Error(`Invalid token account state: ${state}`);
+  }
+};
+
+const decodeTokenAccount = (data: Buffer): TokenAccountData => {
+  if (data.length < TOKEN_ACCOUNT_SIZE) {
+    throw new Error(`Invalid token account data length: ${data.length}`);
+  }
+
+  const isNativeOption = data.readUInt32LE(109);
+
+  return {
+    amount: data.readBigUInt64LE(64),
+    closeAuthority: readOptionalPublicKey(data, 129, 133),
+    delegate: readOptionalPublicKey(data, 72, 76),
+    delegatedAmount: data.readBigUInt64LE(121),
+    isNative: isNativeOption === 0 ? null : data.readBigUInt64LE(113),
+    mint: publicKeyToAddress(new PublicKey(data.subarray(0, 32))),
+    owner: publicKeyToAddress(new PublicKey(data.subarray(32, 64))),
+    state: decodeTokenState(data.readUInt8(108)),
+  };
+};
+
+const TOKEN_ACCOUNT_OWNERS = new Set<Address>([TOKEN_PROGRAM_ADDRESS, TOKEN_2022_PROGRAM_ADDRESS]);
+
+const assertTokenProgramOwner = (
+  address: Address,
+  accountInfo: AccountInfo<Buffer>,
+  accountKind: string
+): void => {
+  const owner = publicKeyToAddress(accountInfo.owner);
+  if (!TOKEN_ACCOUNT_OWNERS.has(owner)) {
+    throw new Error(
+      `${accountKind} ${address} is owned by ${owner}, expected ${TOKEN_PROGRAM_ADDRESS} or ${TOKEN_2022_PROGRAM_ADDRESS}`
+    );
+  }
+};
+
+const makeDecodedAccount = <T>(
+  address: Address,
+  accountInfo: AccountInfo<Buffer>,
+  data: T
+): DecodedAccount<T> => ({
+  address,
+  data,
+  executable: accountInfo.executable,
+  lamports: BigInt(accountInfo.lamports),
+  programAddress: publicKeyToAddress(accountInfo.owner),
+  space: BigInt(accountInfo.data.length),
+});
+
+const decodeTokenProgramAccount = <T>(params: {
+  readonly accountInfo: AccountInfo<Buffer>;
+  readonly address: Address;
+  readonly decode: (data: Buffer) => T;
+  readonly kind: string;
+  readonly rpcUrl: string;
+}): Effect.Effect<DecodedAccount<T>, RpcError> =>
+  Effect.try({
+    catch: (cause) =>
+      new RpcError({
+        cause,
+        message: `Failed to decode ${params.kind} ${params.address}`,
+        url: params.rpcUrl,
+      }),
+    try: () => {
+      assertTokenProgramOwner(params.address, params.accountInfo, params.kind);
+      return makeDecodedAccount(
+        params.address,
+        params.accountInfo,
+        params.decode(params.accountInfo.data)
+      );
+    },
+  });
+
+const findAssociatedTokenAddress = (params: Required<ATAParams>): Address => {
+  const [address] = PublicKey.findProgramAddressSync(
+    [
+      new PublicKey(params.owner).toBuffer(),
+      new PublicKey(params.tokenProgram).toBuffer(),
+      new PublicKey(params.mint).toBuffer(),
+    ],
+    new PublicKey(ASSOCIATED_TOKEN_PROGRAM_ADDRESS)
+  );
+
+  return publicKeyToAddress(address);
+};
+
+const deriveAssociatedTokenAddress = (params: ATAParams): Effect.Effect<Address, Error> => {
+  const tokenProgram = params.tokenProgram ?? TOKEN_PROGRAM_ADDRESS;
+  return Effect.try({
+    catch: (cause) =>
+      new Error(`Failed to derive ATA for mint ${params.mint} and owner ${params.owner}`, {
+        cause,
+      }),
+    try: () =>
+      findAssociatedTokenAddress({
+        mint: params.mint,
+        owner: params.owner,
+        tokenProgram,
+      }),
+  });
+};
+
+const getCreateAssociatedTokenIdempotentInstruction = (params: {
+  readonly ata: Address;
+  readonly mint: Address;
+  readonly owner: Address;
+  readonly payer: Address;
+  readonly tokenProgram: Address;
+}): TransactionInstruction =>
+  new TransactionInstruction({
+    data: Buffer.from([1]),
+    keys: [
+      { isSigner: true, isWritable: true, pubkey: new PublicKey(params.payer) },
+      { isSigner: false, isWritable: true, pubkey: new PublicKey(params.ata) },
+      { isSigner: false, isWritable: false, pubkey: new PublicKey(params.owner) },
+      { isSigner: false, isWritable: false, pubkey: new PublicKey(params.mint) },
+      { isSigner: false, isWritable: false, pubkey: SystemProgram.programId },
+      { isSigner: false, isWritable: false, pubkey: new PublicKey(params.tokenProgram) },
+    ],
+    programId: new PublicKey(ASSOCIATED_TOKEN_PROGRAM_ADDRESS),
+  });
+
+const getTokenTransferInstruction = (params: {
+  readonly source: Address;
+  readonly destination: Address;
+  readonly authority: Address;
+  readonly amount: bigint;
+  readonly tokenProgram: Address;
+}): TransactionInstruction => {
+  const data = Buffer.alloc(9);
+  data.writeUInt8(3, 0);
+  data.writeBigUInt64LE(params.amount, 1);
+
+  return new TransactionInstruction({
+    data,
+    keys: [
+      { isSigner: false, isWritable: true, pubkey: new PublicKey(params.source) },
+      { isSigner: false, isWritable: true, pubkey: new PublicKey(params.destination) },
+      { isSigner: true, isWritable: false, pubkey: new PublicKey(params.authority) },
+    ],
+    programId: new PublicKey(params.tokenProgram),
+  });
+};
+
 export const TokenServiceLive = Layer.effect(
   TokenService,
   Effect.gen(function* () {
@@ -90,20 +299,7 @@ export const TokenServiceLive = Layer.effect(
     return TokenService.of({
       getAssociatedTokenAddress: (params) =>
         Effect.gen(function* () {
-          const tokenProgram = params.tokenProgram ?? TOKEN_PROGRAM_ADDRESS;
-          const pda = yield* Effect.tryPromise({
-            catch: (cause) =>
-              new Error(`Failed to derive ATA for mint ${params.mint} and owner ${params.owner}`, {
-                cause,
-              }),
-            try: () =>
-              findAssociatedTokenPda({
-                mint: params.mint,
-                owner: params.owner,
-                tokenProgram,
-              }),
-          });
-          return pda[0];
+          return yield* deriveAssociatedTokenAddress(params);
         }).pipe(
           Effect.withSpan(SpanNames.TOKEN_GET_ATA, {
             attributes: {
@@ -118,17 +314,17 @@ export const TokenServiceLive = Layer.effect(
           const rpc = yield* rpcService.getRpc();
           const rpcUrl = yield* rpcService.getRpcUrl();
 
-          const account = yield* Effect.tryPromise({
+          const accountInfo = yield* Effect.tryPromise({
             catch: (cause) =>
               new RpcError({
                 cause,
                 message: `Failed to fetch mint ${mint}`,
                 url: rpcUrl,
               }),
-            try: () => fetchMaybeMint(rpc, mint),
+            try: () => rpc.getAccountInfo(new PublicKey(mint)),
           });
 
-          if (!account.exists) {
+          if (!accountInfo) {
             return yield* Effect.fail(
               new AccountNotFoundError({
                 address: mint,
@@ -137,7 +333,13 @@ export const TokenServiceLive = Layer.effect(
             );
           }
 
-          return account;
+          return yield* decodeTokenProgramAccount({
+            accountInfo,
+            address: mint,
+            decode: decodeMint,
+            kind: "mint account",
+            rpcUrl,
+          });
         }).pipe(
           Effect.withSpan(SpanNames.TOKEN_GET_MINT, {
             attributes: { mint },
@@ -147,24 +349,11 @@ export const TokenServiceLive = Layer.effect(
       getOrCreateATA: (params) =>
         Effect.gen(function* () {
           const tokenProgram = params.tokenProgram ?? TOKEN_PROGRAM_ADDRESS;
-          const pda = yield* Effect.tryPromise({
-            catch: (cause) =>
-              new Error(`Failed to derive ATA for mint ${params.mint} and owner ${params.owner}`, {
-                cause,
-              }),
-            try: () =>
-              findAssociatedTokenPda({
-                mint: params.mint,
-                owner: params.owner,
-                tokenProgram,
-              }),
-          });
-          const ata = pda[0];
+          const ata = yield* deriveAssociatedTokenAddress(params);
 
           const rpc = yield* rpcService.getRpc();
           const rpcUrl = yield* rpcService.getRpcUrl();
 
-          // Check if account exists
           const accountInfo = yield* Effect.tryPromise({
             catch: (cause) =>
               new RpcError({
@@ -172,36 +361,23 @@ export const TokenServiceLive = Layer.effect(
                 message: `Failed to get account info for ${ata}`,
                 url: rpcUrl,
               }),
-            try: () => rpc.getAccountInfo(ata, { encoding: "base64" }).send(),
+            try: () => rpc.getAccountInfo(new PublicKey(ata)),
           });
 
-          if (accountInfo.value) {
-            // Account exists
+          if (accountInfo) {
             return { address: ata };
           }
 
-          // Create instruction using idempotent version (safe to call even if exists)
-          // Use NoopSigner since we only need the address for instruction creation
-          // The actual signing happens later via TransactionService
-          const payerSigner = createNoopSigner(params.payer);
-
-          const instruction = yield* Effect.tryPromise({
-            catch: (cause) =>
-              new Error(
-                `Failed to create ATA instruction for mint ${params.mint} and owner ${params.owner}`,
-                { cause }
-              ),
-            try: () =>
-              getCreateAssociatedTokenIdempotentInstructionAsync({
-                ata,
-                mint: params.mint,
-                owner: params.owner,
-                payer: payerSigner,
-                tokenProgram,
-              }),
-          });
-
-          return { address: ata, instruction };
+          return {
+            address: ata,
+            instruction: getCreateAssociatedTokenIdempotentInstruction({
+              ata,
+              mint: params.mint,
+              owner: params.owner,
+              payer: params.payer,
+              tokenProgram,
+            }),
+          };
         }).pipe(
           Effect.withSpan(SpanNames.TOKEN_CREATE_ATA, {
             attributes: {
@@ -216,17 +392,17 @@ export const TokenServiceLive = Layer.effect(
           const rpc = yield* rpcService.getRpc();
           const rpcUrl = yield* rpcService.getRpcUrl();
 
-          const account = yield* Effect.tryPromise({
+          const accountInfo = yield* Effect.tryPromise({
             catch: (cause) =>
               new RpcError({
                 cause,
                 message: `Failed to fetch token account ${accountAddress}`,
                 url: rpcUrl,
               }),
-            try: () => fetchMaybeToken(rpc, accountAddress),
+            try: () => rpc.getAccountInfo(new PublicKey(accountAddress)),
           });
 
-          if (!account.exists) {
+          if (!accountInfo) {
             return yield* Effect.fail(
               new AccountNotFoundError({
                 address: accountAddress,
@@ -235,7 +411,13 @@ export const TokenServiceLive = Layer.effect(
             );
           }
 
-          return account;
+          return yield* decodeTokenProgramAccount({
+            accountInfo,
+            address: accountAddress,
+            decode: decodeTokenAccount,
+            kind: "token account",
+            rpcUrl,
+          });
         }).pipe(
           Effect.withSpan(SpanNames.TOKEN_GET_ACCOUNT, {
             attributes: { account: accountAddress },
@@ -253,17 +435,8 @@ export const TokenServiceLive = Layer.effect(
                 message: `Failed to get token balance for ${ata}`,
                 url: rpcUrl,
               }),
-            try: () => rpc.getTokenAccountBalance(ata).send(),
+            try: () => rpc.getTokenAccountBalance(new PublicKey(ata)),
           });
-
-          if (!response.value) {
-            return yield* Effect.fail(
-              new AccountNotFoundError({
-                address: ata,
-                message: `Token account not found: ${ata}`,
-              })
-            );
-          }
 
           return BigInt(response.value.amount);
         }).pipe(
@@ -273,19 +446,12 @@ export const TokenServiceLive = Layer.effect(
         ),
 
       getTransferInstruction: (params) =>
-        Effect.sync(() => {
-          const tokenProgram = params.tokenProgram ?? TOKEN_PROGRAM_ADDRESS;
-
-          return getTransferInstruction(
-            {
-              amount: params.amount,
-              authority: params.authority,
-              destination: params.destination,
-              source: params.source,
-            },
-            { programAddress: tokenProgram }
-          );
-        }).pipe(
+        Effect.sync(() =>
+          getTokenTransferInstruction({
+            ...params,
+            tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ADDRESS,
+          })
+        ).pipe(
           Effect.withSpan(SpanNames.TOKEN_TRANSFER, {
             attributes: {
               amount: params.amount.toString(),
@@ -306,9 +472,9 @@ export const TokenServiceLive = Layer.effect(
                 message: `Failed to check token account ${ata}`,
                 url: rpcUrl,
               }),
-            try: () => rpc.getAccountInfo(ata, { encoding: "base64" }).send(),
+            try: () => rpc.getAccountInfo(new PublicKey(ata)),
           });
-          return response.value !== null;
+          return response !== null;
         }).pipe(
           Effect.withSpan(SpanNames.TOKEN_ACCOUNT_EXISTS, {
             attributes: { ata },

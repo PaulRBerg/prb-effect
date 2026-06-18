@@ -1,77 +1,69 @@
 import { describe, expect, it } from "@effect/vitest";
-import type { Instruction } from "@solana/kit";
-import type { Transaction, TransactionWithLifetime } from "@solana/transactions";
-import bs58 from "bs58";
-import { Effect, Layer } from "effect";
+import type { Transaction, TransactionError } from "@solana/web3.js";
+import { Keypair, PublicKey, TransactionInstruction } from "@solana/web3.js";
+import { Buffer } from "buffer";
+import { Effect } from "effect";
 import { COMPUTE_BUDGET_PROGRAM_ADDRESS, SYSTEM_PROGRAM_ADDRESS } from "#src/constants/index.js";
 import {
   expectTaggedFailure,
   makeEffectSolanaTestLayer,
   makeMockRpc,
-  makeMockRpcServiceLayer,
-  makeMockSignerServiceLayer,
   TEST_SIGNATURE,
-  TEST_WALLET,
 } from "#src/testing-kit/index.js";
-import {
-  TransactionService,
-  TransactionServiceWithWalletLive,
-  WalletSendService,
-} from "#src/tx/index.js";
+import { TransactionService } from "#src/tx/index.js";
+import type { Address } from "#src/types/index.js";
 
 const TEST_SIGNATURE_2 =
   "6VERv8NMvzbJMEkV8xnrLkEaWRtSz9CosKDYjCJjBRnbJLgp8uirBgmQpjKhoR4tjF3ZpRzrFmBV6UjKdiSZkQUW";
-const APPKIT_SIGNATURE = TEST_SIGNATURE;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Solana RPC types use branded types that can't be constructed from literals
-const makeRpc = () =>
-  makeMockRpc({
-    getLatestBlockhash: (() => ({
-      send: async () => ({
-        context: { slot: 0n },
-        value: {
-          blockhash: "GH7ome3EiwEr7tu9JuTh2dpYWBJK3z69Xm1ZE3MEE6JC",
-          lastValidBlockHeight: 1000n,
-        },
+const TEST_BLOCKHASH = "GH7ome3EiwEr7tu9JuTh2dpYWBJK3z69Xm1ZE3MEE6JC";
+
+const makeRpc = () => {
+  let sendCalls = 0;
+  return makeMockRpc({
+    getLatestBlockhash: () =>
+      Promise.resolve({
+        blockhash: TEST_BLOCKHASH,
+        lastValidBlockHeight: 1000,
       }),
-    })) as any,
-    getSignatureStatuses: (() => ({
-      send: async () => ({
-        context: { slot: 0n },
+    getSignatureStatuses: () =>
+      Promise.resolve({
+        context: { slot: 0 },
         value: [
           {
             confirmationStatus: "confirmed",
-            confirmations: 1n,
+            confirmations: 1,
             err: null,
-            slot: 123n,
-            status: { Ok: null },
+            slot: 123,
           },
         ],
       }),
-    })) as any,
-    sendTransaction: (() => ({
-      send: async () => "mock-signature",
-    })) as any,
+    sendRawTransaction: () => {
+      sendCalls += 1;
+      return Promise.resolve(sendCalls === 1 ? TEST_SIGNATURE : TEST_SIGNATURE_2);
+    },
   });
+};
 
-const makeInstruction = (): Instruction => ({
-  accounts: [],
-  data: new Uint8Array(),
-  programAddress: SYSTEM_PROGRAM_ADDRESS,
-});
+const makeInstruction = (): TransactionInstruction =>
+  new TransactionInstruction({
+    data: Buffer.alloc(0),
+    keys: [],
+    programId: new PublicKey(SYSTEM_PROGRAM_ADDRESS),
+  });
 
 describe("TransactionService (Live)", () => {
   it.effect("build prepends compute budget instructions when configured", () =>
     Effect.gen(function* () {
       const service = yield* TransactionService;
-      const message = yield* service.build([makeInstruction()], {
+      const tx = yield* service.build([makeInstruction()], {
         computeBudget: { microLamports: 5000, unitLimit: 100_000 },
       });
 
-      expect(message.instructions.length).toBe(3);
-      expect(message.instructions[0]?.programAddress).toBe(COMPUTE_BUDGET_PROGRAM_ADDRESS);
-      expect(message.instructions[1]?.programAddress).toBe(COMPUTE_BUDGET_PROGRAM_ADDRESS);
-      expect(message.instructions[2]?.programAddress).toBe(SYSTEM_PROGRAM_ADDRESS);
+      expect(tx.instructions.length).toBe(3);
+      expect(tx.instructions[0]?.programId.toBase58()).toBe(COMPUTE_BUDGET_PROGRAM_ADDRESS);
+      expect(tx.instructions[1]?.programId.toBase58()).toBe(COMPUTE_BUDGET_PROGRAM_ADDRESS);
+      expect(tx.instructions[2]?.programId.toBase58()).toBe(SYSTEM_PROGRAM_ADDRESS);
     }).pipe(
       Effect.provide(
         makeEffectSolanaTestLayer({
@@ -84,36 +76,31 @@ describe("TransactionService (Live)", () => {
   it.effect("confirm succeeds when status appears after blockhash expiry grace starts", () => {
     let statusCalls = 0;
     const rpc = makeMockRpc({
-      getBlockHeight: (() => ({
-        send: () => Promise.resolve(1001n),
-      })) as any,
-      getSignatureStatuses: (() => ({
-        send: () => {
-          statusCalls += 1;
-          return Promise.resolve({
-            context: { slot: 0n },
-            value:
-              statusCalls === 1
-                ? [null]
-                : [
-                    {
-                      confirmationStatus: "confirmed",
-                      confirmations: 1n,
-                      err: null,
-                      slot: 123n,
-                      status: { Ok: null },
-                    },
-                  ],
-          });
-        },
-      })) as any,
+      getBlockHeight: () => Promise.resolve(1001),
+      getSignatureStatuses: () => {
+        statusCalls += 1;
+        return Promise.resolve({
+          context: { slot: 0 },
+          value:
+            statusCalls === 1
+              ? [null]
+              : [
+                  {
+                    confirmationStatus: "confirmed",
+                    confirmations: 1,
+                    err: null,
+                    slot: 123,
+                  },
+                ],
+        });
+      },
     });
 
     return Effect.gen(function* () {
       const service = yield* TransactionService;
       const receipt = yield* service.confirm(TEST_SIGNATURE, {
         lifetime: {
-          blockhash: "GH7ome3EiwEr7tu9JuTh2dpYWBJK3z69Xm1ZE3MEE6JC",
+          blockhash: TEST_BLOCKHASH,
           expiredStatusGracePeriod: "1 second",
           lastValidBlockHeight: 1000n,
         },
@@ -132,8 +119,10 @@ describe("TransactionService (Live)", () => {
     );
   });
 
-  it.effect("confirm fails when signature status contains an on-chain error", () =>
-    Effect.gen(function* () {
+  it.effect("confirm fails when signature status contains an on-chain error", () => {
+    const transactionError = { InstructionError: [0, "Custom"] } as TransactionError;
+
+    return Effect.gen(function* () {
       const service = yield* TransactionService;
       const exit = yield* Effect.exit(service.confirm(TEST_SIGNATURE, { pollInterval: 0 }));
 
@@ -145,98 +134,31 @@ describe("TransactionService (Live)", () => {
             getRpc: () =>
               Effect.succeed(
                 makeMockRpc({
-                  getSignatureStatuses: (() => ({
-                    send: async () => ({
-                      context: { slot: 0n },
+                  getSignatureStatuses: () =>
+                    Promise.resolve({
+                      context: { slot: 0 },
                       value: [
                         {
                           confirmationStatus: "confirmed",
-                          confirmations: 1n,
-                          err: { InstructionError: [0, "Custom"] },
-                          slot: 123n,
-                          status: { Err: { InstructionError: [0, "Custom"] } },
+                          confirmations: 1,
+                          err: transactionError,
+                          slot: 123,
                         },
                       ],
                     }),
-                  })) as any,
                 })
               ),
           },
         })
       )
-    )
-  );
-
-  it.effect("sendAndConfirmWithWallet returns the wallet provider signature", () => {
-    let blockHeightCalls = 0;
-    let statusCalls = 0;
-    const rpc = makeMockRpc({
-      getBlockHeight: (() => ({
-        send: () => {
-          blockHeightCalls += 1;
-          return Promise.resolve(1001n);
-        },
-      })) as any,
-      getLatestBlockhash: (() => ({
-        send: () =>
-          Promise.resolve({
-            context: { slot: 0n },
-            value: {
-              blockhash: "GH7ome3EiwEr7tu9JuTh2dpYWBJK3z69Xm1ZE3MEE6JC",
-              lastValidBlockHeight: 1000n,
-            },
-          }),
-      })) as any,
-      getSignatureStatuses: (() => ({
-        send: () => {
-          statusCalls += 1;
-          return Promise.resolve({
-            context: { slot: 0n },
-            value:
-              statusCalls === 1
-                ? [null]
-                : [
-                    {
-                      confirmationStatus: "confirmed",
-                      confirmations: 1n,
-                      err: null,
-                      slot: 123n,
-                      status: { Ok: null },
-                    },
-                  ],
-          });
-        },
-      })) as any,
-    });
-    const walletSendLayer = Layer.succeed(
-      WalletSendService,
-      WalletSendService.of({
-        sendTransaction: () => Effect.succeed(APPKIT_SIGNATURE),
-      })
     );
-    const layer = Layer.provide(
-      TransactionServiceWithWalletLive,
-      Layer.mergeAll(
-        makeMockRpcServiceLayer({ getRpc: () => Effect.succeed(rpc) }),
-        makeMockSignerServiceLayer({ address: TEST_WALLET }),
-        walletSendLayer
-      )
-    );
-
-    return Effect.gen(function* () {
-      const service = yield* TransactionService;
-      const receipt = yield* service.sendAndConfirmWithWallet([makeInstruction()], {
-        commitment: "confirmed",
-        pollInterval: 0,
-      });
-
-      expect(receipt.signature).toBe(APPKIT_SIGNATURE);
-      expect(blockHeightCalls).toBe(1);
-    }).pipe(Effect.provide(layer));
   });
 
-  it.effect("sendAndConfirmBatch returns receipts for each transaction", () =>
-    Effect.gen(function* () {
+  it.effect("sendAndConfirmBatch returns receipts for each transaction", () => {
+    const rpc = makeRpc();
+    const signer = Keypair.generate();
+
+    return Effect.gen(function* () {
       const service = yield* TransactionService;
       const receipts = yield* service.sendAndConfirmBatch(
         [{ instructions: [makeInstruction()] }, { instructions: [makeInstruction()] }],
@@ -249,27 +171,20 @@ describe("TransactionService (Live)", () => {
     }).pipe(
       Effect.provide(
         makeEffectSolanaTestLayer({
-          rpcService: { getRpc: () => Effect.succeed(makeRpc()) },
+          rpcService: { getRpc: () => Effect.succeed(rpc) },
           signerService: {
-            address: TEST_WALLET,
-            signAllTransactions: <T extends Transaction & TransactionWithLifetime>(
-              txs: readonly T[]
-            ) =>
-              Effect.succeed(
-                txs.map((tx, index) => {
-                  const signature = index === 0 ? TEST_SIGNATURE : TEST_SIGNATURE_2;
-                  const signatureBytes = bs58.decode(signature);
-                  return {
-                    ...tx,
-                    signatures: Object.fromEntries(
-                      Object.keys(tx.signatures).map((address) => [address, signatureBytes])
-                    ),
-                  } as T;
-                }) as readonly T[]
+            address: signer.publicKey.toBase58() as Address,
+            signAllTransactions: <T extends Transaction>(txs: readonly T[]) =>
+              Effect.sync(
+                () =>
+                  txs.map((tx) => {
+                    tx.sign(signer);
+                    return tx;
+                  }) as readonly T[]
               ),
           },
         })
       )
-    )
-  );
+    );
+  });
 });

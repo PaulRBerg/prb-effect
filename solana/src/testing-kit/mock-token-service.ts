@@ -1,9 +1,10 @@
-import type { Address, Instruction } from "@solana/kit";
+import { PublicKey, TransactionInstruction } from "@solana/web3.js";
 import type { Layer } from "effect";
 import { Effect } from "effect";
 import type { AccountNotFoundError, RpcError } from "#src/core/errors/index.js";
 import type { ATAParams, MintAccount, TokenAccount } from "#src/token/index.js";
 import { TokenService } from "#src/token/index.js";
+import type { Address } from "#src/types/index.js";
 import { TEST_ADDRESS_2 } from "./_fixtures/addresses.js";
 import { makeMockServiceLayer } from "./helpers.js";
 
@@ -18,7 +19,7 @@ export type MockTokenServiceConfig = {
   getOrCreateATA?: (params: ATAParams & { payer: Address }) => Effect.Effect<
     {
       address: Address;
-      instruction?: Instruction;
+      instruction?: TransactionInstruction;
     },
     RpcError
   >;
@@ -33,7 +34,7 @@ export type MockTokenServiceConfig = {
     readonly authority: Address;
     readonly amount: bigint;
     readonly tokenProgram?: Address;
-  }) => Effect.Effect<Instruction>;
+  }) => Effect.Effect<TransactionInstruction>;
   tokenAccountExists?: (ata: Address) => Effect.Effect<boolean, RpcError>;
 };
 
@@ -44,9 +45,9 @@ const defaultConfig: Required<MockTokenServiceConfig> = {
       address: TEST_ADDRESS_2,
       data: {
         decimals: 0,
-        freezeAuthority: { __option: "None" },
+        freezeAuthority: null,
         isInitialized: true,
-        mintAuthority: { __option: "None" },
+        mintAuthority: null,
         supply: 0n,
       },
       executable: false,
@@ -64,13 +65,13 @@ const defaultConfig: Required<MockTokenServiceConfig> = {
       address: TEST_ADDRESS_2,
       data: {
         amount: 0n,
-        closeAuthority: { __option: "None" },
-        delegate: { __option: "None" },
+        closeAuthority: null,
+        delegate: null,
         delegatedAmount: 0n,
-        isNative: { __option: "None" },
+        isNative: null,
         mint: TEST_ADDRESS_2,
         owner: TEST_ADDRESS_2,
-        state: 1,
+        state: "initialized",
       },
       executable: false,
       lamports: 0n,
@@ -79,11 +80,13 @@ const defaultConfig: Required<MockTokenServiceConfig> = {
     } as TokenAccount),
   getTokenBalance: () => Effect.succeed(1000000000n), // 1 token with 9 decimals
   getTransferInstruction: () =>
-    Effect.succeed({
-      accounts: [],
-      data: new Uint8Array(),
-      programAddress: TEST_ADDRESS_2,
-    } as Instruction),
+    Effect.succeed(
+      new TransactionInstruction({
+        data: Buffer.alloc(0),
+        keys: [],
+        programId: new PublicKey(TEST_ADDRESS_2),
+      })
+    ),
   tokenAccountExists: () => Effect.succeed(true),
 };
 

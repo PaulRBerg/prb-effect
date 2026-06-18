@@ -1,8 +1,9 @@
-import type { Address, Lamports } from "@solana/kit";
+import { PublicKey } from "@solana/web3.js";
 import { Context, Duration, Effect, Layer, Schedule, Stream } from "effect";
 import { RpcError } from "#src/core/errors/index.js";
 import { RpcService } from "#src/rpc/index.js";
 import { SpanNames } from "#src/telemetry/index.js";
+import type { Address, Lamports } from "#src/types/index.js";
 
 /**
  * Shape of the Balance service for type inference.
@@ -65,10 +66,10 @@ export const BalanceServiceLive = Layer.effect(
                 message: `Failed to get balance for ${address}`,
                 url: rpcUrl,
               }),
-            try: () => rpc.getBalance(address).send(),
+            try: () => rpc.getBalance(new PublicKey(address)),
           });
         }).pipe(
-          Effect.map((response) => response.value),
+          Effect.map((balance) => BigInt(balance)),
           Effect.withSpan(SpanNames.BALANCE_GET_SOL, {
             attributes: { address },
           })
@@ -86,10 +87,10 @@ export const BalanceServiceLive = Layer.effect(
                 message: `Failed to get balance for ${params.address}`,
                 url: rpcUrl,
               }),
-            try: () => rpc.getBalance(params.address).send(),
+            try: () => rpc.getBalance(new PublicKey(params.address)),
           });
 
-          return response.value >= params.required;
+          return BigInt(response) >= params.required;
         }).pipe(
           Effect.withSpan(SpanNames.BALANCE_GET_SOL, {
             attributes: {
@@ -113,8 +114,8 @@ export const BalanceServiceLive = Layer.effect(
                   message: `Failed to poll balance for ${params.address}`,
                   url: rpcUrl,
                 }),
-              try: () => rpc.getBalance(params.address).send(),
-            }).pipe(Effect.map((response) => response.value)),
+              try: () => rpc.getBalance(new PublicKey(params.address)),
+            }).pipe(Effect.map((balance) => BigInt(balance))),
             Schedule.spaced(Duration.millis(interval))
           );
         }).pipe(

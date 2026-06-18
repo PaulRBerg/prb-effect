@@ -1,8 +1,12 @@
 import type { Idl, Program } from "@coral-xyz/anchor";
 import { describe, expect, it } from "@effect/vitest";
-import type { Address } from "@solana/addresses";
-import type { Rpc, SolanaRpcApi } from "@solana/kit";
-import { PublicKey, Transaction, TransactionInstruction } from "@solana/web3.js";
+import type { Connection, Transaction } from "@solana/web3.js";
+import {
+  PublicKey,
+  TransactionInstruction,
+  TransactionMessage,
+  VersionedTransaction,
+} from "@solana/web3.js";
 import BN from "bn.js";
 import { Cause, Effect, Exit, Layer, Logger } from "effect";
 import { WalletNotConnectedError } from "#src/core/errors/index.js";
@@ -11,6 +15,7 @@ import {
   makeMockRpcServiceLayer,
   makeMockSignerServiceLayer,
 } from "#src/testing-kit/index.js";
+import type { Address } from "#src/types/index.js";
 import {
   InstructionNotFoundError,
   ProgramCreationError,
@@ -71,51 +76,41 @@ function encodeU64(value: bigint): string {
 
 const makeMockRpc = (config?: {
   readonly includeReturnData?: boolean;
-  readonly onSimulateConfig?: (
-    config: Parameters<Rpc<SolanaRpcApi>["simulateTransaction"]>[1]
-  ) => void;
-  readonly onSimulateTransaction?: (wireTransaction: string) => void;
+  readonly onSimulateConfig?: (config: unknown) => void;
+  readonly onSimulateTransaction?: (transaction: Transaction | VersionedTransaction) => void;
   readonly simulationError?: unknown;
   readonly viewReturn?: bigint;
-}): Rpc<SolanaRpcApi> =>
+}): Connection =>
   makeBaseMockRpc({
-    simulateTransaction: ((...args: Parameters<Rpc<SolanaRpcApi>["simulateTransaction"]>) => {
-      const [wireTransaction, options] = args;
-      if (typeof wireTransaction === "string") {
-        config?.onSimulateTransaction?.(wireTransaction);
-      }
+    simulateTransaction: ((transaction: Transaction | VersionedTransaction, options?: unknown) => {
+      config?.onSimulateTransaction?.(transaction);
       config?.onSimulateConfig?.(options);
 
-      return {
-        send: () =>
-          Promise.resolve({
-            context: { slot: 0n },
-            value: {
-              err: config?.simulationError ?? null,
-              logs:
-                config?.viewReturn !== undefined
-                  ? [`Program return: ${TEST_PROGRAM_ADDRESS} ${encodeU64(config.viewReturn)}`]
-                  : [],
-              returnData:
-                config?.includeReturnData === true && config?.viewReturn !== undefined
-                  ? {
-                      data: [encodeU64(config.viewReturn), "base64"] as const,
-                      programId: TEST_PROGRAM_ADDRESS as Address,
-                    }
-                  : null,
-            },
-          }),
-      };
-    }) as Rpc<SolanaRpcApi>["simulateTransaction"],
+      return Promise.resolve({
+        context: { slot: 0 },
+        value: {
+          err: config?.simulationError ?? null,
+          logs:
+            config?.viewReturn !== undefined
+              ? [`Program return: ${TEST_PROGRAM_ADDRESS} ${encodeU64(config.viewReturn)}`]
+              : [],
+          returnData:
+            config?.includeReturnData === true && config?.viewReturn !== undefined
+              ? {
+                  data: [encodeU64(config.viewReturn), "base64"] as const,
+                  programId: TEST_PROGRAM_ADDRESS,
+                }
+              : null,
+        },
+      });
+    }) as Connection["simulateTransaction"],
   });
 
 const makeTestLayer = (config?: {
   readonly disconnected?: boolean;
   readonly includeReturnData?: boolean;
-  readonly onSimulateConfig?: (
-    config: Parameters<Rpc<SolanaRpcApi>["simulateTransaction"]>[1]
-  ) => void;
-  readonly onSimulateTransaction?: (wireTransaction: string) => void;
+  readonly onSimulateConfig?: (config: unknown) => void;
+  readonly onSimulateTransaction?: (transaction: Transaction | VersionedTransaction) => void;
   readonly simulationError?: unknown;
   readonly viewReturn?: bigint;
 }) => {
@@ -128,16 +123,20 @@ const makeTestLayer = (config?: {
   return Layer.provide(ProgramReaderLive, Layer.mergeAll(rpcLayer, signerLayer));
 };
 
-function makeTestTransaction(): Transaction {
-  const transaction = new Transaction();
-  transaction.add(
-    new TransactionInstruction({
-      data: Buffer.alloc(0),
-      keys: [],
-      programId: new PublicKey(TEST_PROGRAM_ADDRESS),
-    })
-  );
-  return transaction;
+function makeTestVersionedTransaction(): VersionedTransaction {
+  const message = new TransactionMessage({
+    instructions: [
+      new TransactionInstruction({
+        data: Buffer.alloc(0),
+        keys: [],
+        programId: new PublicKey(TEST_PROGRAM_ADDRESS),
+      }),
+    ],
+    payerKey: new PublicKey(TEST_ADDRESS),
+    recentBlockhash: "GH7ome3EiwEr7tu9JuTh2dpYWBJK3z69Xm1ZE3MEE6JC",
+  }).compileToV0Message();
+
+  return new VersionedTransaction(message);
 }
 
 function expectFailError<E>(exit: Exit.Exit<unknown, E>): E {
@@ -424,9 +423,10 @@ describe("ProgramReader", () => {
         getRpc: () =>
           Effect.succeed(
             makeMockRpc({
-              onSimulateTransaction: (wireTransaction) => {
-                const tx = Transaction.from(Buffer.from(wireTransaction, "base64"));
-                observedFeePayer = tx.feePayer?.toBase58();
+              onSimulateTransaction: (tx) => {
+                if ("feePayer" in tx) {
+                  observedFeePayer = tx.feePayer?.toBase58();
+                }
               },
               viewReturn: 42n,
             })
@@ -945,7 +945,7 @@ describe("ProgramReader", () => {
         const program = yield* reader.createProgram({ idl: VIEW_IDL });
         const provider = program.provider as unknown as {
           readonly simulate: (
-            tx: Transaction,
+            tx: Transaction | VersionedTransaction,
             signers?: readonly unknown[],
             commitment?: string
           ) => Promise<unknown>;
@@ -953,7 +953,7 @@ describe("ProgramReader", () => {
 
         const aliases = ["recent", "single", "singleGossip", "max", "root"] as const;
         for (const alias of aliases) {
-          yield* Effect.promise(() => provider.simulate(makeTestTransaction(), [], alias));
+          yield* Effect.promise(() => provider.simulate(makeTestVersionedTransaction(), [], alias));
         }
 
         expect(observedCommitments).toEqual(expectedCommitments);

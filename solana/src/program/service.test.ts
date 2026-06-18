@@ -1,8 +1,8 @@
 import type { Idl } from "@coral-xyz/anchor";
 import { describe, expect, it } from "@effect/vitest";
-import type { Address } from "@solana/addresses";
 import { Effect, Exit, Layer } from "effect";
-import { makeMockRpcServiceLayer } from "#src/testing-kit/index.js";
+import { makeMockRpc, makeMockRpcServiceLayer } from "#src/testing-kit/index.js";
+import type { Address } from "#src/types/index.js";
 import {
   InstructionNotFoundError,
   ProgramCreationError,
@@ -31,23 +31,6 @@ const TEST_IDL: Idl = {
   },
 };
 
-// Mock RPC that returns minimal data for Program creation
-const makeMockRpc = () => ({
-  getAccountInfo: () => ({
-    send: () => Promise.resolve({ context: { slot: 0n }, value: null }),
-  }),
-  getLatestBlockhash: () => ({
-    send: () =>
-      Promise.resolve({
-        context: { slot: 0n },
-        value: {
-          blockhash: "GH7ome3EiwEr7tu9JuTh2dpYWBJK3z69Xm1ZE3MEE6JC",
-          lastValidBlockHeight: 1000n,
-        },
-      }),
-  }),
-});
-
 describe("ProgramWriter", () => {
   describe("createProgram", () => {
     it.effect("creates a Program instance from valid IDL", () =>
@@ -61,7 +44,7 @@ describe("ProgramWriter", () => {
         Effect.provide(
           Layer.provide(
             ProgramWriterLive,
-            makeMockRpcServiceLayer({ getRpc: () => Effect.succeed(makeMockRpc() as never) })
+            makeMockRpcServiceLayer({ getRpc: () => Effect.succeed(makeMockRpc()) })
           )
         )
       )
@@ -81,7 +64,7 @@ describe("ProgramWriter", () => {
         Effect.provide(
           Layer.provide(
             ProgramWriterLive,
-            makeMockRpcServiceLayer({ getRpc: () => Effect.succeed(makeMockRpc() as never) })
+            makeMockRpcServiceLayer({ getRpc: () => Effect.succeed(makeMockRpc()) })
           )
         )
       )
@@ -101,7 +84,7 @@ describe("ProgramWriter", () => {
         Effect.provide(
           Layer.provide(
             ProgramWriterLive,
-            makeMockRpcServiceLayer({ getRpc: () => Effect.succeed(makeMockRpc() as never) })
+            makeMockRpcServiceLayer({ getRpc: () => Effect.succeed(makeMockRpc()) })
           )
         )
       )
@@ -131,7 +114,7 @@ describe("ProgramWriter", () => {
         Effect.provide(
           Layer.provide(
             ProgramWriterLive,
-            makeMockRpcServiceLayer({ getRpc: () => Effect.succeed(makeMockRpc() as never) })
+            makeMockRpcServiceLayer({ getRpc: () => Effect.succeed(makeMockRpc()) })
           )
         )
       )
@@ -158,7 +141,7 @@ describe("ProgramWriter", () => {
         Effect.provide(
           Layer.provide(
             ProgramWriterLive,
-            makeMockRpcServiceLayer({ getRpc: () => Effect.succeed(makeMockRpc() as never) })
+            makeMockRpcServiceLayer({ getRpc: () => Effect.succeed(makeMockRpc()) })
           )
         )
       )

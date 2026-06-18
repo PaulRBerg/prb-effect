@@ -1,8 +1,8 @@
-import type { Address } from "@solana/addresses";
-import type { Transaction, TransactionWithLifetime } from "@solana/transactions";
+import type { Transaction } from "@solana/web3.js";
 import { Context, Effect, Layer } from "effect";
 import { SignatureError, WalletNotConnectedError } from "#src/core/errors/index.js";
 import { SpanNames } from "#src/telemetry/index.js";
+import type { Address } from "#src/types/index.js";
 
 export type SignerServiceShape = {
   /**
@@ -13,14 +13,14 @@ export type SignerServiceShape = {
   /**
    * Sign a single transaction.
    */
-  readonly signTransaction: <T extends Transaction & TransactionWithLifetime>(
+  readonly signTransaction: <T extends Transaction>(
     tx: T
   ) => Effect.Effect<T, SignatureError | WalletNotConnectedError>;
 
   /**
    * Sign multiple transactions in a batch.
    */
-  readonly signAllTransactions: <T extends Transaction & TransactionWithLifetime>(
+  readonly signAllTransactions: <T extends Transaction>(
     txs: readonly T[]
   ) => Effect.Effect<readonly T[], SignatureError | WalletNotConnectedError>;
 
@@ -41,10 +41,8 @@ export class SignerService extends Context.Tag("esolana/SignerService")<
 export type WalletAdapter = {
   readonly publicKey: Address | null;
   readonly connected: boolean;
-  readonly signTransaction: <T extends Transaction & TransactionWithLifetime>(tx: T) => Promise<T>;
-  readonly signAllTransactions: <T extends Transaction & TransactionWithLifetime>(
-    txs: readonly T[]
-  ) => Promise<readonly T[]>;
+  readonly signTransaction: <T extends Transaction>(tx: T) => Promise<T>;
+  readonly signAllTransactions: <T extends Transaction>(txs: readonly T[]) => Promise<readonly T[]>;
 };
 
 /**

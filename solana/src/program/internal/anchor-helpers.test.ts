@@ -1,15 +1,13 @@
 import { describe, expect, it } from "@effect/vitest";
-import type { Address } from "@solana/addresses";
-import type { Rpc, SolanaRpcApi } from "@solana/kit";
 import { PublicKey } from "@solana/web3.js";
 import BN from "bn.js";
+import { makeMockRpc } from "#src/testing-kit/index.js";
+import type { Address } from "#src/types/index.js";
 import {
-  decodeBase64ToBuffer,
   makeProgramConnectionShim,
   toAnchorAccounts,
   toAnchorArgs,
   toPublicKey,
-  toWeb3AccountInfo,
 } from "./anchor-helpers.js";
 
 const TEST_ADDRESS = "DYw8jCTfwHNRJhhmFcbXvVDTqWMEVFBX6ZKUmG5CNSKK" as Address;
@@ -59,57 +57,22 @@ describe("toAnchorArgs", () => {
   });
 });
 
-describe("decodeBase64ToBuffer", () => {
-  it("decodes base64 payloads to Buffer", () => {
-    const decoded = decodeBase64ToBuffer("AQI=");
-
-    expect(decoded).toBeInstanceOf(Buffer);
-    expect([...decoded]).toEqual([1, 2]);
-  });
-});
-
-describe("toWeb3AccountInfo", () => {
-  it("maps base64 account info to web3 AccountInfo shape", () => {
-    const value = toWeb3AccountInfo({
-      data: [Buffer.from([1, 2]).toString("base64"), "base64"],
-      executable: false,
-      lamports: 42n,
-      owner: TEST_ADDRESS,
-      rentEpoch: 7n,
-    });
-
-    expect(value.data).toBeInstanceOf(Buffer);
-    expect([...value.data]).toEqual([1, 2]);
-    expect(value.owner.toBase58()).toBe(TEST_ADDRESS);
-    expect(value.lamports).toBe(42);
-    expect(value.rentEpoch).toBe(7);
-  });
-});
-
 describe("makeProgramConnectionShim", () => {
-  const mockRpc = {
-    getAccountInfo: () => ({
-      send: async () => ({
-        context: { slot: 0n },
-        value: {
-          data: [Buffer.from([9, 8]).toString("base64"), "base64"] as const,
-          executable: false,
-          lamports: 99n,
-          owner: TEST_ADDRESS,
-          rentEpoch: 2n,
-        },
+  const mockRpc = makeMockRpc({
+    getAccountInfo: () =>
+      Promise.resolve({
+        data: Buffer.from([9, 8]),
+        executable: false,
+        lamports: 99,
+        owner: new PublicKey(TEST_ADDRESS),
+        rentEpoch: 2,
       }),
-    }),
-    getLatestBlockhash: () => ({
-      send: async () => ({
-        context: { slot: 0n },
-        value: {
-          blockhash: "blockhash",
-          lastValidBlockHeight: 123n,
-        },
+    getLatestBlockhash: () =>
+      Promise.resolve({
+        blockhash: "blockhash",
+        lastValidBlockHeight: 123,
       }),
-    }),
-  } as unknown as Rpc<SolanaRpcApi>;
+  });
 
   it("returns web3-compatible account and blockhash values", async () => {
     const connection = makeProgramConnectionShim(mockRpc, "ProgramReader");
