@@ -13,6 +13,9 @@ Effect integration for Next.js - build type-safe, composable Next.js application
 - **Middleware** - Composable middleware using Effect layers
 - **React Hooks** - Client-side hooks for running Effects in React components
 - **Request-Scoped Cache** - Leverage React cache() with Effect for deduplication
+- **Persistent Cache** - Storage-neutral cache-aside helpers with TTL and SWR
+- **Cache-Control Helpers** - Typed builders for browser, CDN, and Vercel cache headers
+- **Rate Limit Middleware** - Generic fixed-window middleware with pluggable storage
 - **Request Timing Middleware** - Measure request duration with opt-in hooks
 - **Environment Helpers** - Minimal NODE_ENV helpers with injectable resolver
 - **Telemetry Adapters** - Optional Sentry + OTLP helpers (no defaults)
@@ -160,6 +163,73 @@ export const getUser = reactCache((id: string) =>
 // but the query will only execute once
 ```
 
+### 6. Persistent Cache
+
+Use a storage-neutral cache-aside helper when data should survive beyond a single render request:
+
+```typescript
+import { cachedEffect, makeInMemoryPersistentCacheStore } from "@prb/effect-next/persistent-cache";
+import { Effect, Schema } from "effect";
+
+const store = makeInMemoryPersistentCacheStore();
+const User = Schema.Struct({ id: Schema.String, name: Schema.String });
+
+export const getUser = (id: string) =>
+  cachedEffect(fetchUser(id), {
+    key: `user:${id}`,
+    schema: User,
+    staleWhileRevalidate: "5 minutes",
+    store,
+    ttl: "1 minute",
+  });
+```
+
+Production Redis, Upstash, KV, or SQL adapters should live in application code and implement the `PersistentCacheStore`
+contract.
+
+### 7. Cache-Control
+
+Set browser and CDN cache headers explicitly in route handlers:
+
+```typescript
+import { jsonWithCache } from "@prb/effect-next/cache-control";
+
+export const GET = () =>
+  jsonWithCache(
+    { ok: true },
+    {
+      cacheControl: { maxAge: "30 seconds", visibility: "private" },
+      vercelCdnCacheControl: { maxAge: "5 minutes", visibility: "public" },
+    },
+  );
+```
+
+No helper applies implicit caching; choose `public`, `private`, or `no-store` for every header value.
+
+### 8. Rate Limiting
+
+Add fixed-window rate limiting with a pluggable store:
+
+```typescript
+import {
+  RateLimitMiddleware,
+  makeInMemoryRateLimitStore,
+  makeRateLimitMiddleware,
+  rateLimitKey,
+} from "@prb/effect-next/middleware/rate-limit";
+import { Next } from "@prb/effect-next/handlers";
+import { Layer } from "effect";
+
+const RateLimitLive = makeRateLimitMiddleware({
+  key: rateLimitKey.combine(rateLimitKey.method(), rateLimitKey.path(), rateLimitKey.ip()),
+  limit: 60,
+  store: makeInMemoryRateLimitStore(),
+  window: "1 minute",
+});
+
+const Route = Next.make("Route", Layer.mergeAll(AppLayer, RateLimitLive)).middleware(RateLimitMiddleware);
+```
+
 ## API Reference
 
 ### Route Handlers
@@ -245,6 +315,9 @@ Effect.gen(function* () {
 });
 ```
 
+`Headers` and `Cookies` call Next.js dynamic request APIs. Reading them in Server Components or layouts opts the route
+into dynamic rendering, so keep them out of root layouts that should stay static or CDN-cacheable.
+
 ### Params
 
 ```typescript
@@ -298,6 +371,16 @@ const program = Effect.gen(function* () {
   yield* telemetry.captureMessage("Telemetry ready");
 }).pipe(Effect.provide(layer));
 ```
+
+## Vercel Cost Patterns
+
+- Prefer request-scoped `reactCache` for duplicate work within one render and `persistent-cache` for expensive data that
+  should survive across requests.
+- Set cache headers deliberately with `cache-control`; keep browser and Vercel CDN behavior separate.
+- Avoid reading `Headers` or `Cookies` in root layouts for geolocation, banners, or personalization. Prefer proxy-set
+  cookies, route-level reads, or client leaves so static shells remain cacheable.
+- On high-volume routes, configure request timing with `sampleRate`, `shouldRecord`, and `redactProps` to avoid logging
+  full props or high-cardinality values.
 
 ### Testing Kit
 

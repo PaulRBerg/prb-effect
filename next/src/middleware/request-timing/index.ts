@@ -24,10 +24,23 @@ export type RequestTimingFinish = RequestTimingStart & {
 /**
  * @category models
  */
+export type RequestTimingShouldRecord = {
+  readonly props: unknown;
+};
+
+/**
+ * @category models
+ */
 export type RequestTimingOptions = {
   readonly now?: () => number;
   readonly onStart?: (context: RequestTimingStart) => Effect.Effect<void, never, never>;
   readonly onFinish?: (context: RequestTimingFinish) => Effect.Effect<void, never, never>;
+  readonly random?: () => number;
+  readonly sampleRate?: number;
+  readonly shouldRecord?: (
+    context: RequestTimingShouldRecord
+  ) => Effect.Effect<boolean, never, never>;
+  readonly redactProps?: (props: unknown) => unknown;
 };
 
 /**
@@ -37,6 +50,11 @@ export class RequestTimingMiddleware extends Tag<RequestTimingMiddleware>()(
   "effect-next/RequestTimingMiddleware",
   { wrap: true }
 ) {}
+
+const clampSampleRate = (input: number | undefined): number => {
+  const sampleRate = input ?? 1;
+  return Number.isFinite(sampleRate) ? Math.max(0, Math.min(1, sampleRate)) : 1;
+};
 
 /**
  * Creates a request timing middleware layer.
@@ -51,13 +69,27 @@ export const makeRequestTimingMiddleware = (
   const onFinish =
     options?.onFinish ??
     ((context) => Effect.logDebug(`Request completed in ${context.durationMs}ms`));
+  const random = options?.random ?? Math.random;
+  const sampleRate = clampSampleRate(options?.sampleRate);
+  const shouldRecord = options?.shouldRecord ?? (() => Effect.succeed(true));
+  const redactProps = options?.redactProps ?? ((props: unknown) => props);
 
   return Layer.succeed(
     RequestTimingMiddleware,
     RequestTimingMiddleware.of(({ next, props }) =>
       Effect.gen(function* () {
+        if (sampleRate <= 0 || (sampleRate < 1 && random() >= sampleRate)) {
+          return yield* next;
+        }
+
+        const shouldRecordRequest = yield* shouldRecord({ props });
+        if (!shouldRecordRequest) {
+          return yield* next;
+        }
+
+        const recordedProps = redactProps(props);
         const startTimeMs = now();
-        yield* onStart({ props, startTimeMs });
+        yield* onStart({ props: recordedProps, startTimeMs });
         const exit = yield* Effect.exit(next);
         const endTimeMs = now();
         const durationMs = endTimeMs - startTimeMs;
@@ -65,7 +97,7 @@ export const makeRequestTimingMiddleware = (
           yield* onFinish({
             durationMs,
             endTimeMs,
-            props,
+            props: recordedProps,
             startTimeMs,
             success: true,
           });
@@ -75,7 +107,7 @@ export const makeRequestTimingMiddleware = (
           durationMs,
           endTimeMs,
           error: exit.cause,
-          props,
+          props: recordedProps,
           startTimeMs,
           success: false,
         });

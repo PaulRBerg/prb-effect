@@ -8,6 +8,8 @@
 export * from "./action/index.js";
 // Request-scoped cache
 export * from "./cache/index.js";
+// Cache-Control helpers
+export * from "./cache-control/index.js";
 // Environment helpers
 export * from "./env/index.js";
 // Core handlers
@@ -20,6 +22,8 @@ export * as NextMiddleware from "./middleware/index.js";
 export * from "./navigation/index.js";
 // Params
 export * from "./params/index.js";
+// Persistent cache
+export * from "./persistent-cache/index.js";
 // Runtime
 export * from "./runtime/index.js";
 // Telemetry

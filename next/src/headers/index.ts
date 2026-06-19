@@ -14,6 +14,10 @@ import { ContextWrapperService } from "../internal/async-context.js";
  * (route handlers, server actions, or server components built with effect-next).
  * Using it outside this context will result in a runtime error.
  *
+ * In Server Components and layouts, reading cookies opts the route into dynamic
+ * rendering. Prefer passing cookie-derived state from a route boundary when a
+ * static layout should stay cacheable.
+ *
  * @category request
  * @example
  * ```ts
@@ -39,6 +43,10 @@ export const Cookies = Effect.fn("Cookies")(function* () {
  * **IMPORTANT:** This effect must be used within a Next.js handler context
  * (route handlers, server actions, or server components built with effect-next).
  * Using it outside this context will result in a runtime error.
+ *
+ * In Server Components and layouts, reading request headers opts the route into
+ * dynamic rendering. Avoid using this in root layouts for high-volume routes
+ * when static rendering or CDN caching is expected.
  *
  * @category request
  * @example

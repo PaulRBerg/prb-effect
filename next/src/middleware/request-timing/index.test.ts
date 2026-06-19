@@ -73,4 +73,117 @@ describe("request timing middleware", () => {
     expect(finishCalls[0]?.success).toBe(false);
     expect(finishCalls[0]?.error).toBeDefined();
   });
+
+  it("skips hooks when sampleRate is zero", async () => {
+    const onStart = vi.fn(() => Effect.void);
+    const onFinish = vi.fn(() => Effect.void);
+
+    const layer = makeRequestTimingMiddleware({
+      onFinish,
+      onStart,
+      sampleRate: 0,
+    });
+
+    const program = Effect.gen(function* () {
+      const middleware = yield* RequestTimingMiddleware;
+      return yield* middleware({ next: Effect.succeed("ok"), props: { id: 1 } });
+    }).pipe(Effect.provide(layer));
+
+    const result = await Effect.runPromise(program);
+    expect(result).toBe("ok");
+    expect(onStart).not.toHaveBeenCalled();
+    expect(onFinish).not.toHaveBeenCalled();
+  });
+
+  it("uses injectable random sampling", async () => {
+    const onStart = vi.fn(() => Effect.void);
+    const onFinish = vi.fn(() => Effect.void);
+
+    const layer = makeRequestTimingMiddleware({
+      onFinish,
+      onStart,
+      sampleRate: 0.5,
+      random: () => 0.75,
+    });
+
+    const program = Effect.gen(function* () {
+      const middleware = yield* RequestTimingMiddleware;
+      return yield* middleware({ next: Effect.succeed("ok"), props: { id: 1 } });
+    }).pipe(Effect.provide(layer));
+
+    const result = await Effect.runPromise(program);
+    expect(result).toBe("ok");
+    expect(onStart).not.toHaveBeenCalled();
+    expect(onFinish).not.toHaveBeenCalled();
+  });
+
+  it("treats non-finite sample rates as the default", async () => {
+    const onStart = vi.fn(() => Effect.void);
+    const onFinish = vi.fn(() => Effect.void);
+
+    const layer = makeRequestTimingMiddleware({
+      onFinish,
+      onStart,
+      sampleRate: Number.NaN,
+      random: () => 0.99,
+    });
+
+    const program = Effect.gen(function* () {
+      const middleware = yield* RequestTimingMiddleware;
+      return yield* middleware({ next: Effect.succeed("ok"), props: { id: 1 } });
+    }).pipe(Effect.provide(layer));
+
+    const result = await Effect.runPromise(program);
+    expect(result).toBe("ok");
+    expect(onStart).toHaveBeenCalledTimes(1);
+    expect(onFinish).toHaveBeenCalledTimes(1);
+  });
+
+  it("skips hooks when shouldRecord returns false", async () => {
+    const onStart = vi.fn(() => Effect.void);
+    const onFinish = vi.fn(() => Effect.void);
+
+    const layer = makeRequestTimingMiddleware({
+      onFinish,
+      onStart,
+      shouldRecord: () => Effect.succeed(false),
+    });
+
+    const program = Effect.gen(function* () {
+      const middleware = yield* RequestTimingMiddleware;
+      return yield* middleware({ next: Effect.succeed("ok"), props: { id: 1 } });
+    }).pipe(Effect.provide(layer));
+
+    const result = await Effect.runPromise(program);
+    expect(result).toBe("ok");
+    expect(onStart).not.toHaveBeenCalled();
+    expect(onFinish).not.toHaveBeenCalled();
+  });
+
+  it("redacts props before recording", async () => {
+    const startCalls: Array<{ props: unknown }> = [];
+    const finishCalls: Array<{ props: unknown }> = [];
+
+    const layer = makeRequestTimingMiddleware({
+      onFinish: (context) =>
+        Effect.sync(() => {
+          finishCalls.push({ props: context.props });
+        }),
+      onStart: (context) =>
+        Effect.sync(() => {
+          startCalls.push({ props: context.props });
+        }),
+      redactProps: () => ({ id: "redacted" }),
+    });
+
+    const program = Effect.gen(function* () {
+      const middleware = yield* RequestTimingMiddleware;
+      return yield* middleware({ next: Effect.succeed("ok"), props: { id: 1, token: "secret" } });
+    }).pipe(Effect.provide(layer));
+
+    const result = await Effect.runPromise(program);
+    expect(result).toBe("ok");
+    expect(startCalls[0]?.props).toEqual({ id: "redacted" });
+    expect(finishCalls[0]?.props).toEqual({ id: "redacted" });
+  });
 });
