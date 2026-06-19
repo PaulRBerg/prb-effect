@@ -8,6 +8,20 @@ The format is based on [Common Changelog](https://common-changelog.org/).
 [1.0.1]: https://github.com/PaulRBerg/prb-effect/releases/tag/next%401.0.1
 [1.1.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/next%401.1.0
 [1.1.1]: https://github.com/PaulRBerg/prb-effect/releases/tag/next%401.1.1
+[1.2.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/next%401.2.0
+
+## [1.2.0] - 2026-06-19
+
+### Added
+
+- Add persistent cache-aside helpers with TTL, stale-while-revalidate, schema decoding, and pluggable storage
+  ([`fd6d61d`](https://github.com/PaulRBerg/prb-effect/commit/fd6d61d29d2852dccddcf99fe5bfe7efe73fdcf9))
+- Add cache-control builders for browser, CDN, and Vercel response headers
+  ([`fd6d61d`](https://github.com/PaulRBerg/prb-effect/commit/fd6d61d29d2852dccddcf99fe5bfe7efe73fdcf9))
+- Add fixed-window rate-limit middleware with pluggable storage and route-handler key helpers
+  ([`fd6d61d`](https://github.com/PaulRBerg/prb-effect/commit/fd6d61d29d2852dccddcf99fe5bfe7efe73fdcf9))
+- Add request timing sampling, filtering, and prop-redaction controls
+  ([`fd6d61d`](https://github.com/PaulRBerg/prb-effect/commit/fd6d61d29d2852dccddcf99fe5bfe7efe73fdcf9))
 
 ## [1.1.1] - 2026-06-09
 
