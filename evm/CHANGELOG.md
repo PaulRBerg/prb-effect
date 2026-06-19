@@ -21,6 +21,14 @@ The format is based on [Common Changelog](https://common-changelog.org/).
 [2.1.2]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm%402.1.2
 [2.2.1]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm%402.2.1
 [2.2.2]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm%402.2.2
+[2.2.3]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm%402.2.3
+
+## [2.2.3] - 2026-06-19
+
+### Fixed
+
+- Recover managed EOA submissions from stale pending nonce reads by advancing the local nonce floor and retrying
+  nonce-low wallet/provider rejections ([`d012f9a`](https://github.com/PaulRBerg/prb-effect/commit/d012f9a))
 
 ## [2.2.2] - 2026-06-12
 
