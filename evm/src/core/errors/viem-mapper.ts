@@ -34,6 +34,10 @@ import {
 } from "#src/wallet/index.js";
 
 const TX_HASH_RE = /0x[a-fA-F0-9]{64}/;
+const ERROR_MESSAGE_FIELDS = ["message", "shortMessage", "details"] as const;
+const NONCE_TOO_LOW_RE = /nonce (?:is )?too low|nonce has already been used|already used nonce/i;
+const NONCE_TOO_LOW_FALSE_POSITIVE_RE =
+  /account nonce too high|replacement transaction underpriced|transaction underpriced|already known/i;
 
 type TransactionErrorContext = {
   address: Address;
@@ -69,6 +73,60 @@ export function isInsufficientFunds(error: unknown): boolean {
   }
 
   return false;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function messageMatchesNonceTooLow(message: string): boolean {
+  return NONCE_TOO_LOW_RE.test(message) && !NONCE_TOO_LOW_FALSE_POSITIVE_RE.test(message);
+}
+
+function hasDirectNonceTooLowMessage(error: unknown): boolean {
+  if (typeof error === "string") {
+    return messageMatchesNonceTooLow(error);
+  }
+
+  if (!isRecord(error)) {
+    return false;
+  }
+
+  return ERROR_MESSAGE_FIELDS.some((field) => {
+    const value = error[field];
+    return typeof value === "string" && messageMatchesNonceTooLow(value);
+  });
+}
+
+/**
+ * Check if an error represents a nonce that is below the wallet/provider floor.
+ * Walks both viem BaseError chains and plain Error.cause wrappers.
+ */
+export function isNonceTooLowError(error: unknown): boolean {
+  const seen = new WeakSet<object>();
+
+  const visit = (value: unknown): boolean => {
+    if (hasDirectNonceTooLowMessage(value)) {
+      return true;
+    }
+
+    if (!isRecord(value)) {
+      return false;
+    }
+
+    if (seen.has(value)) {
+      return false;
+    }
+    seen.add(value);
+
+    if (value instanceof CoreError && value.walk(hasDirectNonceTooLowMessage) !== null) {
+      return true;
+    }
+
+    return visit(value.cause);
+  };
+
+  return visit(error);
 }
 
 const RESOURCE_EXHAUSTION_RE = /cannot allocate memory|ENOMEM|out of memory/i;

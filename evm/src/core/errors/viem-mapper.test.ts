@@ -1,11 +1,13 @@
-import { UnknownRpcError } from "viem";
+import { BaseError, UnknownRpcError } from "viem";
 import { describe, expect, it } from "vitest";
+import { ContractWriteError } from "./contract.js";
 import {
   classifyContractError,
   classifyGasEstimationError,
   classifyWriteError,
   extractRevertReason,
   isInsufficientFunds,
+  isNonceTooLowError,
   isResourceExhaustion,
   isUserRejection,
 } from "./viem-mapper.js";
@@ -70,6 +72,58 @@ describe("viem error classification", () => {
     it("returns false for other errors", () => {
       const error = new Error("Transaction reverted");
       expect(isInsufficientFunds(error)).toBe(false);
+    });
+  });
+
+  describe("isNonceTooLowError", () => {
+    it("detects nonce too low from a plain Error", () => {
+      expect(isNonceTooLowError(new Error("nonce too low"))).toBe(true);
+    });
+
+    it("detects nonce too low under ContractWriteError cause", () => {
+      const error = new ContractWriteError({
+        address: "0x1234567890123456789012345678901234567890",
+        cause: new Error("nonce has already been used"),
+        functionName: "transfer",
+        message: "Failed to write transfer",
+      });
+
+      expect(isNonceTooLowError(error)).toBe(true);
+    });
+
+    it("detects nonce too low from viem details", () => {
+      const error = new BaseError("RPC request failed", {
+        details: "already used nonce",
+      });
+
+      expect(isNonceTooLowError(error)).toBe(true);
+    });
+
+    it("detects common client and wallet nonce-low message formats", () => {
+      const messages = [
+        "Nonce too low",
+        "nonce too low: address 0x0000000000000000000000000000000000000000, tx: 2 state: 3",
+        "nonce too low: address 0x0000000000000000000000000000000000000000 current nonce (7) > tx nonce (6)",
+        "Nonce too low. Expected nonce to be 1 but got 0.",
+        "Transaction nonce is too low",
+      ];
+
+      for (const message of messages) {
+        expect(isNonceTooLowError(new Error(message))).toBe(true);
+      }
+    });
+
+    it("returns false for non nonce-low transaction pool errors", () => {
+      const messages = [
+        "replacement transaction underpriced",
+        "transaction underpriced",
+        "already known",
+        "account nonce too high? expected 7 got 9",
+      ];
+
+      for (const message of messages) {
+        expect(isNonceTooLowError(new Error(message))).toBe(false);
+      }
     });
   });
 

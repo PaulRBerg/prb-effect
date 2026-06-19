@@ -88,3 +88,9 @@ export const confirmNonce = (
       nonce: nonceToBigInt(params.nonce),
     });
   });
+
+/**
+ * Advance the local nonce floor after a provider rejects the submitted nonce
+ * as already consumed.
+ */
+export const advanceNonceAfterNonceTooLow = confirmNonce;

@@ -1324,7 +1324,7 @@ describe("ContractPipeline", () => {
     const makeNonceLifecycleTestLayer = (config: {
       nonceLayer: Layer.Layer<NonceService>;
       receipt: TransactionReceipt;
-      writeContract: () => Promise<Hash>;
+      writeContract: (params: unknown) => Promise<Hash>;
     }) => {
       const deps = Layer.mergeAll(
         Layer.provideMerge(
@@ -1367,6 +1367,43 @@ describe("ContractPipeline", () => {
       return Layer.provideMerge(ContractPipelineLive, deps);
     };
 
+    const getWriteNonce = (params: unknown): number | bigint | undefined => {
+      if (typeof params !== "object" || params === null || !("nonce" in params)) {
+        return;
+      }
+
+      const nonce = params.nonce;
+      return typeof nonce === "bigint" || typeof nonce === "number" ? nonce : undefined;
+    };
+
+    const makeSequencedNonceLayer = (config: {
+      readonly confirmed?: bigint[];
+      readonly released?: bigint[];
+      readonly reservedNonces: readonly bigint[];
+    }) => {
+      let reserveIndex = 0;
+
+      return makeMockNonceServiceLayer(
+        {
+          confirm: (params) =>
+            Effect.sync(() => {
+              config.confirmed?.push(params.nonce);
+            }),
+          release: (params) =>
+            Effect.sync(() => {
+              config.released?.push(params.nonce);
+            }),
+          reserve: () =>
+            Effect.sync(() => {
+              const nonce = config.reservedNonces[reserveIndex];
+              reserveIndex += 1;
+              return nonce ?? 999n;
+            }),
+        },
+        TEST_CHAIN_ID
+      );
+    };
+
     // A1: a wallet rejection (write failure) must release the reserved nonce
     // immediately — when the write's own scope closes — not at the caller's
     // long-lived tracking-scope close. The freed nonce must be re-reservable at the
@@ -1374,6 +1411,7 @@ describe("ContractPipeline", () => {
     it.effect("releases the reserved nonce immediately when the write fails", () => {
       const reserved = new Set<bigint>();
       let nextNonce = 0n;
+      let writeCalls = 0;
 
       const reserve = () =>
         Effect.sync(() => {
@@ -1412,6 +1450,7 @@ describe("ContractPipeline", () => {
           .pipe(Effect.exit);
 
         expect(Exit.isFailure(exit)).toBe(true);
+        expect(writeCalls).toBe(1);
 
         // The reservation's release finalizer fired with the write's scope close, so
         // the manager holds no pending nonces.
@@ -1429,9 +1468,220 @@ describe("ContractPipeline", () => {
           makeNonceLifecycleTestLayer({
             nonceLayer,
             receipt: DEFAULT_RECEIPT,
-            writeContract: () => Promise.reject(new Error("User rejected the request")),
+            writeContract: () => {
+              writeCalls += 1;
+              return Promise.reject(new Error("User rejected the request"));
+            },
           })
         )
+      );
+    });
+
+    it.effect("recovers from stale public pending nonce by advancing the local floor", () => {
+      const confirmed: bigint[] = [];
+      const writeNonces: (number | bigint | undefined)[] = [];
+      let writeCalls = 0;
+
+      const nonceLayer = makeSequencedNonceLayer({
+        confirmed,
+        reservedNonces: [119n, 120n],
+      });
+
+      return Effect.gen(function* () {
+        const pipeline = yield* ContractPipeline;
+
+        const terminal = yield* pipeline.writeAndWait({
+          abi: erc20Abi,
+          account: TEST_ADDRESS,
+          address: TEST_ADDRESS,
+          args: [TEST_ADDRESS_2, 100n],
+          chainId: TEST_CHAIN_ID,
+          functionName: "transfer",
+        });
+        const result = expectSuccessTerminal(terminal);
+
+        expect(result.hash).toBe(TEST_TX_HASH);
+        expect(writeCalls).toBe(2);
+        expect(writeNonces).toEqual([119n, 120n]);
+        expect(confirmed).toEqual([119n, 120n]);
+      }).pipe(
+        Effect.provide(
+          makeNonceLifecycleTestLayer({
+            nonceLayer,
+            receipt: DEFAULT_RECEIPT,
+            writeContract: (params) => {
+              writeCalls += 1;
+              writeNonces.push(getWriteNonce(params));
+              return writeCalls === 1
+                ? Promise.reject(new Error("nonce too low"))
+                : Promise.resolve(TEST_TX_HASH);
+            },
+          })
+        )
+      );
+    });
+
+    it.effect("advances across repeated nonce-low failures", () => {
+      const confirmed: bigint[] = [];
+      const writeNonces: (number | bigint | undefined)[] = [];
+      let writeCalls = 0;
+
+      const nonceLayer = makeSequencedNonceLayer({
+        confirmed,
+        reservedNonces: [119n, 120n, 121n],
+      });
+
+      return Effect.gen(function* () {
+        const pipeline = yield* ContractPipeline;
+
+        const terminal = yield* pipeline.writeAndWait({
+          abi: erc20Abi,
+          account: TEST_ADDRESS,
+          address: TEST_ADDRESS,
+          args: [TEST_ADDRESS_2, 100n],
+          chainId: TEST_CHAIN_ID,
+          functionName: "transfer",
+        });
+        const result = expectSuccessTerminal(terminal);
+
+        expect(result.hash).toBe(TEST_TX_HASH);
+        expect(writeCalls).toBe(3);
+        expect(writeNonces).toEqual([119n, 120n, 121n]);
+        expect(confirmed).toEqual([119n, 120n, 121n]);
+      }).pipe(
+        Effect.provide(
+          makeNonceLifecycleTestLayer({
+            nonceLayer,
+            receipt: DEFAULT_RECEIPT,
+            writeContract: (params) => {
+              writeCalls += 1;
+              writeNonces.push(getWriteNonce(params));
+              return writeCalls < 3
+                ? Promise.reject(new Error("nonce has already been used"))
+                : Promise.resolve(TEST_TX_HASH);
+            },
+          })
+        )
+      );
+    });
+
+    it.effect("stops nonce-low recovery at the retry cap", () => {
+      const confirmed: bigint[] = [];
+      const released: bigint[] = [];
+      const writeNonces: (number | bigint | undefined)[] = [];
+      let writeCalls = 0;
+
+      const nonceLayer = makeSequencedNonceLayer({
+        confirmed,
+        released,
+        reservedNonces: [119n, 120n, 121n],
+      });
+
+      return Effect.gen(function* () {
+        const pipeline = yield* ContractPipeline;
+
+        const { stateRef, terminal } = yield* pipeline.writeAndTrack({
+          abi: erc20Abi,
+          account: TEST_ADDRESS,
+          address: TEST_ADDRESS,
+          args: [TEST_ADDRESS_2, 100n],
+          chainId: TEST_CHAIN_ID,
+          functionName: "transfer",
+        });
+
+        const exit = yield* terminal.pipe(Effect.exit);
+        expect(Exit.isFailure(exit)).toBe(true);
+        expect(writeCalls).toBe(3);
+        expect(writeNonces).toEqual([119n, 120n, 121n]);
+        expect(confirmed).toEqual([119n, 120n]);
+        expect(released).toEqual([121n]);
+
+        const state = yield* stateRef.get;
+        expect(state.status).toBe("failed");
+        if (state.status === "failed") {
+          expect(state.phase).toBe("submission");
+        }
+      }).pipe(
+        Effect.provide(
+          makeNonceLifecycleTestLayer({
+            nonceLayer,
+            receipt: DEFAULT_RECEIPT,
+            writeContract: (params) => {
+              writeCalls += 1;
+              writeNonces.push(getWriteNonce(params));
+              return Promise.reject(new Error("nonce too low"));
+            },
+          })
+        ),
+        Effect.scoped
+      );
+    });
+
+    it.effect("does not retry when the caller supplies an explicit nonce", () => {
+      const confirmed: bigint[] = [];
+      const released: bigint[] = [];
+      const writeNonces: (number | bigint | undefined)[] = [];
+      let reserveCalls = 0;
+      let writeCalls = 0;
+
+      const nonceLayer = makeMockNonceServiceLayer(
+        {
+          confirm: (params) =>
+            Effect.sync(() => {
+              confirmed.push(params.nonce);
+            }),
+          release: (params) =>
+            Effect.sync(() => {
+              released.push(params.nonce);
+            }),
+          reserve: () =>
+            Effect.sync(() => {
+              reserveCalls += 1;
+              return 119n;
+            }),
+        },
+        TEST_CHAIN_ID
+      );
+
+      return Effect.gen(function* () {
+        const pipeline = yield* ContractPipeline;
+
+        const { stateRef, terminal } = yield* pipeline.writeAndTrack({
+          abi: erc20Abi,
+          account: TEST_ADDRESS,
+          address: TEST_ADDRESS,
+          args: [TEST_ADDRESS_2, 100n],
+          chainId: TEST_CHAIN_ID,
+          functionName: "transfer",
+          overrides: { nonce: 119 },
+        });
+
+        const exit = yield* terminal.pipe(Effect.exit);
+        expect(Exit.isFailure(exit)).toBe(true);
+        expect(writeCalls).toBe(1);
+        expect(writeNonces).toEqual([119]);
+        expect(reserveCalls).toBe(0);
+        expect(confirmed).toEqual([]);
+        expect(released).toEqual([]);
+
+        const state = yield* stateRef.get;
+        expect(state.status).toBe("failed");
+        if (state.status === "failed") {
+          expect(state.phase).toBe("submission");
+        }
+      }).pipe(
+        Effect.provide(
+          makeNonceLifecycleTestLayer({
+            nonceLayer,
+            receipt: DEFAULT_RECEIPT,
+            writeContract: (params) => {
+              writeCalls += 1;
+              writeNonces.push(getWriteNonce(params));
+              return Promise.reject(new Error("nonce too low"));
+            },
+          })
+        ),
+        Effect.scoped
       );
     });
 
@@ -1474,6 +1724,52 @@ describe("ContractPipeline", () => {
             nonceLayer,
             receipt: revertedReceipt,
             writeContract: () => Promise.resolve(TEST_TX_HASH),
+          })
+        )
+      );
+    });
+
+    it.effect("confirms the submitted nonce when a retried transaction reverts", () => {
+      const confirmed: bigint[] = [];
+      const writeNonces: (number | bigint | undefined)[] = [];
+      let writeCalls = 0;
+
+      const revertedReceipt: TransactionReceipt = { ...DEFAULT_RECEIPT, status: "reverted" };
+      const nonceLayer = makeSequencedNonceLayer({
+        confirmed,
+        reservedNonces: [7n, 8n],
+      });
+
+      return Effect.gen(function* () {
+        const pipeline = yield* ContractPipeline;
+
+        const exit = yield* pipeline
+          .writeAndWait({
+            abi: erc20Abi,
+            account: TEST_ADDRESS,
+            address: TEST_ADDRESS,
+            args: [TEST_ADDRESS_2, 100n],
+            chainId: TEST_CHAIN_ID,
+            functionName: "transfer",
+          })
+          .pipe(Effect.exit);
+
+        expect(Exit.isFailure(exit)).toBe(true);
+        expect(writeCalls).toBe(2);
+        expect(writeNonces).toEqual([7n, 8n]);
+        expect(confirmed).toEqual([7n, 8n]);
+      }).pipe(
+        Effect.provide(
+          makeNonceLifecycleTestLayer({
+            nonceLayer,
+            receipt: revertedReceipt,
+            writeContract: (params) => {
+              writeCalls += 1;
+              writeNonces.push(getWriteNonce(params));
+              return writeCalls === 1
+                ? Promise.reject(new Error("nonce too low"))
+                : Promise.resolve(TEST_TX_HASH);
+            },
           })
         )
       );

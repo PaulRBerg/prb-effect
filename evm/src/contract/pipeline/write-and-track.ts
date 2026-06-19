@@ -1,9 +1,10 @@
+import type { Scope } from "effect";
 import { Clock, Deferred, Effect, Fiber, Ref, Stream } from "effect";
 import type { Abi, Hash, PublicClient } from "viem";
 import { DEFAULT_STUCK_TX_MS } from "#src/constants/index.js";
 import type { ContractWriterShape } from "#src/contract/index.js";
 import type { PublicClientServiceShape } from "#src/core/index.js";
-import { TxFailedError } from "#src/core/index.js";
+import { isNonceTooLowError, TxFailedError } from "#src/core/index.js";
 import type { EventStreamShape } from "#src/events/index.js";
 import type { GasServiceShape } from "#src/gas/index.js";
 import type { NonceServiceShape } from "#src/nonce/index.js";
@@ -17,8 +18,12 @@ import type {
 } from "#src/tx/index.js";
 import { defaultPolicy, makeTxTracker } from "#src/tx/index.js";
 import type { ContractFunctionName } from "#src/types/index.js";
-import { nonceToBigInt } from "./internal/helpers.js";
-import { withNonceReservation } from "./internal/nonce.js";
+import type { NonceReservationResult } from "./internal/nonce.js";
+import {
+  advanceNonceAfterNonceTooLow,
+  confirmNonce,
+  withNonceReservation,
+} from "./internal/nonce.js";
 import { deriveBaseOverrides, runPreflight } from "./internal/prepare.js";
 import type {
   WriteAndTrackError,
@@ -39,6 +44,8 @@ export type WriteAndTrackDeps = {
   readonly publicClientService: PublicClientServiceShape;
   readonly gasService: GasServiceShape;
 };
+
+const MAX_NONCE_TOO_LOW_RETRIES = 2;
 
 function toTxFailedError(error: WriteAndTrackError, hash: Hash | null): TxFailedError {
   if (error._tag === "TxFailedError") {
@@ -129,59 +136,18 @@ export const makeWriteAndTrack = (deps: WriteAndTrackDeps) =>
 
       const explicitNonce = params.overrides?.nonce;
 
-      // The nonce reservation's release finalizer must fire as soon as this write
-      // completes or fails — not when the caller's long-lived tracking scope closes.
-      // Wrapping the reservation-through-decode section in its own scope guarantees
-      // that: on success/revert `markSubmitted`/`confirm` no-op the release, and on
-      // failure (e.g. wallet rejection) the nonce is freed immediately so a retry can
-      // re-reserve it instead of opening a gap. An explicit release-on-error is unsafe
-      // here: a late scope-close release could free a nonce already re-reserved by a
-      // subsequent write.
-      return yield* Effect.scoped(
-        Effect.gen(function* () {
-          const nonceReservation = yield* withNonceReservation(nonceService, {
-            account: params.account,
-            chainId: params.chainId,
-            explicitNonce,
-          });
-
-          const overridesWithGasAndNonce = {
-            ...preflight.overridesWithGas,
-            nonce: nonceReservation.nonce,
+      type SubmissionAttemptResult =
+        | { readonly _tag: "retryNonceTooLow" }
+        | {
+            readonly _tag: "terminal";
+            readonly terminal: WriteAndTrackTerminal<TAbi>;
           };
 
-          const txPreview = {
-            accessList: overridesWithGasAndNonce.accessList,
-            gas: overridesWithGasAndNonce.gas,
-            gasPrice: overridesWithGasAndNonce.gasPrice,
-            maxFeePerGas: overridesWithGasAndNonce.maxFeePerGas,
-            maxPriorityFeePerGas: overridesWithGasAndNonce.maxPriorityFeePerGas,
-            nonce: nonceReservation.nonce,
-            type: overridesWithGasAndNonce.type,
-          } as const;
-
-          if (preflight.finalGas != null) {
-            yield* tracker.set({
-              gas: preflight.finalGas,
-              preflightWarning,
-              status: "estimated",
-              tx: txPreview,
-            });
-          }
-
-          yield* tracker.set({
-            preflightWarning,
-            status: "signing",
-            tx: txPreview,
-          });
-
-          failurePhase = "submission";
-          const hash = yield* writer.write({
-            ...params,
-            overrides: overridesWithGasAndNonce,
-          });
-
-          yield* nonceReservation.markSubmitted;
+      const trackSubmittedTransaction = (
+        hash: Hash,
+        nonceReservation: NonceReservationResult
+      ): Effect.Effect<WriteAndTrackTerminal<TAbi>, WriteAndTrackError, Scope.Scope> =>
+        Effect.gen(function* () {
           yield* Ref.set(currentHashRef, hash);
           yield* Ref.set(blocksElapsedRef, 0);
           yield* Ref.set(autoAttemptsRef, 0);
@@ -329,17 +295,16 @@ export const makeWriteAndTrack = (deps: WriteAndTrackDeps) =>
             }
           }).pipe(Effect.ensuring(Fiber.interrupt(pendingFiber)));
 
-          // Confirm the nonce as soon as the tx is mined — a reverted tx still
+          // Confirm the nonce as soon as the tx is mined - a reverted tx still
           // consumes its nonce on-chain, so confirming only on success would leak
           // it in the manager's pending set forever. This runs before the revert
           // check below.
-          if (nonceReservation.reserved) {
-            yield* nonceService.confirm({
-              address: params.account,
-              chainId: params.chainId,
-              nonce: nonceToBigInt(nonceReservation.nonce),
-            });
-          }
+          yield* confirmNonce(nonceService, {
+            account: params.account,
+            chainId: params.chainId,
+            nonce: nonceReservation.nonce,
+            reserved: nonceReservation.reserved,
+          });
 
           // Fail if the transaction was mined but reverted
           if (receipt.status === "reverted") {
@@ -375,8 +340,111 @@ export const makeWriteAndTrack = (deps: WriteAndTrackDeps) =>
             hash: receipt.transactionHash as Hash,
             receipt,
           } as WriteAndTrackTerminal<TAbi>;
-        })
-      );
+        });
+
+      const submitOnce = (
+        attempt: number
+      ): Effect.Effect<SubmissionAttemptResult, WriteAndTrackError> =>
+        // The nonce reservation's release finalizer must fire as soon as this
+        // attempt completes or fails, not when the caller's long-lived tracking
+        // scope closes. On nonce-low retry, `confirm` + `markSubmitted` advance
+        // the local floor and prevent a late release of the consumed nonce.
+        Effect.scoped(
+          Effect.gen(function* () {
+            const nonceReservation = yield* withNonceReservation(nonceService, {
+              account: params.account,
+              chainId: params.chainId,
+              explicitNonce,
+            });
+
+            const overridesWithGasAndNonce = {
+              ...preflight.overridesWithGas,
+              nonce: nonceReservation.nonce,
+            };
+
+            const txPreview = {
+              accessList: overridesWithGasAndNonce.accessList,
+              gas: overridesWithGasAndNonce.gas,
+              gasPrice: overridesWithGasAndNonce.gasPrice,
+              maxFeePerGas: overridesWithGasAndNonce.maxFeePerGas,
+              maxPriorityFeePerGas: overridesWithGasAndNonce.maxPriorityFeePerGas,
+              nonce: nonceReservation.nonce,
+              type: overridesWithGasAndNonce.type,
+            } as const;
+
+            if (preflight.finalGas != null) {
+              yield* tracker.set({
+                gas: preflight.finalGas,
+                preflightWarning,
+                status: "estimated",
+                tx: txPreview,
+              });
+            }
+
+            yield* tracker.set({
+              preflightWarning,
+              status: "signing",
+              tx: txPreview,
+            });
+
+            failurePhase = "submission";
+            const writeResult = yield* writer
+              .write({
+                ...params,
+                overrides: overridesWithGasAndNonce,
+              })
+              .pipe(Effect.either);
+
+            if (writeResult._tag === "Left") {
+              const error = writeResult.left;
+              const currentHash = yield* Ref.get(currentHashRef);
+              const shouldRetryNonceTooLow =
+                explicitNonce === undefined &&
+                nonceReservation.reserved &&
+                attempt < MAX_NONCE_TOO_LOW_RETRIES &&
+                currentHash === null &&
+                isNonceTooLowError(error);
+
+              if (!shouldRetryNonceTooLow) {
+                return yield* Effect.fail(error);
+              }
+
+              yield* advanceNonceAfterNonceTooLow(nonceService, {
+                account: params.account,
+                chainId: params.chainId,
+                nonce: nonceReservation.nonce,
+                reserved: nonceReservation.reserved,
+              });
+              yield* nonceReservation.markSubmitted;
+
+              return { _tag: "retryNonceTooLow" } as const;
+            }
+
+            const hash = writeResult.right;
+
+            yield* nonceReservation.markSubmitted;
+            const terminal = yield* trackSubmittedTransaction(hash, nonceReservation);
+
+            return {
+              _tag: "terminal",
+              terminal,
+            } as const;
+          })
+        );
+
+      const submitWithNonceRecovery = (
+        attempt: number
+      ): Effect.Effect<WriteAndTrackTerminal<TAbi>, WriteAndTrackError> =>
+        Effect.gen(function* () {
+          const result = yield* submitOnce(attempt);
+          if (result._tag === "retryNonceTooLow") {
+            return yield* submitWithNonceRecovery(attempt + 1);
+          }
+
+          return result.terminal;
+        });
+
+      return yield* submitWithNonceRecovery(0);
     }).pipe(
       Effect.catchAll((error) =>
         Effect.gen(function* () {
