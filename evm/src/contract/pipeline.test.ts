@@ -1477,14 +1477,14 @@ describe("ContractPipeline", () => {
       );
     });
 
-    it.effect("recovers from stale public pending nonce by advancing the local floor", () => {
+    it.effect("recovers from stale public pending nonce by jumping to the provider floor", () => {
       const confirmed: bigint[] = [];
       const writeNonces: (number | bigint | undefined)[] = [];
       let writeCalls = 0;
 
       const nonceLayer = makeSequencedNonceLayer({
         confirmed,
-        reservedNonces: [119n, 120n],
+        reservedNonces: [117n, 120n],
       });
 
       return Effect.gen(function* () {
@@ -1502,7 +1502,7 @@ describe("ContractPipeline", () => {
 
         expect(result.hash).toBe(TEST_TX_HASH);
         expect(writeCalls).toBe(2);
-        expect(writeNonces).toEqual([119n, 120n]);
+        expect(writeNonces).toEqual([117n, 120n]);
         expect(confirmed).toEqual([119n, 120n]);
       }).pipe(
         Effect.provide(
@@ -1513,7 +1513,11 @@ describe("ContractPipeline", () => {
               writeCalls += 1;
               writeNonces.push(getWriteNonce(params));
               return writeCalls === 1
-                ? Promise.reject(new Error("nonce too low"))
+                ? Promise.reject(
+                    Object.assign(new Error("nonce too low"), {
+                      metaMessages: ["tx: 117 state: 120"],
+                    })
+                  )
                 : Promise.resolve(TEST_TX_HASH);
             },
           })
@@ -1521,60 +1525,66 @@ describe("ContractPipeline", () => {
       );
     });
 
-    it.effect("advances across repeated nonce-low failures", () => {
-      const confirmed: bigint[] = [];
-      const writeNonces: (number | bigint | undefined)[] = [];
-      let writeCalls = 0;
+    it.effect(
+      "falls back to unmanaged nonce selection after repeated unparseable nonce-low failures",
+      () => {
+        const confirmed: bigint[] = [];
+        const writeNonces: (number | bigint | undefined)[] = [];
+        let writeCalls = 0;
+        const managedNonces = Array.from({ length: 9 }, (_, index) => BigInt(index));
 
-      const nonceLayer = makeSequencedNonceLayer({
-        confirmed,
-        reservedNonces: [119n, 120n, 121n],
-      });
-
-      return Effect.gen(function* () {
-        const pipeline = yield* ContractPipeline;
-
-        const terminal = yield* pipeline.writeAndWait({
-          abi: erc20Abi,
-          account: TEST_ADDRESS,
-          address: TEST_ADDRESS,
-          args: [TEST_ADDRESS_2, 100n],
-          chainId: TEST_CHAIN_ID,
-          functionName: "transfer",
+        const nonceLayer = makeSequencedNonceLayer({
+          confirmed,
+          reservedNonces: managedNonces,
         });
-        const result = expectSuccessTerminal(terminal);
 
-        expect(result.hash).toBe(TEST_TX_HASH);
-        expect(writeCalls).toBe(3);
-        expect(writeNonces).toEqual([119n, 120n, 121n]);
-        expect(confirmed).toEqual([119n, 120n, 121n]);
-      }).pipe(
-        Effect.provide(
-          makeNonceLifecycleTestLayer({
-            nonceLayer,
-            receipt: DEFAULT_RECEIPT,
-            writeContract: (params) => {
-              writeCalls += 1;
-              writeNonces.push(getWriteNonce(params));
-              return writeCalls < 3
-                ? Promise.reject(new Error("nonce has already been used"))
-                : Promise.resolve(TEST_TX_HASH);
-            },
-          })
-        )
-      );
-    });
+        return Effect.gen(function* () {
+          const pipeline = yield* ContractPipeline;
 
-    it.effect("stops nonce-low recovery at the retry cap", () => {
+          const terminal = yield* pipeline.writeAndWait({
+            abi: erc20Abi,
+            account: TEST_ADDRESS,
+            address: TEST_ADDRESS,
+            args: [TEST_ADDRESS_2, 100n],
+            chainId: TEST_CHAIN_ID,
+            functionName: "transfer",
+          });
+          const result = expectSuccessTerminal(terminal);
+
+          expect(result.hash).toBe(TEST_TX_HASH);
+          expect(writeCalls).toBe(10);
+          expect(writeNonces.slice(0, 9)).toEqual(managedNonces);
+          expect(writeNonces[9]).toBeUndefined();
+          expect(confirmed).toEqual(managedNonces);
+        }).pipe(
+          Effect.provide(
+            makeNonceLifecycleTestLayer({
+              nonceLayer,
+              receipt: DEFAULT_RECEIPT,
+              writeContract: (params) => {
+                writeCalls += 1;
+                writeNonces.push(getWriteNonce(params));
+                return writeCalls <= 9
+                  ? Promise.reject(new Error("nonce too low"))
+                  : Promise.resolve(TEST_TX_HASH);
+              },
+            })
+          )
+        );
+      }
+    );
+
+    it.effect("fails in submission phase when the unmanaged fallback also nonce-lows", () => {
       const confirmed: bigint[] = [];
       const released: bigint[] = [];
       const writeNonces: (number | bigint | undefined)[] = [];
       let writeCalls = 0;
+      const managedNonces = Array.from({ length: 9 }, (_, index) => BigInt(index));
 
       const nonceLayer = makeSequencedNonceLayer({
         confirmed,
         released,
-        reservedNonces: [119n, 120n, 121n],
+        reservedNonces: managedNonces,
       });
 
       return Effect.gen(function* () {
@@ -1591,10 +1601,11 @@ describe("ContractPipeline", () => {
 
         const exit = yield* terminal.pipe(Effect.exit);
         expect(Exit.isFailure(exit)).toBe(true);
-        expect(writeCalls).toBe(3);
-        expect(writeNonces).toEqual([119n, 120n, 121n]);
-        expect(confirmed).toEqual([119n, 120n]);
-        expect(released).toEqual([121n]);
+        expect(writeCalls).toBe(10);
+        expect(writeNonces.slice(0, 9)).toEqual(managedNonces);
+        expect(writeNonces[9]).toBeUndefined();
+        expect(confirmed).toEqual(managedNonces);
+        expect(released).toEqual([]);
 
         const state = yield* stateRef.get;
         expect(state.status).toBe("failed");
@@ -1617,7 +1628,7 @@ describe("ContractPipeline", () => {
       );
     });
 
-    it.effect("does not retry when the caller supplies an explicit nonce", () => {
+    it.effect("fails fast when the caller supplies an explicit nonce", () => {
       const confirmed: bigint[] = [];
       const released: bigint[] = [];
       const writeNonces: (number | bigint | undefined)[] = [];
@@ -1653,13 +1664,13 @@ describe("ContractPipeline", () => {
           args: [TEST_ADDRESS_2, 100n],
           chainId: TEST_CHAIN_ID,
           functionName: "transfer",
-          overrides: { nonce: 119 },
+          overrides: { nonce: 5n },
         });
 
         const exit = yield* terminal.pipe(Effect.exit);
         expect(Exit.isFailure(exit)).toBe(true);
         expect(writeCalls).toBe(1);
-        expect(writeNonces).toEqual([119]);
+        expect(writeNonces).toEqual([5n]);
         expect(reserveCalls).toBe(0);
         expect(confirmed).toEqual([]);
         expect(released).toEqual([]);
@@ -1729,7 +1740,7 @@ describe("ContractPipeline", () => {
       );
     });
 
-    it.effect("confirms the submitted nonce when a retried transaction reverts", () => {
+    it.effect("confirms the submitted nonce when a recovered transaction reverts", () => {
       const confirmed: bigint[] = [];
       const writeNonces: (number | bigint | undefined)[] = [];
       let writeCalls = 0;
@@ -1743,7 +1754,7 @@ describe("ContractPipeline", () => {
       return Effect.gen(function* () {
         const pipeline = yield* ContractPipeline;
 
-        const exit = yield* pipeline
+        const result = yield* pipeline
           .writeAndWait({
             abi: erc20Abi,
             account: TEST_ADDRESS,
@@ -1752,9 +1763,17 @@ describe("ContractPipeline", () => {
             chainId: TEST_CHAIN_ID,
             functionName: "transfer",
           })
-          .pipe(Effect.exit);
+          .pipe(Effect.either);
 
-        expect(Exit.isFailure(exit)).toBe(true);
+        expect(result._tag).toBe("Left");
+        if (result._tag === "Left") {
+          expect(result.left._tag).toBe("TxFailedError");
+          if (result.left._tag !== "TxFailedError") {
+            throw new Error(`Expected TxFailedError, got ${result.left._tag}`);
+          }
+          expect(result.left.hash).toBe(TEST_TX_HASH);
+          expect(result.left.message).toContain("reverted onchain");
+        }
         expect(writeCalls).toBe(2);
         expect(writeNonces).toEqual([7n, 8n]);
         expect(confirmed).toEqual([7n, 8n]);

@@ -104,6 +104,9 @@ const classifyTransferError = (
   });
 };
 
+const toViemNonce = (nonce: number | bigint | undefined): number | undefined =>
+  nonce === undefined ? undefined : Number(nonce);
+
 export const TransferServiceLive = Layer.effect(
   TransferService,
   Effect.gen(function* () {
@@ -158,6 +161,7 @@ export const TransferServiceLive = Layer.effect(
         }).pipe(Effect.provideService(GasService, gasService));
 
         const isLegacy = txType === "legacy";
+        const nonce = toViemNonce(params.overrides?.nonce);
 
         return yield* Effect.tryPromise({
           catch: (error) => classifyTransferError(error, params.to),
@@ -168,7 +172,7 @@ export const TransferServiceLive = Layer.effect(
                   chain: null,
                   gas: params.overrides?.gas,
                   gasPrice: feeOverrides.gasPrice,
-                  nonce: params.overrides?.nonce,
+                  nonce,
                   to: params.to,
                   type: "legacy",
                   value: params.value,
@@ -179,7 +183,7 @@ export const TransferServiceLive = Layer.effect(
                   gas: params.overrides?.gas,
                   maxFeePerGas: feeOverrides.maxFeePerGas,
                   maxPriorityFeePerGas: feeOverrides.maxPriorityFeePerGas,
-                  nonce: params.overrides?.nonce,
+                  nonce,
                   to: params.to,
                   type: "eip1559",
                   value: params.value,
@@ -220,6 +224,7 @@ export const TransferServiceLive = Layer.effect(
         }).pipe(Effect.provideService(GasService, gasService));
 
         const isLegacy = txType === "legacy";
+        const nonce = toViemNonce(params.overrides?.nonce);
 
         const hash = yield* Effect.tryPromise({
           catch: (error) => classifyTransferError(error, params.to),
@@ -230,7 +235,7 @@ export const TransferServiceLive = Layer.effect(
                   chain: null,
                   gas: params.overrides?.gas,
                   gasPrice: feeOverrides.gasPrice,
-                  nonce: params.overrides?.nonce,
+                  nonce,
                   to: params.to,
                   type: "legacy",
                   value: params.value,
@@ -241,7 +246,7 @@ export const TransferServiceLive = Layer.effect(
                   gas: params.overrides?.gas,
                   maxFeePerGas: feeOverrides.maxFeePerGas,
                   maxPriorityFeePerGas: feeOverrides.maxPriorityFeePerGas,
-                  nonce: params.overrides?.nonce,
+                  nonce,
                   to: params.to,
                   type: "eip1559",
                   value: params.value,

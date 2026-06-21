@@ -45,7 +45,110 @@ export type WriteAndTrackDeps = {
   readonly gasService: GasServiceShape;
 };
 
-const MAX_NONCE_TOO_LOW_RETRIES = 2;
+const MAX_MANAGED_NONCE_TOO_LOW_RETRIES = 8;
+const PROVIDER_NONCE_FLOOR_FIELDS = [
+  "message",
+  "shortMessage",
+  "details",
+  "metaMessages",
+  "data",
+  "cause",
+  "error",
+] as const;
+
+const PROVIDER_NONCE_FLOOR_PATTERNS = [
+  /\btx\s*:\s*\d+\s+state\s*:\s*(\d+)\b/gi,
+  /\btx\s+nonce\s+\d+[\s\S]{0,120}?\bstate\s+(\d+)\b/gi,
+  /\bcurrent\s+nonce\s*\(?\s*(\d+)\s*\)?\s*>\s*tx\s+nonce\s*\(?\s*\d+\s*\)?/gi,
+  /\bexpected\s+nonce(?:\s+to\s+be)?\s*[:=]?\s*\(?\s*(\d+)\s*\)?\s+(?:but\s+)?got\s*\(?\s*\d+\s*\)?/gi,
+  /\bgot\s+nonce\s*\(?\s*\d+\s*\)?\s+expected\s*\(?\s*(\d+)\s*\)?/gi,
+  /\baccount\s+has\s+nonce\s+of\s*[:=]?\s*\(?\s*(\d+)\s*\)?/gi,
+  /\b(?:next|state|account)\s+nonce\s*[:=]?\s*\(?\s*(\d+)\s*\)?/gi,
+] as const;
+
+type SubmittedNonce = {
+  readonly nonce?: number | bigint;
+  readonly reserved: boolean;
+};
+
+function nonceToBigInt(nonce: number | bigint): bigint {
+  return typeof nonce === "bigint" ? nonce : BigInt(nonce);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function parseProviderNonceFloor(message: string): bigint | undefined {
+  let floor: bigint | undefined;
+
+  for (const pattern of PROVIDER_NONCE_FLOOR_PATTERNS) {
+    pattern.lastIndex = 0;
+    let match = pattern.exec(message);
+    while (match) {
+      const [candidate] = match.slice(1);
+      if (candidate) {
+        const parsed = BigInt(candidate);
+        floor = floor === undefined || parsed > floor ? parsed : floor;
+      }
+      match = pattern.exec(message);
+    }
+  }
+
+  return floor;
+}
+
+function extractProviderNonceFloor(error: unknown): bigint | undefined {
+  const seen = new WeakSet<object>();
+  let floor: bigint | undefined;
+
+  const recordFloor = (candidate: bigint | undefined) => {
+    if (candidate === undefined) {
+      return;
+    }
+
+    floor = floor === undefined || candidate > floor ? candidate : floor;
+  };
+
+  const visit = (value: unknown): void => {
+    if (typeof value === "string") {
+      recordFloor(parseProviderNonceFloor(value));
+      return;
+    }
+
+    if (!isRecord(value)) {
+      return;
+    }
+
+    if (seen.has(value)) {
+      return;
+    }
+    seen.add(value);
+
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        visit(item);
+      }
+      return;
+    }
+
+    for (const field of PROVIDER_NONCE_FLOOR_FIELDS) {
+      visit(value[field]);
+    }
+
+    for (const nested of Object.values(value)) {
+      visit(nested);
+    }
+  };
+
+  visit(error);
+  return floor;
+}
+
+function omitNonce<T extends { readonly nonce?: number | bigint }>(overrides: T): Omit<T, "nonce"> {
+  const { nonce: _nonce, ...rest } = overrides;
+  return rest;
+}
 
 function toTxFailedError(error: WriteAndTrackError, hash: Hash | null): TxFailedError {
   if (error._tag === "TxFailedError") {
@@ -137,7 +240,8 @@ export const makeWriteAndTrack = (deps: WriteAndTrackDeps) =>
       const explicitNonce = params.overrides?.nonce;
 
       type SubmissionAttemptResult =
-        | { readonly _tag: "retryNonceTooLow" }
+        | { readonly _tag: "retryManagedNonceTooLow" }
+        | { readonly _tag: "retryUnmanagedNonce" }
         | {
             readonly _tag: "terminal";
             readonly terminal: WriteAndTrackTerminal<TAbi>;
@@ -145,7 +249,7 @@ export const makeWriteAndTrack = (deps: WriteAndTrackDeps) =>
 
       const trackSubmittedTransaction = (
         hash: Hash,
-        nonceReservation: NonceReservationResult
+        submittedNonce: SubmittedNonce
       ): Effect.Effect<WriteAndTrackTerminal<TAbi>, WriteAndTrackError, Scope.Scope> =>
         Effect.gen(function* () {
           yield* Ref.set(currentHashRef, hash);
@@ -299,12 +403,14 @@ export const makeWriteAndTrack = (deps: WriteAndTrackDeps) =>
           // consumes its nonce on-chain, so confirming only on success would leak
           // it in the manager's pending set forever. This runs before the revert
           // check below.
-          yield* confirmNonce(nonceService, {
-            account: params.account,
-            chainId: params.chainId,
-            nonce: nonceReservation.nonce,
-            reserved: nonceReservation.reserved,
-          });
+          if (submittedNonce.nonce !== undefined) {
+            yield* confirmNonce(nonceService, {
+              account: params.account,
+              chainId: params.chainId,
+              nonce: submittedNonce.nonce,
+              reserved: submittedNonce.reserved,
+            });
+          }
 
           // Fail if the transaction was mined but reverted
           if (receipt.status === "reverted") {
@@ -342,7 +448,53 @@ export const makeWriteAndTrack = (deps: WriteAndTrackDeps) =>
           } as WriteAndTrackTerminal<TAbi>;
         });
 
-      const submitOnce = (
+      const advanceManagedNonceFloor = (
+        error: WriteAndTrackError,
+        nonceReservation: NonceReservationResult
+      ) => {
+        const reservedNonce = nonceToBigInt(nonceReservation.nonce);
+        const providerFloor = extractProviderNonceFloor(error);
+        const nonceFloor =
+          providerFloor !== undefined && providerFloor > reservedNonce
+            ? providerFloor - 1n
+            : reservedNonce;
+
+        return Effect.gen(function* () {
+          yield* advanceNonceAfterNonceTooLow(nonceService, {
+            account: params.account,
+            chainId: params.chainId,
+            nonce: nonceFloor,
+            reserved: nonceReservation.reserved,
+          });
+          yield* nonceReservation.markSubmitted;
+        });
+      };
+
+      const recoverManagedNonceTooLow = (
+        attempt: number,
+        error: WriteAndTrackError,
+        nonceReservation: NonceReservationResult
+      ): Effect.Effect<SubmissionAttemptResult, WriteAndTrackError> =>
+        Effect.gen(function* () {
+          const currentHash = yield* Ref.get(currentHashRef);
+          const shouldRecover =
+            explicitNonce === undefined &&
+            nonceReservation.reserved &&
+            currentHash === null &&
+            isNonceTooLowError(error);
+
+          if (!shouldRecover) {
+            return yield* Effect.fail(error);
+          }
+
+          yield* advanceManagedNonceFloor(error, nonceReservation);
+
+          return attempt < MAX_MANAGED_NONCE_TOO_LOW_RETRIES
+            ? ({ _tag: "retryManagedNonceTooLow" } as const)
+            : ({ _tag: "retryUnmanagedNonce" } as const);
+        });
+
+      const submitManagedOnce = (
         attempt: number
       ): Effect.Effect<SubmissionAttemptResult, WriteAndTrackError> =>
         // The nonce reservation's release finalizer must fire as soon as this
@@ -396,28 +548,7 @@ export const makeWriteAndTrack = (deps: WriteAndTrackDeps) =>
               .pipe(Effect.either);
 
             if (writeResult._tag === "Left") {
-              const error = writeResult.left;
-              const currentHash = yield* Ref.get(currentHashRef);
-              const shouldRetryNonceTooLow =
-                explicitNonce === undefined &&
-                nonceReservation.reserved &&
-                attempt < MAX_NONCE_TOO_LOW_RETRIES &&
-                currentHash === null &&
-                isNonceTooLowError(error);
-
-              if (!shouldRetryNonceTooLow) {
-                return yield* Effect.fail(error);
-              }
-
-              yield* advanceNonceAfterNonceTooLow(nonceService, {
-                account: params.account,
-                chainId: params.chainId,
-                nonce: nonceReservation.nonce,
-                reserved: nonceReservation.reserved,
-              });
-              yield* nonceReservation.markSubmitted;
-
-              return { _tag: "retryNonceTooLow" } as const;
+              return yield* recoverManagedNonceTooLow(attempt, writeResult.left, nonceReservation);
             }
 
             const hash = writeResult.right;
@@ -432,13 +563,57 @@ export const makeWriteAndTrack = (deps: WriteAndTrackDeps) =>
           })
         );
 
+      const submitUnmanagedOnce = (): Effect.Effect<
+        WriteAndTrackTerminal<TAbi>,
+        WriteAndTrackError
+      > =>
+        Effect.scoped(
+          Effect.gen(function* () {
+            const overridesWithoutNonce = omitNonce(preflight.overridesWithGas);
+            const txPreview = {
+              accessList: overridesWithoutNonce.accessList,
+              gas: overridesWithoutNonce.gas,
+              gasPrice: overridesWithoutNonce.gasPrice,
+              maxFeePerGas: overridesWithoutNonce.maxFeePerGas,
+              maxPriorityFeePerGas: overridesWithoutNonce.maxPriorityFeePerGas,
+              type: overridesWithoutNonce.type,
+            } as const;
+
+            if (preflight.finalGas != null) {
+              yield* tracker.set({
+                gas: preflight.finalGas,
+                preflightWarning,
+                status: "estimated",
+                tx: txPreview,
+              });
+            }
+
+            yield* tracker.set({
+              preflightWarning,
+              status: "signing",
+              tx: txPreview,
+            });
+
+            failurePhase = "submission";
+            const hash = yield* writer.write({
+              ...params,
+              overrides: overridesWithoutNonce,
+            });
+
+            return yield* trackSubmittedTransaction(hash, { reserved: false });
+          })
+        );
+
       const submitWithNonceRecovery = (
         attempt: number
       ): Effect.Effect<WriteAndTrackTerminal<TAbi>, WriteAndTrackError> =>
         Effect.gen(function* () {
-          const result = yield* submitOnce(attempt);
-          if (result._tag === "retryNonceTooLow") {
+          const result = yield* submitManagedOnce(attempt);
+          if (result._tag === "retryManagedNonceTooLow") {
             return yield* submitWithNonceRecovery(attempt + 1);
+          }
+          if (result._tag === "retryUnmanagedNonce") {
+            return yield* submitUnmanagedOnce();
           }
 
           return result.terminal;

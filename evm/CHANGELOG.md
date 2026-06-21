@@ -22,6 +22,15 @@ The format is based on [Common Changelog](https://common-changelog.org/).
 [2.2.1]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm%402.2.1
 [2.2.2]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm%402.2.2
 [2.2.3]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm%402.2.3
+[2.2.4]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm%402.2.4
+
+## [2.2.4] - 2026-06-21
+
+### Fixed
+
+- Recover managed EOA submissions from stale nonce floors by parsing provider nonce hints, bounding managed retries, and
+  falling back once to wallet/provider nonce selection.
+- Accept explicit bigint nonce overrides and preserve their fail-fast semantics.
 
 ## [2.2.3] - 2026-06-19
 
