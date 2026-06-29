@@ -8,7 +8,7 @@
         "@biomejs/biome": "^2.5.0",
         "@dotenvx/dotenvx": "^1.71.2",
         "@effect/vitest": "^0.29.0",
-        "@sablier/devkit": "^1.18.4",
+        "@prb/devkit": "^1.0.0",
         "@types/bs58": "^5.0.0",
         "@typescript/native-preview": "^7.0.0-dev.20260118.1",
         "@vitest/ui": "^4.0.17",
@@ -27,7 +27,7 @@
         "@biomejs/biome": "catalog:dev",
         "@effect/platform": "catalog:effect",
         "@effect/vitest": "catalog:dev",
-        "@sablier/devkit": "catalog:dev",
+        "@prb/devkit": "catalog:dev",
         "@types/node": "catalog:dev",
         "@types/react": "catalog:dev",
         "@types/react-dom": "catalog:dev",
@@ -64,8 +64,8 @@
         "@biomejs/biome": "catalog:dev",
         "@effect/platform": "catalog:effect",
         "@effect/vitest": "catalog:dev",
+        "@prb/devkit": "catalog:dev",
         "@prb/effect-evm": "workspace:*",
-        "@sablier/devkit": "catalog:dev",
         "@safe-global/safe-apps-sdk": "9.1.0",
         "@types/node": "catalog:dev",
         "@types/react": "catalog:dev",
@@ -102,13 +102,13 @@
     },
     "next": {
       "name": "@prb/effect-next",
-      "version": "1.1.1",
+      "version": "1.2.0",
       "devDependencies": {
         "@biomejs/biome": "catalog:dev",
         "@effect/opentelemetry": "^0.63.0",
         "@effect/platform": "catalog:effect",
         "@effect/vitest": "catalog:dev",
-        "@sablier/devkit": "catalog:dev",
+        "@prb/devkit": "catalog:dev",
         "@types/node": "catalog:dev",
         "@types/react": "catalog:dev",
         "@types/react-dom": "catalog:dev",
@@ -149,7 +149,7 @@
         "@coral-xyz/anchor": "^0.32.1",
         "@effect/platform": "catalog:effect",
         "@effect/vitest": "catalog:dev",
-        "@sablier/devkit": "catalog:dev",
+        "@prb/devkit": "catalog:dev",
         "@solana/web3.js": "^1.98.4",
         "@types/bn.js": "^5.2.0",
         "@types/node": "^25.0.3",
@@ -183,7 +183,7 @@
       "devDependencies": {
         "@biomejs/biome": "catalog:dev",
         "@effect/vitest": "catalog:dev",
-        "@sablier/devkit": "catalog:dev",
+        "@prb/devkit": "catalog:dev",
         "@types/node": "catalog:dev",
         "@types/react": "catalog:dev",
         "@typescript/native-preview": "catalog:dev",
@@ -225,7 +225,7 @@
     "dev": {
       "@biomejs/biome": "^2.5.0",
       "@effect/vitest": "^0.29.0",
-      "@sablier/devkit": "^1.18.4",
+      "@prb/devkit": "^1.0.0",
       "@types/node": "^25.0.2",
       "@types/react": "^19.0.0",
       "@types/react-dom": "^19.0.0",
@@ -526,6 +526,8 @@
 
     "@polka/url": ["@polka/url@1.0.0-next.29", "", {}, "sha512-wwQAWhWSuHaag8c4q/KN/vCoeOJYshAIvMQwD4GpSb3OiZklFfvAgmj0VCBBImRpuF/aFgIRzllXlVX93Jevww=="],
 
+    "@prb/devkit": ["@prb/devkit@1.0.0", "", { "peerDependencies": { "vitest": ">=2.0.0" }, "optionalPeers": ["vitest"] }, "sha512-6Ifa4nxg2CkUu5IwcPT9KgNZuWZ/Jpe8QfHKD1moZmui67wqIb67WbbbYMt3L2JQs8hm1+c4cHw9PwS+RMrUGQ=="],
+
     "@prb/effect-evm": ["@prb/effect-evm@workspace:evm"],
 
     "@prb/effect-evm-safe": ["@prb/effect-evm-safe@workspace:evm-safe"],
@@ -597,8 +599,6 @@
     "@rollup/rollup-win32-x64-gnu": ["@rollup/rollup-win32-x64-gnu@4.53.5", "", { "os": "win32", "cpu": "x64" }, "sha512-2NqKgZSuLH9SXBBV2dWNRCZmocgSOx8OJSdpRaEcRlIfX8YrKxUT6z0F1NpvDVhOsl190UFTRh2F2WDWWCYp3A=="],
 
     "@rollup/rollup-win32-x64-msvc": ["@rollup/rollup-win32-x64-msvc@4.53.5", "", { "os": "win32", "cpu": "x64" }, "sha512-JRpZUhCfhZ4keB5v0fe02gQJy05GqboPOaxvjugW04RLSYYoB/9t2lx2u/tMs/Na/1NXfY8QYjgRljRpN+MjTQ=="],
-
-    "@sablier/devkit": ["@sablier/devkit@1.18.4", "", { "peerDependencies": { "vitest": ">=2.0.0" }, "optionalPeers": ["vitest"] }, "sha512-uNUAs/tS8FoDubSuNOKfgkWqtvWk+e7Sb383XBKBoA4QwVNEJ7WCx9rPdd0RMmljztAJ7tBCrkJ8uFeEP6KaFw=="],
 
     "@safe-global/safe-apps-provider": ["@safe-global/safe-apps-provider@0.18.6", "", { "dependencies": { "@safe-global/safe-apps-sdk": "^9.1.0", "events": "^3.3.0" } }, "sha512-4LhMmjPWlIO8TTDC2AwLk44XKXaK6hfBTWyljDm0HQ6TWlOEijVWNrt2s3OCVMSxlXAcEzYfqyu1daHZooTC2Q=="],
 

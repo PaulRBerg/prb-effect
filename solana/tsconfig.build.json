@@ -1,6 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/tsconfig",
-  "extends": "../node_modules/@sablier/devkit/tsconfig/build.json",
+  "extends": "../node_modules/@prb/devkit/tsconfig/build.json",
   "compilerOptions": {
     "lib": ["ESNext", "DOM"],
     "jsx": "react-jsx",

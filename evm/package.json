@@ -28,7 +28,7 @@
     "@biomejs/biome": "catalog:dev",
     "@effect/platform": "catalog:effect",
     "@effect/vitest": "catalog:dev",
-    "@sablier/devkit": "catalog:dev",
+    "@prb/devkit": "catalog:dev",
     "@types/node": "catalog:dev",
     "@types/react": "catalog:dev",
     "@types/react-dom": "catalog:dev",

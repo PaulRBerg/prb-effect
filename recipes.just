@@ -1,6 +1,6 @@
 # Shared recipes for library packages
 # Imported by each package's justfile
-import "./node_modules/@sablier/devkit/just/base.just"
+import "./node_modules/@prb/devkit/just/base.just"
 
 # ---------------------------------------------------------------------------- #
 #                                    RECIPES                                   #

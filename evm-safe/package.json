@@ -29,7 +29,7 @@
     "@effect/platform": "catalog:effect",
     "@effect/vitest": "catalog:dev",
     "@prb/effect-evm": "workspace:*",
-    "@sablier/devkit": "catalog:dev",
+    "@prb/devkit": "catalog:dev",
     "@safe-global/safe-apps-sdk": "9.1.0",
     "@types/node": "catalog:dev",
     "@types/react": "catalog:dev",

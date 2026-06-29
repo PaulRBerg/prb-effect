@@ -1,6 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/tsconfig",
-  "extends": "./node_modules/@sablier/devkit/tsconfig/base.json",
+  "extends": "./node_modules/@prb/devkit/tsconfig/base.json",
   // Root config only covers root-level files. Each package has its own tsconfig.json
   // that the IDE uses when editing files in that package.
   "exclude": ["**/dist/", "**/node_modules/"],

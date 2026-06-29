@@ -27,7 +27,7 @@
   "devDependencies": {
     "@biomejs/biome": "catalog:dev",
     "@effect/vitest": "catalog:dev",
-    "@sablier/devkit": "catalog:dev",
+    "@prb/devkit": "catalog:dev",
     "@types/node": "catalog:dev",
     "@types/react": "catalog:dev",
     "@typescript/native-preview": "catalog:dev",

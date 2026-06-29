@@ -14,7 +14,7 @@
     "@biomejs/biome": "^2.5.0",
     "@dotenvx/dotenvx": "^1.71.2",
     "@effect/vitest": "^0.29.0",
-    "@sablier/devkit": "^1.18.4",
+    "@prb/devkit": "^1.0.0",
     "@types/bs58": "^5.0.0",
     "@typescript/native-preview": "^7.0.0-dev.20260118.1",
     "@vitest/ui": "^4.0.17",
@@ -58,7 +58,7 @@
       "dev": {
         "@biomejs/biome": "^2.5.0",
         "@effect/vitest": "^0.29.0",
-        "@sablier/devkit": "^1.18.4",
+        "@prb/devkit": "^1.0.0",
         "@types/node": "^25.0.2",
         "@types/react": "^19.0.0",
         "@types/react-dom": "^19.0.0",
