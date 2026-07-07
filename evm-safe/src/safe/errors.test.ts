@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { getSafeErrorMessage, toSafeMultisigTxLookupError } from "./errors.js";
+import {
+  getSafeErrorMessage,
+  NotInSafeAppContextError,
+  toSafeMultisigTxLookupError,
+} from "./errors.js";
 
 describe("getSafeErrorMessage", () => {
   it("returns message from standard Error", () => {
@@ -51,5 +55,21 @@ describe("getSafeErrorMessage", () => {
     expect(error.safeTxHash).toBe(safeTxHash);
     expect(error.retryable).toBe(true);
     expect(error.message).toContain("Gateway timeout");
+  });
+
+  it("preserves Safe Apps context recovery metadata", () => {
+    const error = new NotInSafeAppContextError({
+      code: "TOP_LEVEL_WINDOW",
+      message: "Safe Apps SDK requires the page to be embedded in a Safe App host",
+      recovery: "open-in-safe",
+      userMessage: "Open this flow in Safe to use Safe Apps SDK execution.",
+    });
+
+    expect(error).toMatchObject({
+      _tag: "NotInSafeAppContextError",
+      code: "TOP_LEVEL_WINDOW",
+      recovery: "open-in-safe",
+      userMessage: "Open this flow in Safe to use Safe Apps SDK execution.",
+    });
   });
 });

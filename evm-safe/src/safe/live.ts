@@ -85,6 +85,8 @@ const withSdk = <A, E>(
 
 // --- Service Implementation ---
 
+const OPEN_IN_SAFE_USER_MESSAGE = "Open this flow in Safe to use Safe Apps SDK execution.";
+
 export const SafeAppsServiceLive = (config?: SafeAppsServiceConfig) =>
   Layer.scoped(
     SafeAppsService,
@@ -112,6 +114,7 @@ export const SafeAppsServiceLive = (config?: SafeAppsServiceConfig) =>
           if (typeof window === "undefined") {
             return yield* Effect.fail(
               new NotInSafeAppContextError({
+                code: "NO_WINDOW",
                 message: "Safe Apps SDK requires a browser environment (window is undefined)",
               })
             );
@@ -124,7 +127,10 @@ export const SafeAppsServiceLive = (config?: SafeAppsServiceConfig) =>
           if (window.parent === window) {
             return yield* Effect.fail(
               new NotInSafeAppContextError({
+                code: "TOP_LEVEL_WINDOW",
                 message: "Safe Apps SDK requires the page to be embedded in a Safe App host",
+                recovery: "open-in-safe",
+                userMessage: OPEN_IN_SAFE_USER_MESSAGE,
               })
             );
           }
@@ -165,6 +171,12 @@ export const SafeAppsServiceLive = (config?: SafeAppsServiceConfig) =>
                 duration: getInfoTimeout,
                 onTimeout: () =>
                   new SafeMultisigInfoUnavailableError({
+                    cause: new NotInSafeAppContextError({
+                      code: "NON_RESPONSIVE_SAFE_HOST",
+                      message: "Safe Apps SDK did not receive a response from the parent frame",
+                      recovery: "open-in-safe",
+                      userMessage: OPEN_IN_SAFE_USER_MESSAGE,
+                    }),
                     message: `Safe getInfo timed out after ${Duration.toMillis(getInfoTimeout)}ms (not embedded in a responsive Safe App host)`,
                   }),
               })

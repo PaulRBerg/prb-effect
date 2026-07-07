@@ -7,9 +7,21 @@ export class SafeAppsSdkUnavailableError extends Schema.TaggedError<SafeAppsSdkU
   { cause: Schema.optional(Schema.Unknown), message: Schema.String }
 ) {}
 
+export type NotInSafeAppContextErrorCode =
+  | "NO_WINDOW"
+  | "NON_RESPONSIVE_SAFE_HOST"
+  | "TOP_LEVEL_WINDOW";
+
+export type SafeAppsRecoveryAction = "open-in-safe";
+
 export class NotInSafeAppContextError extends Schema.TaggedError<NotInSafeAppContextError>()(
   "NotInSafeAppContextError",
-  { message: Schema.String }
+  {
+    code: Schema.Literal("NO_WINDOW", "NON_RESPONSIVE_SAFE_HOST", "TOP_LEVEL_WINDOW"),
+    message: Schema.String,
+    recovery: Schema.optional(Schema.Literal("open-in-safe")),
+    userMessage: Schema.optional(Schema.String),
+  }
 ) {}
 
 // Safe operation errors

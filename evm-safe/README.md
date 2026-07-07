@@ -47,6 +47,27 @@ const layer = Layer.provideMerge(SafeAppsServiceLive(), baseLayer);
 - Types + errors: `safe/*`
 - React hooks: `@prb/effect-evm-safe/react-hooks`
 
+### Safe Apps SDK routing
+
+`useWalletExecution` separates Safe wallet detection from Safe Apps SDK execution capability:
+
+```tsx
+import { useWalletExecution } from "@prb/effect-evm-safe/react-hooks";
+
+function CreateButton() {
+  const execution = useWalletExecution();
+
+  if (execution.walletType === "safe-multisig" && !execution.canUseSafeAppsSdk) {
+    return <button disabled>Open in Safe</button>;
+  }
+
+  return <button>Create</button>;
+}
+```
+
+A Safe multisig detected through a connector or owners probe can still be running in a normal browser tab. Use
+`canUseSafeAppsSdk` or `safeAppsExecution.available` before calling Safe Apps SDK submission methods.
+
 ## Contributing
 
 For package-specific commands and conventions, see [AGENTS.md](./AGENTS.md).

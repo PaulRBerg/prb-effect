@@ -11,6 +11,7 @@ export { safeMultisigBatchWrite } from "./batch.js";
 // Detection
 export type { SafeDetectionParams, SafeDetectionResult } from "./detection.js";
 export { isSafeMultisig, SafeMultisigDetectionError } from "./detection.js";
+export type { NotInSafeAppContextErrorCode, SafeAppsRecoveryAction } from "./errors.js";
 // Errors
 export {
   isMultiSendUnavailableError,

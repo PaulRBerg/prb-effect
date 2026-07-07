@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import type { PublicClient } from "viem";
 import { useAccount, usePublicClient } from "wagmi";
+import { NotInSafeAppContextError } from "../safe/errors.js";
 import {
   isHostEmbedded,
   isValidSafeAppOrigin,
@@ -31,10 +32,34 @@ export type WalletExecutionHost = "safe" | "browser";
 
 export type WalletExecutionType = "safe-multisig" | "eoa" | "unknown";
 
+export type SafeAppsExecutionSource = "safe-context" | "safe-origin";
+
+export type SafeAppsExecution =
+  | {
+      readonly available: true;
+      readonly host: "safe-app";
+      readonly source: SafeAppsExecutionSource;
+    }
+  | {
+      readonly available: false;
+      readonly host: "browser";
+      readonly reason: "not-safe-app-host";
+    };
+
 export type WalletExecution = {
+  /** True when Safe Apps SDK submission can be used immediately. */
+  readonly canUseSafeAppsSdk: boolean;
   readonly detectionSource: WalletExecutionDetectionSource;
+  /**
+   * Host context where Safe Apps SDK execution is available.
+   *
+   * This is independent from `walletType`: a Safe multisig detected in a normal
+   * browser session is still a Safe wallet, but cannot submit through Safe Apps SDK.
+   */
   readonly host: WalletExecutionHost;
   readonly isSafeMultisig: boolean;
+  /** Detailed Safe Apps SDK execution capability. */
+  readonly safeAppsExecution: SafeAppsExecution;
   readonly walletType: WalletExecutionType;
 };
 
@@ -107,49 +132,105 @@ export function useWalletExecution(options: WalletExecutionOptions = {}): Wallet
   ]);
 
   return useMemo(() => {
+    const safeAppsExecution = resolveSafeAppsExecution({
+      isSafeContext,
+      isSafeOrigin,
+    });
+    const host = safeAppsExecution.available ? "safe" : "browser";
+
     if (isSafeContext) {
       return {
+        canUseSafeAppsSdk: safeAppsExecution.available,
         detectionSource: "safe-context",
-        host: "safe",
+        host,
         isSafeMultisig: true,
-        walletType: "safe-multisig",
-      } satisfies WalletExecution;
-    }
-
-    if (isSafeConnector) {
-      return {
-        detectionSource: "safe-connector",
-        host: "safe",
-        isSafeMultisig: true,
+        safeAppsExecution,
         walletType: "safe-multisig",
       } satisfies WalletExecution;
     }
 
     if (isSafeOrigin) {
       return {
+        canUseSafeAppsSdk: safeAppsExecution.available,
         detectionSource: "safe-origin",
-        host: "safe",
+        host,
         isSafeMultisig: true,
+        safeAppsExecution,
+        walletType: "safe-multisig",
+      } satisfies WalletExecution;
+    }
+
+    if (isSafeConnector) {
+      return {
+        canUseSafeAppsSdk: safeAppsExecution.available,
+        detectionSource: "safe-connector",
+        host,
+        isSafeMultisig: true,
+        safeAppsExecution,
         walletType: "safe-multisig",
       } satisfies WalletExecution;
     }
 
     if (ownersProbeDetectedSafe) {
       return {
+        canUseSafeAppsSdk: safeAppsExecution.available,
         detectionSource: "owners-probe",
-        host: "browser",
+        host,
         isSafeMultisig: true,
+        safeAppsExecution,
         walletType: "safe-multisig",
       } satisfies WalletExecution;
     }
 
     return {
+      canUseSafeAppsSdk: safeAppsExecution.available,
       detectionSource: "none",
-      host: "browser",
+      host,
       isSafeMultisig: false,
+      safeAppsExecution,
       walletType: isConnected ? "eoa" : "unknown",
     } satisfies WalletExecution;
   }, [isConnected, isSafeConnector, isSafeContext, isSafeOrigin, ownersProbeDetectedSafe]);
+}
+
+export function canUseSafeAppsExecution(execution: SafeAppsExecution | WalletExecution): boolean {
+  return getSafeAppsExecution(execution).available;
+}
+
+export function assertSafeAppsExecutionAvailable(
+  execution: SafeAppsExecution | WalletExecution
+): Extract<SafeAppsExecution, { readonly available: true }> {
+  const safeAppsExecution = getSafeAppsExecution(execution);
+
+  if (safeAppsExecution.available) {
+    return safeAppsExecution;
+  }
+
+  throw new NotInSafeAppContextError({
+    code: "TOP_LEVEL_WINDOW",
+    message: "Safe Apps SDK requires the page to be embedded in a Safe App host",
+    recovery: "open-in-safe",
+    userMessage: "Open this flow in Safe to use Safe Apps SDK execution.",
+  });
+}
+
+function getSafeAppsExecution(execution: SafeAppsExecution | WalletExecution): SafeAppsExecution {
+  return "safeAppsExecution" in execution ? execution.safeAppsExecution : execution;
+}
+
+function resolveSafeAppsExecution(options: {
+  isSafeContext: boolean;
+  isSafeOrigin: boolean;
+}): SafeAppsExecution {
+  if (options.isSafeContext) {
+    return { available: true, host: "safe-app", source: "safe-context" };
+  }
+
+  if (options.isSafeOrigin) {
+    return { available: true, host: "safe-app", source: "safe-origin" };
+  }
+
+  return { available: false, host: "browser", reason: "not-safe-app-host" };
 }
 
 function getSafeHostSnapshot(): boolean {

@@ -133,6 +133,12 @@ describe("SafeAppsServiceLive getSdk", () => {
       if (exit._tag === "Left") {
         // getInfo maps the underlying NotInSafeAppContextError into SafeMultisigInfoUnavailableError.
         expect(exit.left._tag).toBe("SafeMultisigInfoUnavailableError");
+        expect(exit.left.cause).toMatchObject({
+          _tag: "NotInSafeAppContextError",
+          code: "TOP_LEVEL_WINDOW",
+          recovery: "open-in-safe",
+          userMessage: "Open this flow in Safe to use Safe Apps SDK execution.",
+        });
         expect(exit.left.message).toContain("embedded in a Safe App host");
       }
     }).pipe(Effect.provide(Layer.provide(SafeAppsServiceLive(), txManagerLayer)), Effect.scoped)
@@ -155,6 +161,12 @@ describe("SafeAppsServiceLive getSdk", () => {
 
       expect(exit._tag).toBe("Left");
       if (exit._tag === "Left") {
+        expect(exit.left.cause).toMatchObject({
+          _tag: "NotInSafeAppContextError",
+          code: "NON_RESPONSIVE_SAFE_HOST",
+          recovery: "open-in-safe",
+          userMessage: "Open this flow in Safe to use Safe Apps SDK execution.",
+        });
         expect(exit.left._tag).toBe("SafeMultisigInfoUnavailableError");
         expect(exit.left.message).toContain("timed out");
       }
