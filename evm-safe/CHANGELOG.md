@@ -17,6 +17,20 @@ The format is based on [Common Changelog](https://common-changelog.org/).
 [3.0.2]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm-safe%403.0.2
 [3.0.3]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm-safe%403.0.3
 [3.0.4]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm-safe%403.0.4
+[4.0.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm-safe%404.0.0
+
+## [4.0.0] - 2026-07-07
+
+### Changed
+
+- **Breaking:** Require structured `NotInSafeAppContextError` metadata and expose Safe Apps SDK execution capability
+  separately from Safe wallet detection in `useWalletExecution`
+  ([`f759bca`](https://github.com/PaulRBerg/prb-effect/commit/f759bca))
+
+### Added
+
+- Add `canUseSafeAppsExecution` and `assertSafeAppsExecutionAvailable` helpers for guarding SDK-only flows
+  ([`f759bca`](https://github.com/PaulRBerg/prb-effect/commit/f759bca))
 
 ## [3.0.4] - 2026-06-12
 
