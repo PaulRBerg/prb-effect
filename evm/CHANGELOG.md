@@ -23,6 +23,17 @@ The format is based on [Common Changelog](https://common-changelog.org/).
 [2.2.2]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm%402.2.2
 [2.2.3]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm%402.2.3
 [2.2.4]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm%402.2.4
+[3.0.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm@3.0.0
+
+## [3.0.0] - 2026-07-30
+
+### Changed
+
+- **Breaking:** Add `TransactionSubmissionError` to contract write and ERC-20 allowance error unions
+
+### Added
+
+- Classify `eth_sendRawTransaction` decoding failures as retryable `TransactionSubmissionError`s
 
 ## [2.2.4] - 2026-06-21
 
