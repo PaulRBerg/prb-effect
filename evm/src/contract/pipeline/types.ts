@@ -10,6 +10,7 @@ import type {
   ReceiptTimeoutError,
   ResourceExhaustionError,
   SimulationFailedError,
+  TransactionSubmissionError,
   TransportError,
   TxFailedError,
   TxReplacedError,
@@ -85,6 +86,7 @@ export type WriteAndTrackError =
   | ContractWriteError
   | InsufficientFundsError
   | ResourceExhaustionError
+  | TransactionSubmissionError
   | UserRejectedError
   | GasPriceUnavailableError
   | TxFailedError

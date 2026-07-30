@@ -7,6 +7,7 @@ import type {
   ContractWriteError,
   InsufficientFundsError,
   ResourceExhaustionError,
+  TransactionSubmissionError,
   UserRejectedError,
   WalletNotConnectedError,
   WrongNetworkError,
@@ -73,6 +74,7 @@ export type Erc20AllowanceServiceShape = {
     | ContractWriteError
     | InsufficientFundsError
     | ResourceExhaustionError
+    | TransactionSubmissionError
     | UserRejectedError
     | WalletNotConnectedError
     | WrongNetworkError
@@ -88,6 +90,7 @@ export type Erc20AllowanceServiceShape = {
     | ContractWriteError
     | InsufficientFundsError
     | ResourceExhaustionError
+    | TransactionSubmissionError
     | UserRejectedError
     | WalletNotConnectedError
     | WrongNetworkError

@@ -3,7 +3,12 @@ import { Chunk, Effect, Exit, Layer, Stream, SubscriptionRef } from "effect";
 import type { Abi, Hash, TransactionReceipt } from "viem";
 import { erc20Abi } from "viem";
 import { ContractPipeline, ContractPipelineLive, ContractWriterLive } from "#src/contract/index.js";
-import { ClientNotFoundError, EventDecodeError, ReceiptTimeoutError } from "#src/core/index.js";
+import {
+  ClientNotFoundError,
+  EventDecodeError,
+  ReceiptTimeoutError,
+  TransactionSubmissionError,
+} from "#src/core/index.js";
 import type { DecodedEvent } from "#src/events/index.js";
 import { EventStream } from "#src/events/index.js";
 import { NonceService } from "#src/nonce/index.js";
@@ -716,6 +721,64 @@ describe("ContractPipeline", () => {
         Effect.scoped
       )
     );
+
+    it.effect("stops in submission phase on raw transaction decoding failure", () => {
+      const providerError = new Error(
+        "RPC 0x8f Custom eth_sendRawTransaction: Transaction decoding error"
+      );
+      let receiptCalls = 0;
+      let writeCalls = 0;
+
+      return Effect.gen(function* () {
+        const pipeline = yield* ContractPipeline;
+        const { stateRef, terminal } = yield* pipeline.writeAndTrack({
+          abi: erc20Abi,
+          account: TEST_ADDRESS,
+          address: TEST_ADDRESS,
+          args: [TEST_ADDRESS_2, 100n],
+          chainId: TEST_CHAIN_ID,
+          functionName: "transfer",
+        });
+
+        const result = yield* terminal.pipe(Effect.either);
+        expect(result._tag).toBe("Left");
+        if (result._tag === "Left") {
+          expect(result.left).toBeInstanceOf(TransactionSubmissionError);
+        }
+
+        const state = yield* stateRef.get;
+        expect(state.status).toBe("failed");
+        if (state.status === "failed") {
+          expect(state.phase).toBe("submission");
+        }
+
+        expect(writeCalls).toBe(1);
+        expect(receiptCalls).toBe(0);
+      }).pipe(
+        Effect.provide(
+          makeContractPipelineTestLayer({
+            publicClient: {
+              estimateContractGas: () => Promise.resolve(50000n),
+              simulateContract: () => Promise.resolve({ request: {}, result: true }),
+            },
+            txManager: {
+              waitForReceipt: () =>
+                Effect.sync(() => {
+                  receiptCalls += 1;
+                  return DEFAULT_RECEIPT;
+                }),
+            },
+            walletClient: {
+              writeContract: () => {
+                writeCalls += 1;
+                return Promise.reject(providerError);
+              },
+            },
+          })
+        ),
+        Effect.scoped
+      );
+    });
 
     it.effect("strict preflight fails on gas estimation and marks preflight phase", () => {
       let writeCalls = 0;

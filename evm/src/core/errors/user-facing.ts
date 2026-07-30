@@ -15,6 +15,7 @@ import {
   InsufficientFundsError,
   ReceiptTimeoutError,
   ResourceExhaustionError,
+  TransactionSubmissionError,
   TxFailedError,
   TxReplacedError,
   UserRejectedError,
@@ -189,6 +190,15 @@ export function toUserFacingTxError(error: unknown): UserFacingTxError {
       message: error.message || "Insufficient funds to submit this transaction",
       raw: error,
       retryable: false,
+    };
+  }
+
+  if (error instanceof TransactionSubmissionError) {
+    return {
+      category: "retryable",
+      message: error.message,
+      raw: error,
+      retryable: true,
     };
   }
 

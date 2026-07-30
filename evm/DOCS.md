@@ -519,6 +519,26 @@ Recommended defaults:
 - Consider `best-effort` for low-complexity withdraw/claim flows where wallet-first UX matters.
 - Use `none` sparingly and only when your product explicitly accepts skipping local preflight checks.
 
+### Transaction submission failures
+
+`TransactionSubmissionError` means the wallet/RPC submission failed before a transaction hash was returned, so it is not
+a smart-contract revert. The currently supported reason is `raw-transaction-decoding`; the original provider error is
+retained as `cause`.
+
+```typescript
+const result = pipeline.writeAndWait(params).pipe(
+  Effect.catchTag("TransactionSubmissionError", (error) =>
+    Effect.succeed({
+      _tag: "submission-failed" as const,
+      reason: error.reason,
+    }),
+  ),
+);
+```
+
+Treat this error as explicitly retryable by the user. The library does not automatically resubmit: a fresh call should
+follow a deliberate retry action so the wallet can create a new signature.
+
 ## EIP-7702 (EOA delegation + atomic batching)
 
 [EIP-7702](https://eips.ethereum.org/EIPS/eip-7702) adds a new transaction type that lets an EOA "set code" for itself

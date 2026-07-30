@@ -18,6 +18,7 @@ import type {
   InsufficientFundsError,
   ResourceExhaustionError,
   SimulationFailedError,
+  TransactionSubmissionError,
   UserRejectedError,
   WalletNotConnectedError,
   WrongNetworkError,
@@ -133,6 +134,7 @@ export type ContractWriterShape = {
     | ContractWriteError
     | InsufficientFundsError
     | ResourceExhaustionError
+    | TransactionSubmissionError
     | UserRejectedError
     | WalletNotConnectedError
     | WrongNetworkError

@@ -8,6 +8,7 @@ import {
   ApprovalError,
   ContractReadError,
   SimulationFailedError,
+  TransactionSubmissionError,
   UserRejectedError,
 } from "#src/core/index.js";
 import {
@@ -482,5 +483,65 @@ describe("ERC-20 Allowance Services", () => {
         );
       })()
     );
+
+    it.effect("does not retry a raw transaction decoding submission failure", () => {
+      const calls: Call[] = [];
+      const providerError = new Error(
+        "RPC 0x8f Custom eth_sendRawTransaction: Transaction decoding error"
+      );
+      const submissionError = new TransactionSubmissionError({
+        cause: providerError,
+        message: "The RPC provider could not decode the signed transaction",
+        reason: "raw-transaction-decoding",
+      });
+
+      const deps = Layer.mergeAll(
+        Layer.succeed(
+          ContractReader,
+          ContractReader.of({
+            multicall: (() =>
+              Effect.dieMessage("unused")) as unknown as ContractReaderShape["multicall"],
+            read: ((params: unknown) => {
+              calls.push({ kind: "read", params });
+              return Effect.succeed(1n);
+            }) as unknown as ContractReaderShape["read"],
+          } satisfies ContractReaderShape)
+        ),
+        Layer.succeed(
+          ContractWriter,
+          ContractWriter.of({
+            estimateGas: (() =>
+              Effect.dieMessage("unused")) as unknown as ContractWriterShape["estimateGas"],
+            simulate: ((params: unknown) => {
+              calls.push({ kind: "simulate", params });
+              return Effect.succeed({ request: {}, result: true });
+            }) as unknown as ContractWriterShape["simulate"],
+            write: ((params: unknown) => {
+              calls.push({ kind: "write", params });
+              return Effect.fail(submissionError);
+            }) as unknown as ContractWriterShape["write"],
+          } satisfies ContractWriterShape)
+        )
+      );
+
+      return Effect.gen(function* () {
+        const service = yield* Erc20NoOutputAllowanceService;
+        const result = yield* service
+          .ensureAllowance({
+            account: TEST_ADDRESS,
+            chainId: TEST_CHAIN_ID,
+            required: 5n,
+            spender: TEST_ADDRESS_2,
+            tokenAddress: TEST_ADDRESS,
+          })
+          .pipe(Effect.either);
+
+        expect(result._tag).toBe("Left");
+        if (result._tag === "Left") {
+          expect(result.left._tag).toBe("TransactionSubmissionError");
+        }
+        expect(calls.map((call) => call.kind)).toEqual(["read", "simulate", "write"]);
+      }).pipe(Effect.provide(Layer.provide(Erc20NoOutputAllowanceServiceLive, deps)));
+    });
   });
 });

@@ -21,6 +21,7 @@ import {
   InsufficientFundsError,
   isLikelyUserRejectedError,
   ResourceExhaustionError,
+  TransactionSubmissionError,
   UserRejectedError,
 } from "#src/core/errors/tx.js";
 import {
@@ -38,6 +39,9 @@ const ERROR_MESSAGE_FIELDS = ["message", "shortMessage", "details"] as const;
 const NONCE_TOO_LOW_RE = /nonce (?:is )?too low|nonce has already been used|already used nonce/i;
 const NONCE_TOO_LOW_FALSE_POSITIVE_RE =
   /account nonce too high|replacement transaction underpriced|transaction underpriced|already known/i;
+const RAW_TRANSACTION_METHOD_RE = /\beth_sendRawTransaction\b/i;
+const RAW_TRANSACTION_DECODING_RE = /\btransaction decoding error\b/i;
+const RAW_TRANSACTION_ERROR_FIELDS = [...ERROR_MESSAGE_FIELDS, "metaMessages", "cause"] as const;
 
 type TransactionErrorContext = {
   address: Address;
@@ -77,6 +81,55 @@ export function isInsufficientFunds(error: unknown): boolean {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
+}
+
+function getRecordField(record: Record<string, unknown>, field: string): unknown {
+  try {
+    return record[field];
+  } catch {
+    return undefined;
+  }
+}
+
+function isRawTransactionDecodingError(error: unknown): boolean {
+  const pending: unknown[] = [error];
+  const seen = new WeakSet<object>();
+  let hasRawTransactionMethod = false;
+  let hasTransactionDecodingError = false;
+
+  for (const value of pending) {
+    if (typeof value === "string") {
+      hasRawTransactionMethod ||= RAW_TRANSACTION_METHOD_RE.test(value);
+      hasTransactionDecodingError ||= RAW_TRANSACTION_DECODING_RE.test(value);
+
+      if (hasRawTransactionMethod && hasTransactionDecodingError) {
+        return true;
+      }
+      continue;
+    }
+
+    if (!isRecord(value) || seen.has(value)) {
+      continue;
+    }
+    seen.add(value);
+
+    if (Array.isArray(value)) {
+      try {
+        for (const item of value) {
+          pending.push(item);
+        }
+      } catch {
+        // Ignore malformed provider arrays and continue inspecting the remaining error tree.
+      }
+      continue;
+    }
+
+    for (const field of RAW_TRANSACTION_ERROR_FIELDS) {
+      pending.push(getRecordField(value, field));
+    }
+  }
+
+  return false;
 }
 
 function messageMatchesNonceTooLow(message: string): boolean {
@@ -289,7 +342,12 @@ export function classifyContractError(
 export function classifyWriteError(
   error: unknown,
   context: TransactionErrorContext
-): ContractWriteError | InsufficientFundsError | ResourceExhaustionError | UserRejectedError {
+):
+  | ContractWriteError
+  | InsufficientFundsError
+  | ResourceExhaustionError
+  | TransactionSubmissionError
+  | UserRejectedError {
   // Check for user rejection first
   if (isUserRejection(error)) {
     return new UserRejectedError({
@@ -309,6 +367,14 @@ export function classifyWriteError(
     return new ResourceExhaustionError({
       cause: error,
       message: "Device ran out of memory during transaction submission",
+    });
+  }
+
+  if (isRawTransactionDecodingError(error)) {
+    return new TransactionSubmissionError({
+      cause: error,
+      message: "The RPC provider could not decode the signed transaction",
+      reason: "raw-transaction-decoding",
     });
   }
 

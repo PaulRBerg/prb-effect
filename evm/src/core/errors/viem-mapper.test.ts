@@ -1,6 +1,7 @@
 import { BaseError, UnknownRpcError } from "viem";
 import { describe, expect, it } from "vitest";
 import { ContractWriteError } from "./contract.js";
+import { TransactionSubmissionError } from "./tx.js";
 import {
   classifyContractError,
   classifyGasEstimationError,
@@ -13,6 +14,11 @@ import {
 } from "./viem-mapper.js";
 
 const TEST_VALUE = "1000000000000000000";
+const WRITE_CONTEXT = {
+  address: "0x1234567890123456789012345678901234567890",
+  functionName: "withdraw",
+  value: TEST_VALUE,
+} as const;
 
 describe("viem error classification", () => {
   describe("isUserRejection", () => {
@@ -260,16 +266,105 @@ describe("viem error classification", () => {
 
   describe("classifyWriteError", () => {
     it("returns ContractWriteError with decimal-string value", () => {
-      const error = classifyWriteError(new Error("RPC failed"), {
-        address: "0x1234567890123456789012345678901234567890",
-        functionName: "withdraw",
-        value: TEST_VALUE,
-      });
+      const error = classifyWriteError(new Error("RPC failed"), WRITE_CONTEXT);
 
       expect(error._tag).toBe("ContractWriteError");
       if (error._tag === "ContractWriteError") {
         expect(error.value).toBe(TEST_VALUE);
       }
+    });
+
+    it("classifies the incident as TransactionSubmissionError", () => {
+      const providerError = new Error(
+        "RPC 0x8f Custom eth_sendRawTransaction: Transaction decoding error"
+      );
+      const error = classifyWriteError(providerError, WRITE_CONTEXT);
+
+      expect(error).toBeInstanceOf(TransactionSubmissionError);
+      if (error._tag === "TransactionSubmissionError") {
+        expect(error.reason).toBe("raw-transaction-decoding");
+        expect(error.cause).toBe(providerError);
+      }
+    });
+
+    it("matches method and decoding details across nested provider fields", () => {
+      const providerError = {
+        shortMessage: "Request ETH_SENDRAWTRANSACTION failed",
+        cause: {
+          details: "TRANSACTION DECODING ERROR",
+        },
+      };
+      const error = classifyWriteError(providerError, WRITE_CONTEXT);
+
+      expect(error._tag).toBe("TransactionSubmissionError");
+    });
+
+    it("matches a viem BaseError cause chain", () => {
+      const providerError = new BaseError("Raw transaction submission failed", {
+        cause: new BaseError("Provider rejected the payload", {
+          details: "Transaction decoding error",
+        }),
+        metaMessages: ["Method: eth_sendRawTransaction"],
+      });
+      const error = classifyWriteError(providerError, WRITE_CONTEXT);
+
+      expect(error._tag).toBe("TransactionSubmissionError");
+    });
+
+    it("tolerates cyclic provider error objects", () => {
+      const providerError: Record<string, unknown> = {
+        details: "Transaction decoding error",
+        message: "eth_sendRawTransaction failed",
+      };
+      providerError.cause = providerError;
+
+      const classify = () => classifyWriteError(providerError, WRITE_CONTEXT);
+      expect(classify).not.toThrow();
+      expect(classify()._tag).toBe("TransactionSubmissionError");
+    });
+
+    it("does not classify decoding language without eth_sendRawTransaction", () => {
+      const error = classifyWriteError(
+        new Error("Transaction decoding error while processing a response"),
+        WRITE_CONTEXT
+      );
+
+      expect(error._tag).toBe("ContractWriteError");
+    });
+
+    it("does not classify unrelated eth_sendRawTransaction failures", () => {
+      const error = classifyWriteError(
+        new Error("eth_sendRawTransaction: replacement transaction underpriced"),
+        WRITE_CONTEXT
+      );
+
+      expect(error._tag).toBe("ContractWriteError");
+    });
+
+    it.each([
+      "eth_sendRawTransaction: execution reverted; failed to decode revert data",
+      "Failed to decode contract function result",
+    ])("keeps contract/revert decoding failure generic: %s", (message) => {
+      const error = classifyWriteError(new Error(message), WRITE_CONTEXT);
+      expect(error._tag).toBe("ContractWriteError");
+    });
+
+    it.each([
+      {
+        expectedTag: "UserRejectedError",
+        message: "User rejected eth_sendRawTransaction: Transaction decoding error",
+      },
+      {
+        expectedTag: "InsufficientFundsError",
+        message: "Insufficient funds; eth_sendRawTransaction: Transaction decoding error",
+      },
+      {
+        expectedTag: "ResourceExhaustionError",
+        message: "Cannot allocate memory; eth_sendRawTransaction: Transaction decoding error",
+      },
+    ] as const)("preserves $expectedTag precedence", ({ expectedTag, message }) => {
+      const error = classifyWriteError(new Error(message), WRITE_CONTEXT);
+      expect(error._tag).toBe(expectedTag);
     });
   });
 });

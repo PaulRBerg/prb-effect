@@ -43,6 +43,20 @@ export class InsufficientFundsError extends Schema.TaggedError<InsufficientFunds
   }
 ) {}
 
+export type TransactionSubmissionReason = "raw-transaction-decoding";
+
+/**
+ * Wallet/RPC submission failed before a transaction hash was returned.
+ */
+export class TransactionSubmissionError extends Schema.TaggedError<TransactionSubmissionError>()(
+  "TransactionSubmissionError",
+  {
+    cause: Schema.optional(Schema.Unknown),
+    message: Schema.String,
+    reason: Schema.Literal("raw-transaction-decoding"),
+  }
+) {}
+
 /**
  * Device or environment ran out of resources during an RPC call.
  *

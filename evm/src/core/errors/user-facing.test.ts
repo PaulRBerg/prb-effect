@@ -2,6 +2,7 @@ import { describe, expect, it } from "@effect/vitest";
 import {
   InsufficientFundsError,
   ReceiptTimeoutError,
+  TransactionSubmissionError,
   UserRejectedError,
 } from "#src/core/errors/tx.js";
 import { toUserFacingTxError } from "./user-facing.js";
@@ -30,6 +31,20 @@ describe("toUserFacingTxError", () => {
 
     expect(mapped.category).toBe("network");
     expect(mapped.retryable).toBe(true);
+  });
+
+  it("maps transaction submission errors to retryable without using tx-failed", () => {
+    const error = new TransactionSubmissionError({
+      cause: new Error("insufficient funds"),
+      message: "The RPC provider could not decode the signed transaction",
+      reason: "raw-transaction-decoding",
+    });
+    const mapped = toUserFacingTxError(error);
+
+    expect(mapped.category).toBe("retryable");
+    expect(mapped.retryable).toBe(true);
+    expect(mapped.message).toBe(error.message);
+    expect(mapped.raw).toBe(error);
   });
 
   it("maps user rejection to cancelled", () => {

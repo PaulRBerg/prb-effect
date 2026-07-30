@@ -2,6 +2,7 @@ import { describe, expect, it } from "@effect/vitest";
 import { Effect, Exit, Layer } from "effect";
 import { erc20Abi } from "viem";
 import { ContractWriter, ContractWriterLive } from "#src/contract/index.js";
+import { TransactionSubmissionError } from "#src/core/index.js";
 import {
   makeMockPublicClientLayer,
   makeMockWalletClientLayer,
@@ -303,7 +304,7 @@ describe("ContractWriter", () => {
     it.effect("returns ContractWriteError on failure", () =>
       Effect.gen(function* () {
         const writer = yield* ContractWriter;
-        const exit = yield* writer
+        const result = yield* writer
           .write({
             abi: erc20Abi,
             account: TEST_ADDRESS,
@@ -312,9 +313,12 @@ describe("ContractWriter", () => {
             chainId: TEST_CHAIN_ID,
             functionName: "transfer",
           })
-          .pipe(Effect.exit);
+          .pipe(Effect.either);
 
-        expect(Exit.isFailure(exit)).toBe(true);
+        expect(result._tag).toBe("Left");
+        if (result._tag === "Left") {
+          expect(result.left._tag).toBe("ContractWriteError");
+        }
       }).pipe(
         Effect.provide(
           Layer.provide(
@@ -322,13 +326,53 @@ describe("ContractWriter", () => {
             Layer.merge(
               makeMockPublicClientLayer(),
               makeMockWalletClientLayer({
-                writeContract: () => Promise.reject(new Error("User rejected transaction")),
+                writeContract: () => Promise.reject(new Error("Write failed")),
               })
             )
           )
         )
       )
     );
+
+    it.effect("returns TransactionSubmissionError for raw transaction decoding failures", () => {
+      const providerError = new Error(
+        "RPC 0x8f Custom eth_sendRawTransaction: Transaction decoding error"
+      );
+
+      return Effect.gen(function* () {
+        const writer = yield* ContractWriter;
+        const result = yield* writer
+          .write({
+            abi: erc20Abi,
+            account: TEST_ADDRESS,
+            address: TEST_ADDRESS,
+            args: [TEST_ADDRESS_2, 100n],
+            chainId: TEST_CHAIN_ID,
+            functionName: "transfer",
+          })
+          .pipe(Effect.either);
+
+        expect(result._tag).toBe("Left");
+        if (result._tag === "Left") {
+          expect(result.left).toBeInstanceOf(TransactionSubmissionError);
+          if (result.left._tag === "TransactionSubmissionError") {
+            expect(result.left.cause).toBe(providerError);
+          }
+        }
+      }).pipe(
+        Effect.provide(
+          Layer.provide(
+            ContractWriterLive,
+            Layer.merge(
+              makeMockPublicClientLayer(),
+              makeMockWalletClientLayer({
+                writeContract: () => Promise.reject(providerError),
+              })
+            )
+          )
+        )
+      );
+    });
 
     it.effect("returns WalletNotConnectedError for unknown chainId", () =>
       Effect.gen(function* () {

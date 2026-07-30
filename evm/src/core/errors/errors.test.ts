@@ -13,6 +13,7 @@ import {
   ReceiptTimeoutError,
   ResourceExhaustionError,
   SimulationFailedError,
+  TransactionSubmissionError,
   TransportError,
   TxFailedError,
   WalletNotConnectedError,
@@ -285,6 +286,43 @@ describe("ContractWriteError", () => {
       ).pipe(Effect.catchTag("ContractWriteError", (e) => Effect.succeed(e)));
       expect(caught.address).toBe("0x1234");
       expect(caught.functionName).toBe("transfer");
+    })
+  );
+});
+
+describe("TransactionSubmissionError", () => {
+  it("has correct _tag", () => {
+    const error = new TransactionSubmissionError({
+      message: "The RPC provider could not decode the signed transaction",
+      reason: "raw-transaction-decoding",
+    });
+    expect(error._tag).toBe("TransactionSubmissionError");
+  });
+
+  it("stores message, reason, and optional cause", () => {
+    const cause = new Error("eth_sendRawTransaction: Transaction decoding error");
+    const error = new TransactionSubmissionError({
+      cause,
+      message: "The RPC provider could not decode the signed transaction",
+      reason: "raw-transaction-decoding",
+    });
+
+    expect(error.message).toBe("The RPC provider could not decode the signed transaction");
+    expect(error.reason).toBe("raw-transaction-decoding");
+    expect(error.cause).toBe(cause);
+  });
+
+  it.effect("can be caught with catchTag", () =>
+    Effect.gen(function* () {
+      const caught = yield* Effect.fail(
+        new TransactionSubmissionError({
+          message: "test",
+          reason: "raw-transaction-decoding",
+        })
+      ).pipe(Effect.catchTag("TransactionSubmissionError", (e) => Effect.succeed(e)));
+
+      expect(caught.message).toBe("test");
+      expect(caught.reason).toBe("raw-transaction-decoding");
     })
   );
 });
