@@ -18,6 +18,13 @@ The format is based on [Common Changelog](https://common-changelog.org/).
 [3.0.3]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm-safe%403.0.3
 [3.0.4]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm-safe%403.0.4
 [4.0.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm-safe%404.0.0
+[4.1.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm-safe@4.1.0
+
+## [4.1.0] - 2026-07-30
+
+### Added
+
+- Support `@prb/effect-evm@^3.0.0` while retaining compatibility with v2
 
 ## [4.0.0] - 2026-07-07
 

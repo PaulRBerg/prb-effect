@@ -6,7 +6,7 @@
   "sideEffects": false,
   "type": "module",
   "types": "./dist/index.d.ts",
-  "version": "4.0.0",
+  "version": "4.1.0",
   "scripts": {
     "build": "just build",
     "prepack": "bun install --frozen-lockfile && just build"
@@ -75,7 +75,7 @@
   ],
   "peerDependencies": {
     "@effect/platform": "catalog:peers",
-    "@prb/effect-evm": "^2.0.0",
+    "@prb/effect-evm": "^2.0.0 || ^3.0.0",
     "@safe-global/safe-apps-sdk": "catalog:peers",
     "@wagmi/core": "catalog:peers",
     "effect": "catalog:peers",
