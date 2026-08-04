@@ -12,8 +12,8 @@ Maps each `@prb/effect-*` package to its consumers in `~/sablier/new-ui` and its
 
 ## Version Resolution
 
-- **catalog:effect** — version lives in root `package.json` under `workspaces.catalog.effect`. The `bump-deps` skill
-  handles catalog resolution automatically.
+- **catalog:effect** — version lives in root `package.json` under `workspaces.catalog.effect`. The `node-deps-bumper`
+  skill handles catalog resolution automatically.
 - **pinned (beta)** — `@prb/effect-solana` uses a pinned beta version (e.g., `1.0.0-beta.4`). Must be updated manually
   in `portal/package.json`.
 - **^semver** — `@prb/effect-xstate` uses a caret range (e.g., `^2.0.2`) directly in `portal/package.json`.

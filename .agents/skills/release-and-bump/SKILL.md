@@ -72,12 +72,12 @@ was published successfully if Step 2 succeeded.
 
 ## Step 4: Bump in `~/sablier/new-ui`
 
-Delegate to the `bump-deps` skill to update the package version in the consumer monorepo:
+Delegate to the `node-deps-bumper` skill to update the package version in the consumer monorepo:
 
 1. Change directory: `cd ~/sablier/new-ui`
-2. Invoke: `/bump-deps <package-name>`
+2. Invoke: `/node-deps-bumper <package-name>`
 
-The `bump-deps` skill handles catalog resolution, version format preservation, and `bun install` automatically.
+The `node-deps-bumper` skill handles catalog resolution, version format preservation, and `bun install` automatically.
 
 ## Step 5: Migrate Consumer Code
 
