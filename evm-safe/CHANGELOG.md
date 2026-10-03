@@ -19,6 +19,19 @@ The format is based on [Common Changelog](https://common-changelog.org/).
 [3.0.4]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm-safe%403.0.4
 [4.0.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm-safe%404.0.0
 [4.1.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm-safe@4.1.0
+[5.0.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm-safe@5.0.0
+
+## [5.0.0] - 2026-10-03
+
+### Changed
+
+- **Breaking:** Turn `SafeWriteExecutionAdapterLive` into a layer factory; call `SafeWriteExecutionAdapterLive()`
+  ([`a06dfc1`](https://github.com/PaulRBerg/prb-effect/commit/a06dfc1))
+
+### Added
+
+- Accept `waitOptions` in `SafeWriteExecutionAdapterLive` so pipeline writes can resolve as queued before the 90-minute
+  default ([`a06dfc1`](https://github.com/PaulRBerg/prb-effect/commit/a06dfc1))
 
 ## [4.1.0] - 2026-07-30
 
