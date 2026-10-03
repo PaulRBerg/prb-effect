@@ -38,7 +38,7 @@ alias b := build
     echo ""
 
     echo '{{ GREEN }}✓ All packages built{{ NORMAL }}'
-alias ba := build
+alias ba := build-all
 
 # Bump beta version using jq (e.g., just bump-beta evm)
 @bump-beta app:
@@ -54,13 +54,12 @@ alias bb := bump-beta
         "**/*.tsbuildinfo" \
         "**/*.tgz"
 
-# Run Claude to bump release, push git changes, and publish to npm with env loaded from .envrc
+# Run Claude to bump release, push the commit and release tag, and publish to npm
 @release package:
     zsh -ic 'ccbump {{ package }}'
     git push origin
-    eval "$(direnv export zsh)"
-    cd {{ package }}
-    npm publish
+    git push origin "{{ package }}@$(jq -r .version {{ package }}/package.json)"
+    cd {{ package }} && npm publish
 alias rel := release
 
 # ---------------------------------------------------------------------------- #
