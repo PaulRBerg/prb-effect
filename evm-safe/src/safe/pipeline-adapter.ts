@@ -13,6 +13,7 @@ import { Effect, Layer, Stream, SubscriptionRef } from "effect";
 import type { Abi } from "viem";
 import { encodeFunctionData } from "viem";
 import { SafeAppsService } from "./service.js";
+import type { SafeMultisigWaitOptions } from "./tx-lifecycle.js";
 import type { SafeWriteAndTrackState } from "./write-and-track.js";
 import { safeWriteAndTrack } from "./write-and-track.js";
 
@@ -89,167 +90,174 @@ function toTxFailedSafeError(error: unknown): TxFailedError {
   });
 }
 
-export const SafeWriteExecutionAdapterLive = Layer.effect(
-  WriteExecutionAdapter,
-  Effect.gen(function* () {
-    const safeApps = yield* SafeAppsService;
-    const txManager = yield* TxManager;
+export type SafeWriteExecutionAdapterConfig = {
+  /** Applied to every Safe write, e.g. `maxWait` to resolve as `queued` sooner than the default. */
+  readonly waitOptions?: SafeMultisigWaitOptions;
+};
 
-    return WriteExecutionAdapter.of({
-      canHandle: (params) =>
-        safeApps.getInfo().pipe(
-          Effect.map((info) => (params.chainId == null ? true : info.chainId === params.chainId)),
-          Effect.catchAll(() => Effect.succeed(false))
-        ),
-      writeAndTrack: <
-        TAbi extends Abi,
-        TFunctionName extends ContractFunctionName<TAbi, "nonpayable" | "payable">,
-      >(
-        params: WriteAndTrackParams<TAbi, TFunctionName>
-      ) =>
-        Effect.gen(function* () {
-          const encodedData = yield* Effect.try({
-            catch: (cause) =>
-              new TxFailedError({
-                cause,
-                hash: "unknown",
-                message: "Failed to encode Safe transaction calldata",
-              }),
-            try: () =>
-              encodeFunctionData({
-                abi: params.abi as Abi,
-                args: params.args as readonly unknown[] | undefined,
-                functionName: params.functionName as string,
-              }),
-          }).pipe(Effect.either);
+export const SafeWriteExecutionAdapterLive = (config: SafeWriteExecutionAdapterConfig = {}) =>
+  Layer.effect(
+    WriteExecutionAdapter,
+    Effect.gen(function* () {
+      const safeApps = yield* SafeAppsService;
+      const txManager = yield* TxManager;
 
-          if (encodedData._tag === "Left") {
-            const stateRef = yield* SubscriptionRef.make<TxState>(
-              toFailedState("unknown", encodedData.left.message)
+      return WriteExecutionAdapter.of({
+        canHandle: (params) =>
+          safeApps.getInfo().pipe(
+            Effect.map((info) => (params.chainId == null ? true : info.chainId === params.chainId)),
+            Effect.catchAll(() => Effect.succeed(false))
+          ),
+        writeAndTrack: <
+          TAbi extends Abi,
+          TFunctionName extends ContractFunctionName<TAbi, "nonpayable" | "payable">,
+        >(
+          params: WriteAndTrackParams<TAbi, TFunctionName>
+        ) =>
+          Effect.gen(function* () {
+            const encodedData = yield* Effect.try({
+              catch: (cause) =>
+                new TxFailedError({
+                  cause,
+                  hash: "unknown",
+                  message: "Failed to encode Safe transaction calldata",
+                }),
+              try: () =>
+                encodeFunctionData({
+                  abi: params.abi as Abi,
+                  args: params.args as readonly unknown[] | undefined,
+                  functionName: params.functionName as string,
+                }),
+            }).pipe(Effect.either);
+
+            if (encodedData._tag === "Left") {
+              const stateRef = yield* SubscriptionRef.make<TxState>(
+                toFailedState("unknown", encodedData.left.message)
+              );
+
+              return {
+                actions: {
+                  cancel: () => Effect.fail(encodedData.left),
+                  speedup: () => Effect.fail(encodedData.left),
+                },
+                stateRef,
+                terminal: Effect.fail(encodedData.left),
+              } satisfies WriteAndTrackExecution<TAbi>;
+            }
+
+            const safeTx = {
+              data: encodedData.right,
+              to: params.address,
+              value: params.value ?? 0n,
+            };
+
+            const safeExecution = yield* safeWriteAndTrack({
+              chainId: params.chainId,
+              transactions: [safeTx],
+              waitOptions: config.waitOptions,
+            }).pipe(
+              Effect.provideService(SafeAppsService, safeApps),
+              Effect.provideService(TxManager, txManager)
+            );
+
+            const stateRef = yield* SubscriptionRef.make<TxState>(initialTxState);
+
+            yield* Effect.forkScoped(
+              Stream.runForEach(safeExecution.stateRef.changes, (safeState) =>
+                SubscriptionRef.set(stateRef, mapSafeStateToTxState(safeState))
+              )
+            );
+
+            const terminal: Effect.Effect<
+              WriteAndTrackTerminal<TAbi>,
+              TxFailedError
+            > = safeExecution.result.pipe(
+              Effect.mapError(toTxFailedSafeError),
+              Effect.flatMap(
+                (safeTerminal): Effect.Effect<WriteAndTrackTerminal<TAbi>, TxFailedError> => {
+                  switch (safeTerminal._tag) {
+                    case "success":
+                      return decodeReceiptLogs(safeTerminal.receipt, params.abi).pipe(
+                        // Event decoding is best-effort: never fail the terminal over a log we can't
+                        // decode against the ABI. Fall back to `[]` with a debug breadcrumb.
+                        Effect.catchAll((cause) =>
+                          Effect.logDebug("Failed to decode Safe receipt logs").pipe(
+                            Effect.annotateLogs({
+                              hash: safeTerminal.onchainHash,
+                              reason: cause.message,
+                            }),
+                            Effect.as([])
+                          )
+                        ),
+                        Effect.map(
+                          (events) =>
+                            ({
+                              _tag: "success",
+                              events,
+                              hash: safeTerminal.onchainHash,
+                              receipt: safeTerminal.receipt,
+                            }) satisfies WriteAndTrackTerminal<TAbi>
+                        )
+                      );
+                    case "queued":
+                      return Effect.succeed({
+                        _tag: "queued",
+                        reason: "awaiting-safe-confirmations",
+                        reference: safeTerminal.safeTxHash,
+                        details: {
+                          confirmations: safeTerminal.confirmations,
+                          confirmationsRequired: safeTerminal.confirmationsRequired,
+                          lastStatus: safeTerminal.lastStatus,
+                        },
+                      } satisfies WriteAndTrackTerminal<TAbi>);
+                    case "cancelled":
+                      return Effect.succeed({
+                        _tag: "cancelled",
+                        reason: "safe-cancelled",
+                        reference: safeTerminal.safeTxHash,
+                      } satisfies WriteAndTrackTerminal<TAbi>);
+                    case "failed":
+                      return Effect.fail(
+                        new TxFailedError({
+                          // The on-chain hash is set for reverted txs; fall back to the
+                          // Safe tx hash for pre-submission rejections.
+                          hash: safeTerminal.onchainHash ?? safeTerminal.safeTxHash,
+                          message: safeTerminal.error,
+                        })
+                      );
+                    default:
+                      return Effect.fail(
+                        new TxFailedError({
+                          hash: "unknown",
+                          message: "Unexpected Safe terminal state",
+                        })
+                      );
+                  }
+                }
+              )
             );
 
             return {
               actions: {
-                cancel: () => Effect.fail(encodedData.left),
-                speedup: () => Effect.fail(encodedData.left),
+                cancel: () =>
+                  Effect.fail(
+                    new TxFailedError({
+                      hash: "unknown",
+                      message: "Cancel is not supported for Safe multisig execution",
+                    })
+                  ),
+                speedup: () =>
+                  Effect.fail(
+                    new TxFailedError({
+                      hash: "unknown",
+                      message: "Speedup is not supported for Safe multisig execution",
+                    })
+                  ),
               },
               stateRef,
-              terminal: Effect.fail(encodedData.left),
+              terminal,
             } satisfies WriteAndTrackExecution<TAbi>;
-          }
-
-          const safeTx = {
-            data: encodedData.right,
-            to: params.address,
-            value: params.value ?? 0n,
-          };
-
-          const safeExecution = yield* safeWriteAndTrack({
-            chainId: params.chainId,
-            transactions: [safeTx],
-          }).pipe(
-            Effect.provideService(SafeAppsService, safeApps),
-            Effect.provideService(TxManager, txManager)
-          );
-
-          const stateRef = yield* SubscriptionRef.make<TxState>(initialTxState);
-
-          yield* Effect.forkScoped(
-            Stream.runForEach(safeExecution.stateRef.changes, (safeState) =>
-              SubscriptionRef.set(stateRef, mapSafeStateToTxState(safeState))
-            )
-          );
-
-          const terminal: Effect.Effect<
-            WriteAndTrackTerminal<TAbi>,
-            TxFailedError
-          > = safeExecution.result.pipe(
-            Effect.mapError(toTxFailedSafeError),
-            Effect.flatMap(
-              (safeTerminal): Effect.Effect<WriteAndTrackTerminal<TAbi>, TxFailedError> => {
-                switch (safeTerminal._tag) {
-                  case "success":
-                    return decodeReceiptLogs(safeTerminal.receipt, params.abi).pipe(
-                      // Event decoding is best-effort: never fail the terminal over a log we can't
-                      // decode against the ABI. Fall back to `[]` with a debug breadcrumb.
-                      Effect.catchAll((cause) =>
-                        Effect.logDebug("Failed to decode Safe receipt logs").pipe(
-                          Effect.annotateLogs({
-                            hash: safeTerminal.onchainHash,
-                            reason: cause.message,
-                          }),
-                          Effect.as([])
-                        )
-                      ),
-                      Effect.map(
-                        (events) =>
-                          ({
-                            _tag: "success",
-                            events,
-                            hash: safeTerminal.onchainHash,
-                            receipt: safeTerminal.receipt,
-                          }) satisfies WriteAndTrackTerminal<TAbi>
-                      )
-                    );
-                  case "queued":
-                    return Effect.succeed({
-                      _tag: "queued",
-                      reason: "awaiting-safe-confirmations",
-                      reference: safeTerminal.safeTxHash,
-                      details: {
-                        confirmations: safeTerminal.confirmations,
-                        confirmationsRequired: safeTerminal.confirmationsRequired,
-                        lastStatus: safeTerminal.lastStatus,
-                      },
-                    } satisfies WriteAndTrackTerminal<TAbi>);
-                  case "cancelled":
-                    return Effect.succeed({
-                      _tag: "cancelled",
-                      reason: "safe-cancelled",
-                      reference: safeTerminal.safeTxHash,
-                    } satisfies WriteAndTrackTerminal<TAbi>);
-                  case "failed":
-                    return Effect.fail(
-                      new TxFailedError({
-                        // The on-chain hash is set for reverted txs; fall back to the
-                        // Safe tx hash for pre-submission rejections.
-                        hash: safeTerminal.onchainHash ?? safeTerminal.safeTxHash,
-                        message: safeTerminal.error,
-                      })
-                    );
-                  default:
-                    return Effect.fail(
-                      new TxFailedError({
-                        hash: "unknown",
-                        message: "Unexpected Safe terminal state",
-                      })
-                    );
-                }
-              }
-            )
-          );
-
-          return {
-            actions: {
-              cancel: () =>
-                Effect.fail(
-                  new TxFailedError({
-                    hash: "unknown",
-                    message: "Cancel is not supported for Safe multisig execution",
-                  })
-                ),
-              speedup: () =>
-                Effect.fail(
-                  new TxFailedError({
-                    hash: "unknown",
-                    message: "Speedup is not supported for Safe multisig execution",
-                  })
-                ),
-            },
-            stateRef,
-            terminal,
-          } satisfies WriteAndTrackExecution<TAbi>;
-        }),
-    });
-  })
-);
+          }),
+      });
+    })
+  );

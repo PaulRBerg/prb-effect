@@ -6,6 +6,7 @@ import { Effect, Exit, Fiber, Layer, Option, Stream, SubscriptionRef } from "eff
 import type { Hash, Hex, Log, TransactionReceipt } from "viem";
 import { encodeEventTopics, erc20Abi, pad, toHex } from "viem";
 import { afterEach, vi } from "vitest";
+import type { SafeWriteExecutionAdapterConfig } from "./pipeline-adapter.js";
 import { SafeWriteExecutionAdapterLive } from "./pipeline-adapter.js";
 import type { SafeAppsServiceShape } from "./service.js";
 import { SafeAppsService } from "./service.js";
@@ -188,10 +189,11 @@ const txManagerLayer = Layer.succeed(
 const makeAdapterRuntimeLayer = (
   getTx: (
     ...args: Parameters<SafeAppsServiceShape["getTx"]>
-  ) => ReturnType<SafeAppsServiceShape["getTx"]>
+  ) => ReturnType<SafeAppsServiceShape["getTx"]>,
+  config?: SafeWriteExecutionAdapterConfig
 ) =>
   Layer.provide(
-    SafeWriteExecutionAdapterLive,
+    SafeWriteExecutionAdapterLive(config),
     Layer.mergeAll(txManagerLayer, makeSafeAppsServiceLayer(getTx))
   );
 
@@ -425,6 +427,46 @@ describe("SafeWriteExecutionAdapterLive", () => {
             status: "SUCCESS",
           })
         )
+      ),
+      Effect.scoped
+    )
+  );
+
+  it.effect("forwards the configured wait options to every Safe write", () =>
+    Effect.gen(function* () {
+      let forwarded: unknown;
+      safeWriteAndTrackOverride.impl = (params) =>
+        Effect.gen(function* () {
+          forwarded = params;
+          const stateRef = yield* SubscriptionRef.make<SafeWriteAndTrackState>({
+            status: "submitting",
+          });
+          return {
+            result: Effect.succeed({
+              _tag: "cancelled" as const,
+              onchainHash: null,
+              safeTxHash: TEST_SAFE_TX_HASH,
+            }),
+            stateRef,
+          } satisfies SafeWriteAndTrackResult;
+        });
+
+      const adapter = yield* WriteExecutionAdapter;
+      yield* adapter.writeAndTrack({
+        abi: erc20Abi,
+        account: TEST_ACCOUNT,
+        address: TEST_CONTRACT,
+        args: [TEST_RECIPIENT, 100n],
+        chainId: TEST_CHAIN_ID,
+        functionName: "transfer",
+      });
+
+      expect(forwarded).toMatchObject({ waitOptions: { maxWait: "90 seconds" } });
+    }).pipe(
+      Effect.provide(
+        makeAdapterRuntimeLayer(() => Effect.dieMessage("unused in this test"), {
+          waitOptions: { maxWait: "90 seconds" },
+        })
       ),
       Effect.scoped
     )

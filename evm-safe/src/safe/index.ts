@@ -29,7 +29,10 @@ export {
 } from "./errors.js";
 // Service and layer
 export { type SafeAppsServiceConfig, SafeAppsServiceLive } from "./live.js";
-export { SafeWriteExecutionAdapterLive } from "./pipeline-adapter.js";
+export {
+  type SafeWriteExecutionAdapterConfig,
+  SafeWriteExecutionAdapterLive,
+} from "./pipeline-adapter.js";
 export { SafeAppsService, type SafeAppsServiceShape } from "./service.js";
 // Simulation
 export * from "./simulation/index.js";
