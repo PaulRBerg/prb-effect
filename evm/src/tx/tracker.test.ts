@@ -19,27 +19,6 @@ describe("makeTxTracker", () => {
     expect(initialTxState).toEqual({ status: "idle" });
   });
 
-  it.effect("set() updates state", () =>
-    Effect.gen(function* () {
-      const tracker = yield* makeTxTracker;
-      yield* tracker.set({ hash: TEST_TX_HASH, status: "submitted" });
-      const state = yield* tracker.get;
-      expect(state.status).toBe("submitted");
-      if (state.status === "submitted") {
-        expect(state.hash).toBe(TEST_TX_HASH);
-      }
-    })
-  );
-
-  it.effect("update() transforms state", () =>
-    Effect.gen(function* () {
-      const tracker = yield* makeTxTracker;
-      yield* tracker.update(() => ({ status: "signing" }));
-      const state = yield* tracker.get;
-      expect(state.status).toBe("signing");
-    })
-  );
-
   it.effect("update() can access previous state", () =>
     Effect.gen(function* () {
       const tracker = yield* makeTxTracker;

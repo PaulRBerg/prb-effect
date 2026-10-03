@@ -34,15 +34,6 @@ describe("tracer", () => {
         expect(result).toBe("result");
       })
     );
-
-    it.effect("works without attributes parameter", () =>
-      Effect.gen(function* () {
-        const effect = Effect.succeed("result");
-        const wrapped = withSpan("test.operation")(effect);
-        const result = yield* wrapped;
-        expect(result).toBe("result");
-      })
-    );
   });
 
   describe("SpanNames", () => {

@@ -14,13 +14,6 @@ describe("transports", () => {
       expect(typeof transport).toBe("function");
     });
 
-    it("uses default timeout (10000)", () => {
-      const transport = makeHttpTransport({ url: "https://rpc.example.com" });
-      // Transport is a function, verify it can be called
-      expect(transport).toBeDefined();
-      expect(typeof transport).toBe("function");
-    });
-
     it("uses custom timeout when provided", () => {
       const transport = makeHttpTransport({
         timeout: 5000,

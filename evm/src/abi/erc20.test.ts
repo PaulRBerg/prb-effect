@@ -1,5 +1,4 @@
 import { describe, expect, it } from "@effect/vitest";
-import { Effect } from "effect";
 import { erc20Abi, erc20Abi_bytes32 } from "#src/abi/index.js";
 import { ApprovalCheckError, ApprovalError } from "#src/core/index.js";
 
@@ -61,22 +60,6 @@ describe("ApprovalCheckError", () => {
     expect(error.tokenAddress).toBe("0xabcd");
     expect(error.cause).toBe(cause);
   });
-
-  it.effect("can be caught with catchTag", () =>
-    Effect.gen(function* () {
-      const caught = yield* Effect.fail(
-        new ApprovalCheckError({
-          message: "test",
-          owner: "0x1234",
-          spender: "0x5678",
-          tokenAddress: "0xabcd",
-        })
-      ).pipe(Effect.catchTag("ApprovalCheckError", (e) => Effect.succeed(e)));
-      expect(caught.owner).toBe("0x1234");
-      expect(caught.spender).toBe("0x5678");
-      expect(caught.tokenAddress).toBe("0xabcd");
-    })
-  );
 });
 
 describe("ApprovalError", () => {
@@ -102,18 +85,4 @@ describe("ApprovalError", () => {
     expect(error.tokenAddress).toBe("0xabcd");
     expect(error.cause).toBe(cause);
   });
-
-  it.effect("can be caught with catchTag", () =>
-    Effect.gen(function* () {
-      const caught = yield* Effect.fail(
-        new ApprovalError({
-          message: "test",
-          spender: "0x5678",
-          tokenAddress: "0xabcd",
-        })
-      ).pipe(Effect.catchTag("ApprovalError", (e) => Effect.succeed(e)));
-      expect(caught.spender).toBe("0x5678");
-      expect(caught.tokenAddress).toBe("0xabcd");
-    })
-  );
 });

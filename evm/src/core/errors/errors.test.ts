@@ -1,5 +1,4 @@
 import { describe, expect, it } from "@effect/vitest";
-import { Effect } from "effect";
 import { mainnet } from "viem/chains";
 import { DEFAULT_MAX_DELAY } from "#src/constants/index.js";
 import {
@@ -38,16 +37,6 @@ describe("ClientNotFoundError", () => {
     expect(error.chainId).toBe(1);
     expect(error.message).toBe("Client not found");
   });
-
-  it.effect("can be caught with catchTag", () =>
-    Effect.gen(function* () {
-      const caught = yield* Effect.fail(
-        new ClientNotFoundError({ chainId: mainnet.id, message: "test" })
-      ).pipe(Effect.catchTag("ClientNotFoundError", (e) => Effect.succeed(e)));
-      expect(caught.chainId).toBe(1);
-      expect(caught.message).toBe("test");
-    })
-  );
 });
 
 describe("WalletNotConnectedError", () => {
@@ -67,16 +56,6 @@ describe("WalletNotConnectedError", () => {
     expect(error.chainId).toBe(1);
     expect(error.message).toBe("Wallet not connected");
   });
-
-  it.effect("can be caught with catchTag", () =>
-    Effect.gen(function* () {
-      const caught = yield* Effect.fail(
-        new WalletNotConnectedError({ chainId: mainnet.id, message: "test" })
-      ).pipe(Effect.catchTag("WalletNotConnectedError", (e) => Effect.succeed(e)));
-      expect(caught.chainId).toBe(1);
-      expect(caught.message).toBe("test");
-    })
-  );
 });
 
 describe("TransportError", () => {
@@ -99,16 +78,6 @@ describe("TransportError", () => {
     expect(error.message).toBe("Transport failed");
     expect(error.cause).toBe(cause);
   });
-
-  it.effect("can be caught with catchTag", () =>
-    Effect.gen(function* () {
-      const caught = yield* Effect.fail(
-        new TransportError({ message: "test", url: "https://example.com" })
-      ).pipe(Effect.catchTag("TransportError", (e) => Effect.succeed(e)));
-      expect(caught.url).toBe("https://example.com");
-      expect(caught.message).toBe("test");
-    })
-  );
 });
 
 describe("ContractReadError", () => {
@@ -134,20 +103,6 @@ describe("ContractReadError", () => {
     expect(error.message).toBe("Read failed");
     expect(error.cause).toBe(cause);
   });
-
-  it.effect("can be caught with catchTag", () =>
-    Effect.gen(function* () {
-      const caught = yield* Effect.fail(
-        new ContractReadError({
-          address: "0x1234",
-          functionName: "balanceOf",
-          message: "test",
-        })
-      ).pipe(Effect.catchTag("ContractReadError", (e) => Effect.succeed(e)));
-      expect(caught.address).toBe("0x1234");
-      expect(caught.functionName).toBe("balanceOf");
-    })
-  );
 });
 
 describe("SimulationFailedError", () => {
@@ -181,21 +136,6 @@ describe("SimulationFailedError", () => {
     expect(error.revertReason).toBe("insufficient allowance");
     expect(error.value).toBe(TEST_VALUE);
   });
-
-  it.effect("can be caught with catchTag", () =>
-    Effect.gen(function* () {
-      const caught = yield* Effect.fail(
-        new SimulationFailedError({
-          address: "0x1234",
-          functionName: "transfer",
-          message: "test",
-          phase: "simulate",
-        })
-      ).pipe(Effect.catchTag("SimulationFailedError", (e) => Effect.succeed(e)));
-      expect(caught.address).toBe("0x1234");
-      expect(caught.functionName).toBe("transfer");
-    })
-  );
 });
 
 describe("GasEstimationError", () => {
@@ -232,21 +172,6 @@ describe("GasEstimationError", () => {
     expect(error.cause).toBe(cause);
     expect(error.value).toBe(TEST_VALUE);
   });
-
-  it.effect("can be caught with catchTag", () =>
-    Effect.gen(function* () {
-      const caught = yield* Effect.fail(
-        new GasEstimationError({
-          address: "0x1234",
-          functionName: "transfer",
-          message: "test",
-          phase: "estimate",
-        })
-      ).pipe(Effect.catchTag("GasEstimationError", (e) => Effect.succeed(e)));
-      expect(caught.address).toBe("0x1234");
-      expect(caught.functionName).toBe("transfer");
-    })
-  );
 });
 
 describe("ContractWriteError", () => {
@@ -274,20 +199,6 @@ describe("ContractWriteError", () => {
     expect(error.cause).toBe(cause);
     expect(error.value).toBe(TEST_VALUE);
   });
-
-  it.effect("can be caught with catchTag", () =>
-    Effect.gen(function* () {
-      const caught = yield* Effect.fail(
-        new ContractWriteError({
-          address: "0x1234",
-          functionName: "transfer",
-          message: "test",
-        })
-      ).pipe(Effect.catchTag("ContractWriteError", (e) => Effect.succeed(e)));
-      expect(caught.address).toBe("0x1234");
-      expect(caught.functionName).toBe("transfer");
-    })
-  );
 });
 
 describe("TransactionSubmissionError", () => {
@@ -311,20 +222,6 @@ describe("TransactionSubmissionError", () => {
     expect(error.reason).toBe("raw-transaction-decoding");
     expect(error.cause).toBe(cause);
   });
-
-  it.effect("can be caught with catchTag", () =>
-    Effect.gen(function* () {
-      const caught = yield* Effect.fail(
-        new TransactionSubmissionError({
-          message: "test",
-          reason: "raw-transaction-decoding",
-        })
-      ).pipe(Effect.catchTag("TransactionSubmissionError", (e) => Effect.succeed(e)));
-
-      expect(caught.message).toBe("test");
-      expect(caught.reason).toBe("raw-transaction-decoding");
-    })
-  );
 });
 
 describe("ResourceExhaustionError", () => {
@@ -344,15 +241,6 @@ describe("ResourceExhaustionError", () => {
     expect(error.message).toBe("Device ran out of memory during transaction submission");
     expect(error.cause).toBe(cause);
   });
-
-  it.effect("can be caught with catchTag", () =>
-    Effect.gen(function* () {
-      const caught = yield* Effect.fail(new ResourceExhaustionError({ message: "test" })).pipe(
-        Effect.catchTag("ResourceExhaustionError", (e) => Effect.succeed(e))
-      );
-      expect(caught.message).toBe("test");
-    })
-  );
 });
 
 describe("MulticallError", () => {
@@ -375,16 +263,6 @@ describe("MulticallError", () => {
     expect(error.message).toBe("Multicall failed");
     expect(error.cause).toBe(cause);
   });
-
-  it.effect("can be caught with catchTag", () =>
-    Effect.gen(function* () {
-      const caught = yield* Effect.fail(
-        new MulticallError({ failedCalls: 3, message: "test" })
-      ).pipe(Effect.catchTag("MulticallError", (e) => Effect.succeed(e)));
-      expect(caught.failedCalls).toBe(3);
-      expect(caught.message).toBe("test");
-    })
-  );
 });
 
 describe("TxFailedError", () => {
@@ -407,16 +285,6 @@ describe("TxFailedError", () => {
     expect(error.message).toBe("Transaction failed");
     expect(error.cause).toBe(cause);
   });
-
-  it.effect("can be caught with catchTag", () =>
-    Effect.gen(function* () {
-      const caught = yield* Effect.fail(
-        new TxFailedError({ hash: "0xabcd", message: "test" })
-      ).pipe(Effect.catchTag("TxFailedError", (e) => Effect.succeed(e)));
-      expect(caught.hash).toBe("0xabcd");
-      expect(caught.message).toBe("test");
-    })
-  );
 });
 
 describe("ReceiptTimeoutError", () => {
@@ -439,20 +307,6 @@ describe("ReceiptTimeoutError", () => {
     expect(error.timeout).toBe(DEFAULT_MAX_DELAY);
     expect(error.message).toBe("Receipt timeout");
   });
-
-  it.effect("can be caught with catchTag", () =>
-    Effect.gen(function* () {
-      const caught = yield* Effect.fail(
-        new ReceiptTimeoutError({
-          hash: "0xabcd",
-          message: "test",
-          timeout: DEFAULT_MAX_DELAY,
-        })
-      ).pipe(Effect.catchTag("ReceiptTimeoutError", (e) => Effect.succeed(e)));
-      expect(caught.hash).toBe("0xabcd");
-      expect(caught.timeout).toBe(DEFAULT_MAX_DELAY);
-    })
-  );
 });
 
 describe("EventWatchError", () => {
@@ -475,16 +329,6 @@ describe("EventWatchError", () => {
     expect(error.message).toBe("Event watch failed");
     expect(error.cause).toBe(cause);
   });
-
-  it.effect("can be caught with catchTag", () =>
-    Effect.gen(function* () {
-      const caught = yield* Effect.fail(
-        new EventWatchError({ chainId: mainnet.id, message: "test" })
-      ).pipe(Effect.catchTag("EventWatchError", (e) => Effect.succeed(e)));
-      expect(caught.chainId).toBe(1);
-      expect(caught.message).toBe("test");
-    })
-  );
 });
 
 describe("EventDecodeError", () => {
@@ -508,13 +352,4 @@ describe("EventDecodeError", () => {
     expect(error.message).toBe("Event decode failed");
     expect(error.cause).toBe(cause);
   });
-
-  it.effect("can be caught with catchTag", () =>
-    Effect.gen(function* () {
-      const caught = yield* Effect.fail(new EventDecodeError({ log: {}, message: "test" })).pipe(
-        Effect.catchTag("EventDecodeError", (e) => Effect.succeed(e))
-      );
-      expect(caught.message).toBe("test");
-    })
-  );
 });

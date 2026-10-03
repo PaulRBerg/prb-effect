@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@effect/vitest";
-import { Effect } from "effect";
+import { Effect, Logger, LogLevel } from "effect";
 import {
   logContractRead,
   logContractWrite,
@@ -10,176 +10,39 @@ import {
 import { TEST_ADDRESS, TEST_CHAIN_ID, TEST_TX_HASH } from "#src/testing-kit/index.js";
 
 describe("logger", () => {
-  describe("logContractRead", () => {
-    it.effect("completes successfully with params", () =>
-      Effect.gen(function* () {
-        const effect = logContractRead({
-          address: TEST_ADDRESS,
-          chainId: TEST_CHAIN_ID,
-          functionName: "balanceOf",
-        });
-        yield* effect;
-        // If we reach here, the effect succeeded
-        expect(true).toBe(true);
-      })
-    );
+  it.effect("emits operation messages, levels, and fields", () => {
+    const entries: { level: string; message: unknown }[] = [];
+    const logger = Logger.make(({ logLevel, message }) => {
+      entries.push({ level: logLevel._tag, message });
+    });
+    const read = { address: TEST_ADDRESS, chainId: TEST_CHAIN_ID, functionName: "balanceOf" };
+    const write = { ...read, functionName: "transfer" };
+    const submitted = { hash: TEST_TX_HASH, status: "submitted" };
+    const mined = { confirmations: 12, hash: TEST_TX_HASH, status: "mined" };
+    const event = { address: TEST_ADDRESS, blockNumber: 1000n, eventName: "Transfer" };
+    const failure = { error: new Error("test error"), operation: "contract.read" };
+    const stringFailure = { error: "string error", operation: "contract.write" };
 
-    it.effect("returns Effect<void>", () =>
-      Effect.gen(function* () {
-        const effect = logContractRead({
-          address: TEST_ADDRESS,
-          chainId: TEST_CHAIN_ID,
-          functionName: "totalSupply",
-        });
-        const result = yield* effect;
-        expect(result).toBeUndefined();
-      })
-    );
-  });
+    return Effect.gen(function* () {
+      yield* logContractRead(read);
+      yield* logContractWrite(write);
+      yield* logContractWrite({ ...write, hash: TEST_TX_HASH });
+      yield* logTxLifecycle(submitted);
+      yield* logTxLifecycle(mined);
+      yield* logEventReceived(event);
+      yield* logError(failure);
+      yield* logError(stringFailure);
 
-  describe("logContractWrite", () => {
-    it.effect("completes successfully with params", () =>
-      Effect.gen(function* () {
-        const effect = logContractWrite({
-          address: TEST_ADDRESS,
-          chainId: TEST_CHAIN_ID,
-          functionName: "transfer",
-        });
-        yield* effect;
-        expect(true).toBe(true);
-      })
-    );
-
-    it.effect("handles optional hash parameter", () =>
-      Effect.gen(function* () {
-        const effect = logContractWrite({
-          address: TEST_ADDRESS,
-          chainId: TEST_CHAIN_ID,
-          functionName: "transfer",
-          hash: TEST_TX_HASH,
-        });
-        yield* effect;
-        expect(true).toBe(true);
-      })
-    );
-
-    it.effect("works without hash parameter", () =>
-      Effect.gen(function* () {
-        const effect = logContractWrite({
-          address: TEST_ADDRESS,
-          chainId: TEST_CHAIN_ID,
-          functionName: "approve",
-        });
-        const result = yield* effect;
-        expect(result).toBeUndefined();
-      })
-    );
-  });
-
-  describe("logTxLifecycle", () => {
-    it.effect("completes with status and hash", () =>
-      Effect.gen(function* () {
-        const effect = logTxLifecycle({
-          hash: TEST_TX_HASH,
-          status: "submitted",
-        });
-        yield* effect;
-        expect(true).toBe(true);
-      })
-    );
-
-    it.effect("handles optional confirmations", () =>
-      Effect.gen(function* () {
-        const effect = logTxLifecycle({
-          confirmations: 12,
-          hash: TEST_TX_HASH,
-          status: "mined",
-        });
-        yield* effect;
-        expect(true).toBe(true);
-      })
-    );
-
-    it.effect("works without confirmations parameter", () =>
-      Effect.gen(function* () {
-        const effect = logTxLifecycle({
-          hash: TEST_TX_HASH,
-          status: "pending",
-        });
-        const result = yield* effect;
-        expect(result).toBeUndefined();
-      })
-    );
-  });
-
-  describe("logEventReceived", () => {
-    it.effect("handles bigint blockNumber", () =>
-      Effect.gen(function* () {
-        const effect = logEventReceived({
-          address: TEST_ADDRESS,
-          blockNumber: 1000n,
-          eventName: "Transfer",
-        });
-        yield* effect;
-        expect(true).toBe(true);
-      })
-    );
-
-    it.effect("completes successfully with all params", () =>
-      Effect.gen(function* () {
-        const effect = logEventReceived({
-          address: TEST_ADDRESS,
-          blockNumber: 123456n,
-          eventName: "Approval",
-        });
-        const result = yield* effect;
-        expect(result).toBeUndefined();
-      })
-    );
-  });
-
-  describe("logError", () => {
-    it.effect("completes with operation and error", () =>
-      Effect.gen(function* () {
-        const effect = logError({
-          error: new Error("test error"),
-          operation: "contract.read",
-        });
-        yield* effect;
-        expect(true).toBe(true);
-      })
-    );
-
-    it.effect("handles different error types", () =>
-      Effect.gen(function* () {
-        const effect = logError({
-          error: "string error",
-          operation: "contract.write",
-        });
-        const result = yield* effect;
-        expect(result).toBeUndefined();
-      })
-    );
-  });
-
-  describe("composition", () => {
-    it.effect("functions can be composed with Effect.tap", () =>
-      Effect.gen(function* () {
-        const mainEffect = Effect.succeed(42);
-
-        const composed = mainEffect.pipe(
-          Effect.tap(() =>
-            logContractRead({
-              address: TEST_ADDRESS,
-              chainId: TEST_CHAIN_ID,
-              functionName: "balanceOf",
-            })
-          )
-        );
-
-        const result = yield* composed;
-        expect(result).toBe(42);
-      })
-    );
+      expect(entries).toEqual([
+        { level: "Debug", message: ["Contract read", read] },
+        { level: "Info", message: ["Contract write", write] },
+        { level: "Info", message: ["Contract write", { ...write, hash: TEST_TX_HASH }] },
+        { level: "Debug", message: ["Transaction lifecycle", submitted] },
+        { level: "Debug", message: ["Transaction lifecycle", mined] },
+        { level: "Debug", message: ["Event received", event] },
+        { level: "Error", message: ["Operation failed", failure] },
+        { level: "Error", message: ["Operation failed", stringFailure] },
+      ]);
+    }).pipe(Effect.provide(Logger.add(logger)), Logger.withMinimumLogLevel(LogLevel.All));
   });
 });

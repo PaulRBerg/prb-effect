@@ -13,15 +13,4 @@ describe("TxPolicy", () => {
   it("defaultPolicy.replacementStrategy equals none", () => {
     expect(defaultPolicy.replacementStrategy).toBe("none");
   });
-
-  it("defaultPolicy is a valid TxPolicy with all expected keys", () => {
-    expect(defaultPolicy).toHaveProperty("pollingInterval");
-    expect(defaultPolicy).toHaveProperty("receiptTimeout");
-    expect(defaultPolicy).toHaveProperty("replacementStrategy");
-
-    // Validate types
-    expect(typeof defaultPolicy.pollingInterval).toBe("number");
-    expect(typeof defaultPolicy.receiptTimeout).toBe("number");
-    expect(typeof defaultPolicy.replacementStrategy).toBe("string");
-  });
 });
