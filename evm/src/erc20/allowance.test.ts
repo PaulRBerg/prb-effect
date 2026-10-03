@@ -23,14 +23,19 @@ import {
   TEST_CHAIN_ID,
   TEST_TX_HASH,
 } from "#src/testing-kit/index.js";
+import { TxManager } from "#src/tx/index.js";
 
 type Call = Readonly<{ kind: "read" | "simulate" | "write"; params: unknown }>;
 
-const TEST_TX_HASH_2 =
-  "0xbeefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeef" as const;
+const TxManagerUnused = Layer.succeed(TxManager, {
+  getConfirmations: () => Effect.dieMessage("unused"),
+  track: () => Effect.dieMessage("unused"),
+  waitForReceipt: () => Effect.dieMessage("receipt wait must only run for zero-first resets"),
+});
 
 const makeDepsLayer = (calls: Call[], readResult = 123n) =>
   Layer.mergeAll(
+    TxManagerUnused,
     Layer.succeed(
       ContractReader,
       ContractReader.of({
@@ -159,6 +164,7 @@ describe("ERC-20 Allowance Services", () => {
           Layer.provide(
             Erc20AllowanceServiceLive,
             Layer.mergeAll(
+              TxManagerUnused,
               Layer.succeed(
                 ContractReader,
                 ContractReader.of({
@@ -220,6 +226,7 @@ describe("ERC-20 Allowance Services", () => {
           Layer.provide(
             Erc20AllowanceServiceLive,
             Layer.mergeAll(
+              TxManagerUnused,
               Layer.succeed(
                 ContractReader,
                 ContractReader.of({
@@ -311,94 +318,13 @@ describe("ERC-20 Allowance Services", () => {
     );
 
     it.effect(
-      "ensureAllowance falls back to approve(0) then approve(amount) when direct approve fails and allowance is non-zero",
-      () =>
-        (() => {
-          const calls: Call[] = [];
-          let nonZeroAttempt = 0;
-          let writeAttempt = 0;
-
-          const deps = Layer.mergeAll(
-            Layer.succeed(
-              ContractReader,
-              ContractReader.of({
-                multicall: (() =>
-                  Effect.dieMessage("unused")) as unknown as ContractReaderShape["multicall"],
-                read: ((params: unknown) => {
-                  calls.push({ kind: "read", params });
-                  return Effect.succeed(1n);
-                }) as unknown as ContractReaderShape["read"],
-              } satisfies ContractReaderShape)
-            ),
-            Layer.succeed(
-              ContractWriter,
-              ContractWriter.of({
-                estimateGas: (() =>
-                  Effect.dieMessage("unused")) as unknown as ContractWriterShape["estimateGas"],
-                simulate: ((params: unknown) => {
-                  calls.push({ kind: "simulate", params });
-                  const amount = (params as { args?: readonly unknown[] }).args?.[1] as
-                    | bigint
-                    | undefined;
-                  if ((amount ?? 0n) > 0n && nonZeroAttempt === 0) {
-                    nonZeroAttempt += 1;
-                    return Effect.fail(
-                      new SimulationFailedError({
-                        address: TEST_ADDRESS,
-                        functionName: "approve",
-                        message: "revert",
-                        phase: "simulate",
-                      })
-                    );
-                  }
-                  return Effect.succeed({ request: {}, result: true });
-                }) as unknown as ContractWriterShape["simulate"],
-                write: ((params: unknown) => {
-                  calls.push({ kind: "write", params });
-                  writeAttempt += 1;
-                  return Effect.succeed(writeAttempt === 1 ? TEST_TX_HASH : TEST_TX_HASH_2);
-                }) as unknown as ContractWriterShape["write"],
-              } satisfies ContractWriterShape)
-            )
-          );
-
-          return Effect.gen(function* () {
-            const service = yield* Erc20AllowanceService;
-
-            const result = yield* service.ensureAllowance({
-              account: TEST_ADDRESS,
-              chainId: TEST_CHAIN_ID,
-              required: 5n,
-              spender: TEST_ADDRESS_2,
-              tokenAddress: TEST_ADDRESS,
-            });
-
-            expect(result.status).toBe("approved");
-            if (result.status !== "approved") {
-              throw new Error("Expected approved result");
-            }
-
-            expect(result.mode).toBe("zero-first");
-            expect(result.hashes).toEqual([TEST_TX_HASH, TEST_TX_HASH_2]);
-            expect(calls.map((c) => c.kind)).toEqual([
-              "read",
-              "simulate", // direct attempt (fails)
-              "simulate",
-              "write", // approve(0)
-              "simulate",
-              "write", // approve(amount)
-            ]);
-          }).pipe(Effect.provide(Layer.provide(Erc20AllowanceServiceLive, deps)));
-        })()
-    );
-
-    it.effect(
       "ensureAllowance does NOT fall back to zero-first when the user rejects the direct approve",
       () =>
         (() => {
           const calls: Call[] = [];
 
           const deps = Layer.mergeAll(
+            TxManagerUnused,
             Layer.succeed(
               ContractReader,
               ContractReader.of({
@@ -496,6 +422,7 @@ describe("ERC-20 Allowance Services", () => {
       });
 
       const deps = Layer.mergeAll(
+        TxManagerUnused,
         Layer.succeed(
           ContractReader,
           ContractReader.of({

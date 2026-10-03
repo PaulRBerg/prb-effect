@@ -7,13 +7,14 @@ import type {
   ResourceExhaustionError,
   UserRejectedError,
 } from "#src/core/index.js";
-import { ApprovalCheckError, ApprovalError } from "#src/core/index.js";
+import { ApprovalCheckError, ApprovalError, TxFailedError } from "#src/core/index.js";
 import type {
   ApproveParams,
   CheckAllowanceParams,
   EnsureAllowanceParams,
   Erc20AllowanceServiceShape,
 } from "#src/erc20/allowance/index.js";
+import { TxManager } from "#src/tx/index.js";
 
 export class Erc20AllowanceService extends Context.Tag("ew3/Erc20AllowanceService")<
   Erc20AllowanceService,
@@ -25,6 +26,7 @@ export const Erc20AllowanceServiceLive = Layer.effect(
   Effect.gen(function* () {
     const reader = yield* ContractReader;
     const writer = yield* ContractWriter;
+    const txManager = yield* TxManager;
 
     const approve = Effect.fn("approve")(function* (params: ApproveParams) {
       const writeParams = {
@@ -148,6 +150,13 @@ export const Erc20AllowanceServiceLive = Layer.effect(
         spender: params.spender,
         tokenAddress: params.tokenAddress,
       });
+
+      const resetReceipt = yield* txManager.waitForReceipt(params.chainId, resetHash);
+      if (resetReceipt.status === "reverted") {
+        return yield* Effect.fail(
+          new TxFailedError({ hash: resetHash, message: "Allowance reset transaction reverted" })
+        );
+      }
 
       const approveHash = yield* approve({
         account: params.account,

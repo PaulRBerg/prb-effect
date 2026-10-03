@@ -407,6 +407,25 @@ const program = Effect.gen(function* () {
 });
 ```
 
+## ERC-20 allowances
+
+`Erc20AllowanceServiceLive` and `Erc20NoOutputAllowanceServiceLive` require `ContractReader`, `ContractWriter`, and
+`TxManager`. When migrating an existing custom composition, provide `TxManager` alongside the reader and writer.
+`makeEffectEvmLayer` already supplies all three:
+
+```typescript
+import { Layer } from "effect";
+import { Erc20AllowanceServiceLive } from "@prb/effect-evm";
+
+const AllowanceLayer = Layer.provide(Erc20AllowanceServiceLive, EvmLayer);
+```
+
+If a direct approval fails with `ApprovalError` and `zeroFirst` is enabled, `ensureAllowance` submits `approve(0)` and
+waits for its successful receipt before simulating or submitting the final approval. A reverted reset fails with
+`TxFailedError`; receipt lookup failures, `ReceiptTimeoutError`, and `TxReplacedError` stop the sequence and propagate
+to the caller. The wait uses the injected `TxManager` receipt timeout policy. `approve` and the final approval still
+return on broadcast; an `approved` result does not mean the final approval has mined.
+
 ## Writes
 
 Prefer `ContractPipeline` unless you need low-level control.

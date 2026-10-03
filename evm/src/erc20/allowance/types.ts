@@ -6,8 +6,11 @@ import type {
   ClientNotFoundError,
   ContractWriteError,
   InsufficientFundsError,
+  ReceiptTimeoutError,
   ResourceExhaustionError,
   TransactionSubmissionError,
+  TxFailedError,
+  TxReplacedError,
   UserRejectedError,
   WalletNotConnectedError,
   WrongNetworkError,
@@ -41,8 +44,9 @@ export type EnsureAllowanceParams = {
    */
   readonly approveAmount?: bigint | undefined;
   /**
-   * If `true` (default), when current allowance is non-zero and a direct approve fails,
-   * retry with `approve(0)` then `approve(approveAmount)`.
+   * If `true` (default), when current allowance is non-zero and a direct approve fails with `ApprovalError`,
+   * submit `approve(0)`, wait for its successful receipt, then submit `approve(approveAmount)`.
+   * A reverted, replaced, or timed-out reset stops the sequence without another approval.
    */
   readonly zeroFirst?: boolean | undefined;
 };
@@ -89,8 +93,11 @@ export type Erc20AllowanceServiceShape = {
     | ClientNotFoundError
     | ContractWriteError
     | InsufficientFundsError
+    | ReceiptTimeoutError
     | ResourceExhaustionError
     | TransactionSubmissionError
+    | TxFailedError
+    | TxReplacedError
     | UserRejectedError
     | WalletNotConnectedError
     | WrongNetworkError
