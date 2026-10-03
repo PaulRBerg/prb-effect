@@ -3,9 +3,10 @@
  *
  * @example
  * ```typescript
- * import { make } from "effect-next/handlers";
+ * import { make } from "@prb/effect-next/handlers";
+ * import { Effect, Layer } from "effect";
  *
- * export const GET = make((request, context) =>
+ * export const GET = make("Hello", Layer.empty).build(() =>
  *   Effect.succeed({ message: "Hello" })
  * );
  * ```

@@ -44,13 +44,12 @@ Convert Next.js route handlers into Effect workflows:
 // app/api/users/[id]/route.ts
 import { Next } from "@prb/effect-next/handlers";
 import { Effect } from "effect";
-import { RouteParams } from "@prb/effect-next/params";
 
 const Route = Next.make("UsersRoute", AppLayer);
 
-export const GET = Route.build(() =>
+export const GET = Route.build((_request: Request, context: { params: Promise<{ id: string }> }) =>
   Effect.gen(function* () {
-    const params = yield* RouteParams;
+    const params = yield* Effect.promise(() => context.params);
     const userId = params.id;
 
     const user = yield* fetchUser(userId);
@@ -81,6 +80,8 @@ export async function createUser() {
 }
 
 // app/page.tsx
+"use client";
+
 import { createUser } from "./actions";
 
 export default function Page() {
@@ -307,10 +308,10 @@ const user = await Effect.runPromise(getUser("user-1"));
 import { Headers, Cookies } from "@prb/effect-next/headers";
 
 Effect.gen(function* () {
-  const headers = yield* Headers;
+  const headers = yield* Headers();
   const userAgent = headers.get("user-agent");
 
-  const cookies = yield* Cookies;
+  const cookies = yield* Cookies();
   const sessionId = cookies.get("sessionId");
 });
 ```
@@ -321,27 +322,31 @@ into dynamic rendering, so keep them out of root layouts that should stay static
 ### Params
 
 ```typescript
-import { RouteParams, SearchParams } from "@prb/effect-next/params";
+import { decodeParamsUnknown, decodeSearchParamsUnknown } from "@prb/effect-next/params";
+import { Effect, Schema } from "effect";
 
-Effect.gen(function* () {
-  const params = yield* RouteParams;
-  const userId = params.id;
+const readParams = (props: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) =>
+  Effect.gen(function* () {
+    const params = yield* decodeParamsUnknown(Schema.Struct({ id: Schema.String }))(props.params);
+    const searchParams = yield* decodeSearchParamsUnknown(Schema.Struct({ page: Schema.optional(Schema.String) }))(
+      props.searchParams,
+    );
 
-  const searchParams = yield* SearchParams;
-  const page = searchParams.page;
-});
+    return { userId: params.id, page: searchParams.page };
+  });
 ```
 
 ### Navigation
 
 ```typescript
-import { redirect, rewrite, notFound } from "@prb/effect-next/navigation";
+import { Redirect, PermanentRedirect, NotFound } from "@prb/effect-next/navigation";
 
-Effect.gen(function* () {
-  yield* redirect("/login");
-  yield* rewrite("/new-path");
-  yield* notFound();
-});
+const requireLogin = Redirect("/login");
+const movedPage = PermanentRedirect("/new-path");
+const missingPage = NotFound;
 ```
 
 ### Environment

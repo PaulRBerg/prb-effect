@@ -19,10 +19,9 @@ export class NotFoundError extends Data.TaggedError("NotFoundError")<Record<stri
 /**
  * Redirects to the specified URL (307 temporary redirect).
  *
- * This effect triggers a Next.js redirect by calling `redirect()`, which throws
- * a special error that Next.js intercepts to perform the navigation. The thrown
- * error is caught and converted to a typed `RedirectError` that can be handled
- * with `Effect.catchTag("RedirectError", ...)`.
+ * Fails with a typed `RedirectError`, which can be handled with
+ * `Effect.catchTag("RedirectError", ...)`. If unhandled, the package executor
+ * calls Next.js `redirect()` at the handler boundary.
  *
  * @param url - The URL to redirect to
  * @category navigation
@@ -41,10 +40,9 @@ export const Redirect = (url: string): Effect.Effect<never, RedirectError, never
 /**
  * Redirects to the specified URL (308 permanent redirect).
  *
- * This effect triggers a Next.js permanent redirect by calling `permanentRedirect()`,
- * which throws a special error that Next.js intercepts. The thrown error is caught
- * and converted to a typed `RedirectError` that can be handled with
- * `Effect.catchTag("RedirectError", ...)`.
+ * Fails with a typed `RedirectError`, which can be handled with
+ * `Effect.catchTag("RedirectError", ...)`. If unhandled, the package executor
+ * calls Next.js `permanentRedirect()` at the handler boundary.
  *
  * @param url - The URL to redirect to
  * @category navigation
@@ -63,10 +61,9 @@ export const PermanentRedirect = (url: string): Effect.Effect<never, RedirectErr
 /**
  * Renders the not-found page.
  *
- * This effect triggers Next.js's not-found handling by calling `notFound()`,
- * which throws a special error that Next.js intercepts. The thrown error is caught
- * and converted to a typed `NotFoundError` that can be handled with
- * `Effect.catchTag("NotFoundError", ...)`.
+ * Fails with a typed `NotFoundError`, which can be handled with
+ * `Effect.catchTag("NotFoundError", ...)`. If unhandled, the package executor
+ * calls Next.js `notFound()` at the handler boundary.
  *
  * @category navigation
  * @example

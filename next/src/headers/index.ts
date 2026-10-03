@@ -22,8 +22,8 @@ import { ContextWrapperService } from "../internal/async-context.js";
  * @example
  * ```ts
  * const handler = BasePage.build(
- *   Effect.gen(function* () {
- *     const cookies = yield* Cookies
+ *   () => Effect.gen(function* () {
+ *     const cookies = yield* Cookies()
  *     const token = cookies.get("auth-token")
  *     // ...
  *   })
@@ -52,8 +52,8 @@ export const Cookies = Effect.fn("Cookies")(function* () {
  * @example
  * ```ts
  * const handler = RouteHandler.build(
- *   Effect.gen(function* () {
- *     const headers = yield* Headers
+ *   () => Effect.gen(function* () {
+ *     const headers = yield* Headers()
  *     const auth = headers.get("authorization")
  *     // ...
  *   })
@@ -78,8 +78,8 @@ export const Headers = Effect.fn("Headers")(function* () {
  * @example
  * ```ts
  * const handler = ServerAction.build(
- *   Effect.gen(function* () {
- *     const draft = yield* DraftMode
+ *   () => Effect.gen(function* () {
+ *     const draft = yield* DraftMode()
  *     if (draft.isEnabled) {
  *       // ...
  *     }
