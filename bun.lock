@@ -22,7 +22,7 @@
     },
     "evm": {
       "name": "@prb/effect-evm",
-      "version": "3.0.0",
+      "version": "4.0.0",
       "devDependencies": {
         "@biomejs/biome": "catalog:dev",
         "@effect/platform": "catalog:effect",

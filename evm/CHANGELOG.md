@@ -24,6 +24,45 @@ The format is based on [Common Changelog](https://common-changelog.org/).
 [2.2.3]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm%402.2.3
 [2.2.4]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm%402.2.4
 [3.0.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm@3.0.0
+[4.0.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm@4.0.0
+
+## [4.0.0] - 2026-10-03
+
+### Changed
+
+- **Breaking:** Require `TxManager` in ERC-20 allowance live layers, wait for a successful reset receipt before
+  approving the final allowance, and expose receipt failures in `ensureAllowance` errors
+  ([`4d5e3e2`](https://github.com/PaulRBerg/prb-effect/commit/4d5e3e2))
+- **Breaking:** Acquire `EffectEvmProviderSync` and `WagmiEffectEvmProviderSync` runtimes after React commits; render
+  `fallback` initially, during SSR, and while replacing a runtime
+  ([`18d0e17`](https://github.com/PaulRBerg/prb-effect/commit/18d0e17))
+
+### Fixed
+
+- Encode browser-wallet personal messages, typed-data domains and bigint values, and transaction signing parameters in
+  their expected RPC formats ([`47bdc48`](https://github.com/PaulRBerg/prb-effect/commit/47bdc48))
+- Cancel abandoned React hook work, refresh stream subscriptions, and prevent stale wallet results or runtime
+  acquisitions from replacing current state ([`8d077c2`](https://github.com/PaulRBerg/prb-effect/commit/8d077c2),
+  [`23746a6`](https://github.com/PaulRBerg/prb-effect/commit/23746a6),
+  [`18d0e17`](https://github.com/PaulRBerg/prb-effect/commit/18d0e17))
+- Prevent watched contract reads from deadlocking and preserve caller identity for account-specific reads by bypassing
+  multicall ([`2f2efbf`](https://github.com/PaulRBerg/prb-effect/commit/2f2efbf))
+- Validate persisted cursor and transaction records, repair indexes, preserve replacement hashes, and recover
+  persistence after transient storage failures ([`2d5c824`](https://github.com/PaulRBerg/prb-effect/commit/2d5c824),
+  [`23746a6`](https://github.com/PaulRBerg/prb-effect/commit/23746a6))
+- Return typed errors for invalid ENS, NFT metadata, and deployment inputs; decode UTF-8 token metadata and reject
+  non-hex signatures ([`b37625c`](https://github.com/PaulRBerg/prb-effect/commit/b37625c),
+  [`2f2efbf`](https://github.com/PaulRBerg/prb-effect/commit/2f2efbf))
+- Respect explicit transaction types when applying fee overrides and maintain LRU ordering when updating cached values
+  ([`ae3cf75`](https://github.com/PaulRBerg/prb-effect/commit/ae3cf75))
+- Preserve zero-valued Tenderly state overrides ([`2f2efbf`](https://github.com/PaulRBerg/prb-effect/commit/2f2efbf))
+- Reject nonpositive event backfill batch sizes and honor subscription topic filters
+  ([`ae3cf75`](https://github.com/PaulRBerg/prb-effect/commit/ae3cf75),
+  [`b37625c`](https://github.com/PaulRBerg/prb-effect/commit/b37625c))
+- Preserve exact decimal scaling and accept uppercase hexadecimal digits in numeric parsing
+  ([`a7caa30`](https://github.com/PaulRBerg/prb-effect/commit/a7caa30))
+- Apply testing-kit mock overrides before constructing dependent services
+  ([`1ba0590`](https://github.com/PaulRBerg/prb-effect/commit/1ba0590))
 
 ## [3.0.0] - 2026-07-30
 
