@@ -188,7 +188,10 @@ describe("WalletService", () => {
             makeMockWalletProvider({
               request: ({ method, params }) => {
                 if (method === "personal_sign") {
-                  expect(params).toEqual(["Hello", "0x1234567890123456789012345678901234567890"]);
+                  expect(params).toEqual([
+                    "0x48656c6c6f",
+                    "0x1234567890123456789012345678901234567890",
+                  ]);
                   return Promise.resolve("0xsignature");
                 }
                 return Promise.resolve();

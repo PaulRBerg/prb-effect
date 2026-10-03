@@ -1,5 +1,6 @@
 import { Effect } from "effect";
-import type { Address, Hex, TypedData } from "viem";
+import type { Address, Hex, TypedData, TypedDataDomain } from "viem";
+import { formatTransactionRequest, getTypesForEIP712Domain, stringify, stringToHex } from "viem";
 import { isLikelyUserRejectedError, isUserRejectedError } from "#src/core/errors/index.js";
 import { SpanNames } from "#src/telemetry/index.js";
 import type {
@@ -74,7 +75,7 @@ const signTypedDataFallbacks = async (
   account: Address,
   typedDataPayload: unknown
 ): Promise<Hex> => {
-  const json = JSON.stringify(typedDataPayload);
+  const json = stringify(typedDataPayload);
   const attempts: ReadonlyArray<{
     method: string;
     params: readonly unknown[];
@@ -133,7 +134,8 @@ export function signMessage(
       }));
 
     // Prepare the message
-    const message = typeof params.message === "string" ? params.message : params.message.raw;
+    const message =
+      typeof params.message === "string" ? stringToHex(params.message) : params.message.raw;
 
     // Sign the message
     return yield* Effect.tryPromise({
@@ -214,7 +216,10 @@ export function signTypedData<
       domain: params.domain,
       message: params.message,
       primaryType: params.primaryType,
-      types: params.types,
+      types: {
+        EIP712Domain: getTypesForEIP712Domain({ domain: params.domain as TypedDataDomain }),
+        ...params.types,
+      },
     };
 
     // Sign the typed data
@@ -279,7 +284,7 @@ export function signTransaction(
       try: async () => {
         const result = await provider.request({
           method: "eth_signTransaction",
-          params: [{ ...params, from: account }],
+          params: [formatTransactionRequest({ ...params, from: account })],
         });
         return result as Hex;
       },

@@ -17,7 +17,10 @@ describe("signMessage", () => {
           params?: unknown[] | Record<string, unknown>;
         }) => {
           if (method === "personal_sign") {
-            expect(params).toEqual(["Hello World", "0x1234567890123456789012345678901234567890"]);
+            expect(params).toEqual([
+              "0x48656c6c6f20576f726c64",
+              "0x1234567890123456789012345678901234567890",
+            ]);
             return Promise.resolve("0xsignature");
           }
           return Promise.resolve();
@@ -47,7 +50,7 @@ describe("signMessage", () => {
             return Promise.resolve(["0xabcdefabcdefabcdefabcdefabcdefabcdefabcd"] as Address[]);
           }
           if (method === "personal_sign") {
-            expect(params).toEqual(["Hello", "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd"]);
+            expect(params).toEqual(["0x48656c6c6f", "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd"]);
             return Promise.resolve("0xsig");
           }
           return Promise.resolve();
@@ -158,6 +161,29 @@ describe("signMessage", () => {
 });
 
 describe("signTypedData", () => {
+  it.effect("serializes bigint typed values without precision loss", () =>
+    Effect.gen(function* () {
+      const amount = 2n ** 255n;
+      const provider = makeMockWalletProvider({
+        request: ({ method, params }) => {
+          expect(method).toBe("eth_signTypedData_v4");
+          const payload = JSON.parse((params as unknown[])[1] as string);
+          expect(payload.message.amount).toBe(amount.toString());
+          expect(payload.types.EIP712Domain).toEqual([{ name: "chainId", type: "uint256" }]);
+          return Promise.resolve("0xsignature");
+        },
+      });
+      const result = yield* signTypedData(provider, {
+        account: "0x1234567890123456789012345678901234567890",
+        domain: { chainId: 1 },
+        message: { amount },
+        primaryType: "Transfer",
+        types: { Transfer: [{ name: "amount", type: "uint256" }] },
+      });
+      expect(result).toBe("0xsignature");
+    })
+  );
+
   it.effect("uses provided account parameter", () =>
     Effect.gen(function* () {
       const provider = makeMockWalletProvider({
@@ -245,6 +271,10 @@ describe("signTypedData", () => {
               primaryType: "Test",
               types: {
                 Test: [{ name: "test", type: "string" }],
+                EIP712Domain: [
+                  { name: "name", type: "string" },
+                  { name: "chainId", type: "uint256" },
+                ],
               },
             });
             return Promise.resolve("0xsig");
@@ -380,7 +410,7 @@ describe("signTransaction", () => {
               data: "0xabcd",
               from: "0x1234567890123456789012345678901234567890",
               to: "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd",
-              value: 1000n,
+              value: "0x3e8",
             });
             return Promise.resolve("0xsig");
           }
