@@ -66,13 +66,28 @@ export const fetchNftMetadata = (
     // Handle data URIs
     if (uri.startsWith("data:")) {
       const match = uri.match(DATA_URI_BASE64_JSON_RE);
-      if (match) {
-        const decoded = Buffer.from(match[1], "base64").toString("utf-8");
-        return JSON.parse(decoded) as NftMetadata;
-      }
       const jsonMatch = uri.match(DATA_URI_PLAIN_JSON_RE);
-      if (jsonMatch) {
-        return JSON.parse(decodeURIComponent(jsonMatch[1])) as NftMetadata;
+      const encoded = match?.[1] ?? jsonMatch?.[1];
+      if (encoded !== undefined) {
+        return yield* Effect.try({
+          catch: (cause) =>
+            new Erc721MetadataFetchError({
+              address: params.address,
+              cause,
+              chainId: params.chainId,
+              message: `Failed to parse JSON metadata: ${String(cause)}`,
+              tokenId: params.tokenId,
+              uri,
+            }),
+          try: () => {
+            const decoded = match
+              ? new TextDecoder().decode(
+                  Uint8Array.from(atob(encoded), (char) => char.charCodeAt(0))
+                )
+              : decodeURIComponent(encoded);
+            return JSON.parse(decoded) as NftMetadata;
+          },
+        });
       }
     }
 

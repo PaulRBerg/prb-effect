@@ -1,12 +1,50 @@
 import { describe, expect, it } from "@effect/vitest";
 import { Cause, Chunk, Effect, Exit, Fiber, Stream, TestClock } from "effect";
 import { constVoid as noop } from "effect/Function";
-import type { Block } from "viem";
+import type { Block, Log } from "viem";
 import { mainnet } from "viem/chains";
 import { SubscriptionDroppedError, SubscriptionService } from "#src/subscriptions/index.js";
-import { makeEffectEvmTestLayer } from "#src/testing-kit/index.js";
+import { makeEffectEvmTestLayer, TEST_ADDRESS } from "#src/testing-kit/index.js";
 
 describe("SubscriptionService (Live)", () => {
+  it.effect("filters log topics by position, alternatives, and wildcards", () => {
+    const topicSets: Log["topics"][] = [
+      ["0xaa", "0x99", "0xbb"],
+      ["0xaa"],
+      ["0xaa", "0x99", "0xcc"],
+      ["0xdd", "0x88", "0xcc"],
+    ];
+    const logs: Log[] = topicSets.map((topics, logIndex) => ({
+      address: TEST_ADDRESS,
+      blockHash: "0x",
+      blockNumber: 1n,
+      data: "0x",
+      logIndex,
+      removed: false,
+      topics,
+      transactionHash: "0x",
+      transactionIndex: 0,
+    }));
+    const layer = makeEffectEvmTestLayer({
+      publicClient: {
+        watchEvent: (params: unknown) => {
+          const { onLogs } = params as { onLogs: (logs: Log[]) => void };
+          onLogs(logs);
+          return noop;
+        },
+      },
+    });
+    return Effect.gen(function* () {
+      const service = yield* SubscriptionService;
+      const stream = yield* service.watchLogs({
+        chainId: mainnet.id,
+        topics: [["0xaa", "0xdd"], null, "0xcc"],
+      });
+      const result = yield* stream.pipe(Stream.take(2), Stream.runCollect);
+      expect(Chunk.toArray(result)).toEqual(logs.slice(2));
+    }).pipe(Effect.provide(layer));
+  });
+
   it.effect("fails Stream with SubscriptionDroppedError on watcher error", () => {
     const layer = makeEffectEvmTestLayer({
       publicClient: {

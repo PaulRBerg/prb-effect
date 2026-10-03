@@ -5,6 +5,22 @@ import { fromWatchCallback } from "#src/internal/index.js";
 import { SpanNames } from "#src/telemetry/index.js";
 import { SubscriptionDroppedError } from "./errors.js";
 
+function matchesTopics(log: Log, topics: readonly (Hex | Hex[] | null)[]): boolean {
+  return (
+    log.topics.length >= topics.length &&
+    topics.every((filter, index) => {
+      if (filter === null) {
+        return true;
+      }
+      const alternatives = typeof filter === "string" ? [filter] : filter;
+      return (
+        alternatives.length === 0 ||
+        alternatives.some((topic) => topic.toLowerCase() === log.topics[index]?.toLowerCase())
+      );
+    })
+  );
+}
+
 export function watchLogs(
   publicClientService: PublicClientServiceShape,
   params: {
@@ -29,11 +45,11 @@ export function watchLogs(
           address: params.address,
           onError: cb.onError,
           pollingInterval: params.pollingInterval,
-          // @ts-expect-error - topics type is compatible
-          topics: params.topics,
           onLogs: (logs) => {
             for (const log of logs) {
-              cb.onData(log);
+              if (matchesTopics(log, params.topics ?? [])) {
+                cb.onData(log);
+              }
             }
           },
         }),

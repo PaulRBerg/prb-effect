@@ -86,6 +86,18 @@ export type EnsResolverShape = {
 
 export class EnsResolver extends Context.Tag("ew3/EnsResolver")<EnsResolver, EnsResolverShape>() {}
 
+function normalizeName(name: string): Effect.Effect<string, EnsResolutionError> {
+  return Effect.try({
+    catch: (cause) =>
+      new EnsResolutionError({
+        cause,
+        message: `Invalid ENS name: ${String(cause)}`,
+        name,
+      }),
+    try: () => normalize(name),
+  });
+}
+
 /**
  * Live implementation of EnsResolver service
  *
@@ -100,7 +112,7 @@ export const EnsResolverLive = Layer.effect(
       getAddress: (name: string, opts?: { coinType?: bigint }) =>
         Effect.gen(function* () {
           const client = yield* publicClientService.get(mainnet.id);
-          const normalizedName = normalize(name);
+          const normalizedName = yield* normalizeName(name);
 
           const result = yield* Effect.tryPromise({
             catch: (cause) =>
@@ -138,7 +150,7 @@ export const EnsResolverLive = Layer.effect(
       getAvatar: (name: string, opts?: { assetGatewayUrls?: AssetGatewayUrls }) =>
         Effect.gen(function* () {
           const client = yield* publicClientService.get(mainnet.id);
-          const normalizedName = normalize(name);
+          const normalizedName = yield* normalizeName(name);
 
           const result = yield* Effect.tryPromise({
             catch: (cause) =>
@@ -210,7 +222,7 @@ export const EnsResolverLive = Layer.effect(
       getResolver: (name: string) =>
         Effect.gen(function* () {
           const client = yield* publicClientService.get(mainnet.id);
-          const normalizedName = normalize(name);
+          const normalizedName = yield* normalizeName(name);
 
           const result = yield* Effect.tryPromise({
             catch: (cause) =>
@@ -246,7 +258,7 @@ export const EnsResolverLive = Layer.effect(
       getText: (name: string, key: string) =>
         Effect.gen(function* () {
           const client = yield* publicClientService.get(mainnet.id);
-          const normalizedName = normalize(name);
+          const normalizedName = yield* normalizeName(name);
 
           const result = yield* Effect.tryPromise({
             catch: (cause) =>

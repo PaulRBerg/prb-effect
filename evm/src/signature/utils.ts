@@ -1,11 +1,11 @@
 import type { Hex } from "viem";
 
+const SIGNATURE_PATTERN = /^0x[0-9a-fA-F]{130}$/;
+
 /**
  * Validates if a hex string is a valid signature (65 bytes)
  */
-export const isValidSignature = (signature: Hex): boolean => {
-  return signature.startsWith("0x") && signature.length === 132; // 0x + 130 hex chars = 65 bytes
-};
+export const isValidSignature = (signature: Hex): boolean => SIGNATURE_PATTERN.test(signature);
 
 /**
  * Extracts signature components without validation

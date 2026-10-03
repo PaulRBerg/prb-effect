@@ -10,6 +10,21 @@ const TEST_ENS_TEXT = "test_twitter_handle";
 const TEST_RESOLVER_ADDRESS = "0x4976fb03C32e5B8cfe2b6cCB31c09Ba78EBaBa41" as Address;
 
 describe("EnsResolver", () => {
+  it.effect("maps invalid names to EnsResolutionError for every name-based operation", () =>
+    Effect.gen(function* () {
+      const resolver = yield* EnsResolver;
+      const errors = yield* Effect.all([
+        resolver.getAddress("bad name.eth").pipe(Effect.flip),
+        resolver.getAvatar("bad name.eth").pipe(Effect.flip),
+        resolver.getResolver("bad name.eth").pipe(Effect.flip),
+        resolver.getText("bad name.eth", "url").pipe(Effect.flip),
+      ]);
+      for (const error of errors) {
+        expect(error._tag).toBe("EnsResolutionError");
+      }
+    }).pipe(Effect.provide(Layer.provide(EnsResolverLive, makeMockPublicClientLayer())))
+  );
+
   describe("getAddress", () => {
     it.effect("successfully resolves ENS name to address", () =>
       Effect.gen(function* () {
