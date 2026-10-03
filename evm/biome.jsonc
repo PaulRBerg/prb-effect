@@ -18,6 +18,7 @@
         "**/nonce/service.ts",
         "**/query/client.ts",
         "**/query/contract-query.ts",
+        "**/react-hooks/tx-store.ts",
         "**/testing-kit/test-layer.ts",
         "**/viem-mapper.ts"
       ],

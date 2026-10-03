@@ -4,7 +4,7 @@ import {
   ReceiptTimeoutError,
   TransactionSubmissionError,
   UserRejectedError,
-} from "#src/core/errors/tx.js";
+} from "./tx.js";
 import { toUserFacingTxError } from "./user-facing.js";
 
 describe("toUserFacingTxError", () => {

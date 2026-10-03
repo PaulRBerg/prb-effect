@@ -48,7 +48,7 @@
           "options": {
             "patterns": [
               {
-                "group": ["@/src/**/*.js", "!@/src/index.js", "!@/src/**/index.js"],
+                "group": ["#src/**/*.js", "!#src/index.js", "!#src/**/index.js"],
                 "message": "Import from barrel file (index.js) instead of implementation file."
               }
             ]
