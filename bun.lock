@@ -102,7 +102,7 @@
     },
     "next": {
       "name": "@prb/effect-next",
-      "version": "1.2.0",
+      "version": "1.2.1",
       "devDependencies": {
         "@biomejs/biome": "catalog:dev",
         "@effect/opentelemetry": "^0.63.0",

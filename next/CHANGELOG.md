@@ -9,6 +9,22 @@ The format is based on [Common Changelog](https://common-changelog.org/).
 [1.1.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/next%401.1.0
 [1.1.1]: https://github.com/PaulRBerg/prb-effect/releases/tag/next%401.1.1
 [1.2.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/next%401.2.0
+[1.2.1]: https://github.com/PaulRBerg/prb-effect/releases/tag/next@1.2.1
+
+## [1.2.1] - 2026-10-03
+
+### Fixed
+
+- Release keyed React cache argument handoffs after each invocation so cached functions do not retain request data
+  ([`f30bb58`](https://github.com/PaulRBerg/prb-effect/commit/f30bb58))
+- Encode transformed-schema values before persisting them and validate decoded values during refresh so cache round
+  trips preserve their types ([`f86d27d`](https://github.com/PaulRBerg/prb-effect/commit/f86d27d))
+- Cancel superseded React hook work, handle Strict Mode effect replay, and prevent stale executions from replacing
+  current state ([`8d077c2`](https://github.com/PaulRBerg/prb-effect/commit/8d077c2))
+- Surface falsy stream errors and honor `maxItems: 0`
+  ([`8d077c2`](https://github.com/PaulRBerg/prb-effect/commit/8d077c2))
+- Align route, header, cookie, parameter, and navigation examples with the exported APIs
+  ([`0e84b8f`](https://github.com/PaulRBerg/prb-effect/commit/0e84b8f))
 
 ## [1.2.0] - 2026-06-19
 
