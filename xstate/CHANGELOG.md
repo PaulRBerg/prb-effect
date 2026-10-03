@@ -12,6 +12,16 @@ The format is based on [Common Changelog](https://common-changelog.org/).
 [3.0.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/xstate%403.0.0
 [3.0.1]: https://github.com/PaulRBerg/prb-effect/releases/tag/xstate%403.0.1
 [3.0.2]: https://github.com/PaulRBerg/prb-effect/releases/tag/xstate%403.0.2
+[3.0.3]: https://github.com/PaulRBerg/prb-effect/releases/tag/xstate@3.0.3
+
+## [3.0.3] - 2026-10-03
+
+### Fixed
+
+- Interrupt Effect work when invoked actors stop, reset, or reenter, and restart facilitator checks with the latest
+  `CHECK` payload ([`521be05`](https://github.com/PaulRBerg/prb-effect/commit/521be05))
+- Preserve typed Effect failures so user rejection, gas overflow, and structured transaction errors remain classifiable
+  ([`521be05`](https://github.com/PaulRBerg/prb-effect/commit/521be05))
 
 ## [3.0.2] - 2026-06-09
 

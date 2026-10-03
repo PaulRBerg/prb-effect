@@ -179,7 +179,7 @@
     },
     "xstate": {
       "name": "@prb/effect-xstate",
-      "version": "3.0.2",
+      "version": "3.0.3",
       "devDependencies": {
         "@biomejs/biome": "catalog:dev",
         "@effect/vitest": "catalog:dev",
