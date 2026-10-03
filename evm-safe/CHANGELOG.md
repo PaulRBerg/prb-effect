@@ -20,6 +20,23 @@ The format is based on [Common Changelog](https://common-changelog.org/).
 [4.0.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm-safe%404.0.0
 [4.1.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm-safe@4.1.0
 [5.0.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm-safe@5.0.0
+[5.1.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm-safe@5.1.0
+
+## [5.1.0] - 2026-10-03
+
+### Added
+
+- Support `@prb/effect-evm@^4.0.0` while retaining compatibility with v2 and v3
+  ([release commit](https://github.com/PaulRBerg/prb-effect/commit/evm-safe@5.1.0))
+
+### Fixed
+
+- Apply `maxWait` to the entire Safe polling operation, including stalled status and receipt requests, and forward
+  custom `onProgress` callbacks ([`d2afcf0`](https://github.com/PaulRBerg/prb-effect/commit/d2afcf0))
+- Invalidate Safe owner probes when the wallet address, chain, connection, or enabled state changes to prevent stale
+  wallet classification ([`f30bb58`](https://github.com/PaulRBerg/prb-effect/commit/f30bb58))
+- Reject noninteger or nonfinite gas threshold percentages
+  ([`f30bb58`](https://github.com/PaulRBerg/prb-effect/commit/f30bb58))
 
 ## [5.0.0] - 2026-10-03
 
