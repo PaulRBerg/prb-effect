@@ -63,6 +63,10 @@ export const useEffectOnce = <A, E, R>(
     (async () => {
       const scoped = await makeScopedRun(runtime);
       scopedClose = scoped.close;
+      if (cancelled) {
+        scoped.close();
+        return;
+      }
 
       const fiber = scoped.fork(
         Effect.exit(makeEffect() as unknown as Effect.Effect<A, E, unknown>)
@@ -95,71 +99,24 @@ export const useEffectOnce = <A, E, R>(
 };
 
 /**
- * Runs an Effect when dependencies change, similar to React's `useEffect` + `useMemo`.
+ * Runs an Effect when the runtime or dependencies change.
  *
- * @remarks
- * **Stability requirements:**
- *
- * 1. **`makeEffect` must be stable** — wrap with `useCallback` or define outside the component.
- *    Passing an inline arrow function will cause the effect to re-run on every render.
- *
- * 2. **`deps` must contain referentially stable values** — works like React's `useEffect`.
- *    Passing inline objects/arrays/functions will cause infinite re-renders.
- *
- * 3. **`options.initial` should be stable** — wrap with `useMemo` if computed, or move outside.
+ * The factory and initial value are captured for each run; changes to their
+ * identities do not trigger another run. Include every reactive value read by
+ * the factory in `deps`, using referentially stable dependency values as with
+ * React's `useEffect`.
  *
  * @example
  * ```tsx
- * // ✅ CORRECT: makeEffect is stable (defined outside component)
- * const fetchUser = (id: string) => () =>
- *   Effect.gen(function* () {
- *     const user = yield* UserService.getUser(id);
- *     return user;
- *   });
- *
- * function UserProfile({ userId }: { userId: string }) {
- *   const result = useEffectMemo(fetchUser(userId), [userId]);
- *   // Effect re-runs only when userId changes
- * }
+ * const result = useEffectMemo(
+ *   () => loadBalance(address),
+ *   [address]
+ * );
  * ```
  *
- * @example
- * ```tsx
- * // ✅ CORRECT: makeEffect is memoized with useCallback
- * function TokenBalance({ address }: { address: string }) {
- *   const getBalance = useCallback(
- *     () => TokenService.getBalance(address),
- *     [address]
- *   );
- *   const result = useEffectMemo(getBalance, [address]);
- * }
- * ```
- *
- * @example
- * ```tsx
- * // ❌ WRONG: inline makeEffect causes re-run on every render
- * function Example({ userId }: { userId: string }) {
- *   const result = useEffectMemo(
- *     () => UserService.getUser(userId), // inline function — BAD!
- *     [userId]
- *   );
- * }
- * ```
- *
- * @example
- * ```tsx
- * // ❌ WRONG: inline object in deps causes infinite re-renders
- * function Example() {
- *   const result = useEffectMemo(
- *     fetchData,
- *     [{ filter: "active" }] // new object on every render — BAD!
- *   );
- * }
- * ```
- *
- * @param makeEffect - Factory function returning an Effect. Must be referentially stable.
- * @param deps - Dependency array (like React's useEffect). Values must be referentially stable.
- * @param options - Optional configuration. `initial` sets the initial data value.
+ * @param makeEffect - Factory function returning an Effect for the current dependencies.
+ * @param deps - Dependency array controlling when the Effect restarts.
+ * @param options - Optional configuration. `initial` sets the initial data value for each run.
  * @returns State object with `status`, `data`, and `error` fields.
  */
 export const useEffectMemo = <A, E, R>(
@@ -182,6 +139,10 @@ export const useEffectMemo = <A, E, R>(
     (async () => {
       const scoped = await makeScopedRun(runtime);
       scopedClose = scoped.close;
+      if (cancelled) {
+        scoped.close();
+        return;
+      }
 
       const fiber = scoped.fork(
         Effect.exit(makeEffect() as unknown as Effect.Effect<A, E, unknown>)

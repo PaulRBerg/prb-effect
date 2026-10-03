@@ -13,16 +13,22 @@ export const useForkEffect = <R>(
   const runtime = useEffectEvmRuntime();
 
   React.useEffect(() => {
+    let cancelled = false;
     let scopedClose: (() => void) | null = null;
 
     (async () => {
       const scoped = await makeScopedRun(runtime);
       scopedClose = scoped.close;
+      if (cancelled) {
+        scoped.close();
+        return;
+      }
 
       scoped.fork(makeEffect() as unknown as Effect.Effect<void, never, unknown>);
     })().catch(noop);
 
     return () => {
+      cancelled = true;
       scopedClose?.();
     };
   }, [runtime, ...deps]);

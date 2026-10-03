@@ -2,7 +2,6 @@
 
 import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
-import * as Scope from "effect/Scope";
 import * as Stream from "effect/Stream";
 import * as React from "react";
 import { fromCause, fromUnknown } from "../internal/error.js";
@@ -87,6 +86,10 @@ export const useStream = <A, E, R>(
     (async () => {
       const scoped = await makeScopedRun(runtime);
       scopedClose = scoped.close;
+      if (cancelled) {
+        scoped.close();
+        return;
+      }
 
       const runner = Stream.runForEach(stream, (value) =>
         Effect.sync(() => {
@@ -155,18 +158,20 @@ export const useStreamEffect = <A, E, R>(
     (async () => {
       const scoped = await makeScopedRun(runtime);
       scopedClose = scoped.close;
+      if (cancelled) {
+        scoped.close();
+        return;
+      }
 
-      const stream = await runtime.runPromise(
-        Scope.extend(scoped.scope)(
-          makeStream() as unknown as Effect.Effect<Stream.Stream<A, E, unknown>, E, unknown>
+      const runner = makeStream().pipe(
+        Effect.flatMap((stream) =>
+          Stream.runForEach(stream, (value) =>
+            Effect.sync(() => {
+              lastValue = value;
+              store.setSnapshot({ status: "running", value });
+            })
+          )
         )
-      );
-
-      const runner = Stream.runForEach(stream, (value) =>
-        Effect.sync(() => {
-          lastValue = value;
-          store.setSnapshot({ status: "running", value });
-        })
       );
 
       const fiber = scoped.fork(Effect.exit(runner));

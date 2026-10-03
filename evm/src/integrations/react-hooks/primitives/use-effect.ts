@@ -63,6 +63,10 @@ export const useEffectOnce = <A, E, R>(
     (async () => {
       const scoped = await makeScopedRun(runtime);
       scopedClose = scoped.close;
+      if (cancelled) {
+        scoped.close();
+        return;
+      }
 
       const fiber = scoped.fork(
         Effect.exit(makeEffect() as unknown as Effect.Effect<A, E, unknown>)
@@ -114,6 +118,10 @@ export const useEffectMemo = <A, E, R>(
     (async () => {
       const scoped = await makeScopedRun(runtime);
       scopedClose = scoped.close;
+      if (cancelled) {
+        scoped.close();
+        return;
+      }
 
       const fiber = scoped.fork(
         Effect.exit(makeEffect() as unknown as Effect.Effect<A, E, unknown>)

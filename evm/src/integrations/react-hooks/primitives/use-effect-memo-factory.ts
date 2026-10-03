@@ -62,7 +62,12 @@ export const useEffectMemoFactory = <A, E, R>(
 
       (async () => {
         const scoped = await makeScopedRun(runtime);
-        const effect = effectFactory(controller.signal);
+        if (!active) {
+          controller.abort();
+          scoped.close();
+          return;
+        }
+        const effect = Effect.suspend(() => effectFactory(controller.signal));
 
         const fiber = scoped.fork(
           Effect.exit(

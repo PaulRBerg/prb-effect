@@ -3,7 +3,7 @@
 import { Cause, Chunk, Effect, Exit, Fiber, Stream, SubscriptionRef } from "effect";
 import type * as ManagedRuntime from "effect/ManagedRuntime";
 import type { DependencyList } from "react";
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 
 /**
  * Runs an Effect and memoizes the result based on dependencies.
@@ -38,24 +38,15 @@ export function useEffectMemo<A, E, R>(
   runtime: ManagedRuntime.ManagedRuntime<R, never>
 ): A | undefined {
   const [state, setState] = useState<{ value: A } | { error: E } | undefined>();
-  const fiberRef = useRef<Fiber.RuntimeFiber<A, E> | null>(null);
-  const isMountedRef = useRef(true);
-
   useEffect(() => {
-    isMountedRef.current = true;
-
-    // Interrupt any previous fiber
-    if (fiberRef.current) {
-      runtime.runFork(Fiber.interrupt(fiberRef.current));
-    }
+    let active = true;
 
     const effect = effectFn();
     const fiber = runtime.runFork(effect);
-    fiberRef.current = fiber;
 
     runtime.runPromise(Fiber.await(fiber)).then((exit) => {
       // Don't update state if unmounted
-      if (!isMountedRef.current) {
+      if (!active) {
         return;
       }
 
@@ -70,11 +61,8 @@ export function useEffectMemo<A, E, R>(
     });
 
     return () => {
-      isMountedRef.current = false;
-      if (fiberRef.current) {
-        runtime.runFork(Fiber.interrupt(fiberRef.current));
-        fiberRef.current = null;
-      }
+      active = false;
+      Effect.runFork(Fiber.interrupt(fiber));
     };
   }, deps);
 
@@ -92,8 +80,8 @@ export function useEffectMemo<A, E, R>(
  * Runs an Effect exactly once on component mount.
  *
  * Note: In React 18+ StrictMode, effects run twice in development.
- * This hook uses a ref to ensure the effect only executes once,
- * which means the cleanup function won't be called on the "fake" unmount.
+ * Each setup owns an execution and cleanup interrupts it. StrictMode restarts
+ * the execution after its development-only cleanup.
  *
  * @param effect - The Effect to run
  * @param runtime - ManagedRuntime to execute the Effect
@@ -121,54 +109,7 @@ export function useEffectOnce<A, E, R>(
   effect: Effect.Effect<A, E, R>,
   runtime: ManagedRuntime.ManagedRuntime<R, never>
 ): A | undefined {
-  const [state, setState] = useState<{ value: A } | { error: E } | undefined>();
-  const fiberRef = useRef<Fiber.RuntimeFiber<A, E> | null>(null);
-  const hasRun = useRef(false);
-  const isMountedRef = useRef(true);
-
-  useEffect(() => {
-    if (hasRun.current) {
-      return;
-    }
-    hasRun.current = true;
-    isMountedRef.current = true;
-
-    const fiber = runtime.runFork(effect);
-    fiberRef.current = fiber;
-
-    runtime.runPromise(Fiber.await(fiber)).then((exit) => {
-      // Don't update state if unmounted
-      if (!isMountedRef.current) {
-        return;
-      }
-
-      if (Exit.isSuccess(exit)) {
-        setState({ value: exit.value });
-      } else {
-        const errors = Cause.failures(exit.cause);
-        if (!Chunk.isEmpty(errors)) {
-          setState({ error: Chunk.unsafeHead(errors) });
-        }
-      }
-    });
-
-    return () => {
-      isMountedRef.current = false;
-      if (fiberRef.current) {
-        runtime.runFork(Fiber.interrupt(fiberRef.current));
-        fiberRef.current = null;
-      }
-    };
-  }, [effect, runtime]);
-
-  if (state) {
-    if ("error" in state) {
-      throw state.error;
-    }
-    return state.value;
-  }
-
-  return undefined;
+  return useEffectMemo(() => effect, [], runtime);
 }
 
 /**
@@ -257,7 +198,7 @@ export function useStream<A, E, R>(
   options?: { maxItems?: number }
 ): readonly A[] {
   const [values, setValues] = useState<A[]>([]);
-  const [error, setError] = useState<E | undefined>(undefined);
+  const [error, setError] = useState<{ value: E } | undefined>(undefined);
 
   useEffect(() => {
     const fiber = runtime.runFork(
@@ -268,7 +209,7 @@ export function useStream<A, E, R>(
               const next = [...prev, v];
               // Apply FIFO eviction if maxItems is specified
               if (options?.maxItems !== undefined && next.length > options.maxItems) {
-                return next.slice(-options.maxItems);
+                return options.maxItems <= 0 ? [] : next.slice(-options.maxItems);
               }
               return next;
             });
@@ -277,7 +218,7 @@ export function useStream<A, E, R>(
         ),
         Effect.catchAll((err) =>
           Effect.sync(() => {
-            setError(err);
+            setError({ value: err });
             console.error("[useStream] Stream failed:", err);
           })
         )
@@ -292,7 +233,7 @@ export function useStream<A, E, R>(
   }, [stream, runtime, options?.maxItems]);
 
   if (error) {
-    throw error;
+    throw error.value;
   }
 
   return values;
@@ -326,7 +267,7 @@ export function useStreamLatest<A, E, R>(
   initialValue: A
 ): A {
   const [value, setValue] = useState<A>(initialValue);
-  const [error, setError] = useState<E | undefined>(undefined);
+  const [error, setError] = useState<{ value: E } | undefined>(undefined);
 
   useEffect(() => {
     const fiber = runtime.runFork(
@@ -339,7 +280,7 @@ export function useStreamLatest<A, E, R>(
         ),
         Effect.catchAll((err) =>
           Effect.sync(() => {
-            setError(err);
+            setError({ value: err });
             console.error("[useStreamLatest] Stream failed:", err);
           })
         )
@@ -354,7 +295,7 @@ export function useStreamLatest<A, E, R>(
   }, [stream, runtime]);
 
   if (error) {
-    throw error;
+    throw error.value;
   }
 
   return value;
