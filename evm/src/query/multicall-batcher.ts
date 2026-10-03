@@ -1,9 +1,12 @@
 import { Context, Effect, Layer, Request, RequestResolver } from "effect";
+import type { Address } from "viem";
 import type { ContractReaderShape } from "#src/contract/index.js";
 import { ContractReader } from "#src/contract/index.js";
 import type { MulticallCall } from "#src/types/index.js";
 
 export type MulticallBatchOptions = {
+  /** Account-sensitive reads bypass multicall to preserve msg.sender. */
+  readonly account?: Address | undefined;
   readonly blockNumber?: bigint | undefined;
   readonly blockTag?: import("viem").BlockTag | undefined;
 };
@@ -101,6 +104,26 @@ const completeGroup = (
  */
 const executeGroup = (contractReader: ContractReaderShape, group: RequestGroup) =>
   Effect.gen(function* () {
+    if (group.options?.account !== undefined) {
+      yield* Effect.forEach(
+        group.requests,
+        (request) =>
+          Request.completeEffect(
+            request,
+            contractReader.read({
+              ...request.call,
+              account: group.options?.account,
+              chainId: group.chainId,
+              ...(group.options?.blockNumber === undefined
+                ? { blockTag: group.options?.blockTag }
+                : { blockNumber: group.options.blockNumber }),
+            })
+          ),
+        { concurrency: 10, discard: true }
+      );
+      return;
+    }
+
     const result = yield* contractReader
       .multicall(
         group.chainId,

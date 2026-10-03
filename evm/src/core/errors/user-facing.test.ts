@@ -8,6 +8,14 @@ import {
 import { toUserFacingTxError } from "./user-facing.js";
 
 describe("toUserFacingTxError", () => {
+  it("handles cyclic arrays in provider causes without hanging", () => {
+    const cause: unknown[] = [];
+    cause.push(cause, "insufficient funds");
+    expect(toUserFacingTxError(new Error("provider error", { cause })).category).toBe(
+      "insufficient-funds"
+    );
+  });
+
   it("maps known tagged errors to stable categories", () => {
     const mapped = toUserFacingTxError(
       new InsufficientFundsError({

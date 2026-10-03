@@ -25,10 +25,12 @@ const makeMockHttpClientLayer = (params: {
   status: number;
   body: unknown;
   headers?: Record<string, string>;
+  onRequest?: (request: HttpClientRequest.HttpClientRequest) => void;
 }) => {
   const client = {
-    execute: (request: HttpClientRequest.HttpClientRequest) =>
-      Effect.succeed(
+    execute: (request: HttpClientRequest.HttpClientRequest) => {
+      params.onRequest?.(request);
+      return Effect.succeed(
         HttpClientResponse.fromWeb(
           request,
           new Response(JSON.stringify(params.body), {
@@ -36,13 +38,42 @@ const makeMockHttpClientLayer = (params: {
             status: params.status,
           })
         )
-      ),
+      );
+    },
   } as unknown as HttpClient.HttpClient;
 
   return Layer.succeed(HttpClient.HttpClient, client);
 };
 
 describe("Tenderly simulation", () => {
+  it.effect("preserves explicit zero block, gas, and account nonce overrides", () =>
+    simulateTenderly({
+      blockNumber: 0n,
+      chainId: mainnet.id,
+      from: TEST_FROM,
+      gas: 0n,
+      stateOverrides: [{ address: TEST_FROM, nonce: 0n }],
+      to: TEST_TO,
+    }).pipe(
+      Effect.withConfigProvider(configProvider),
+      Effect.provide(
+        makeMockHttpClientLayer({
+          body: { transaction: { gas: 0, gas_used: 0, status: true } },
+          status: 200,
+          onRequest: (request) => {
+            expect(request.body._tag).toBe("Uint8Array");
+            if (request.body._tag === "Uint8Array") {
+              const body = JSON.parse(new TextDecoder().decode(request.body.body));
+              expect(body.block_number).toBe(0);
+              expect(body.gas).toBe(0);
+              expect(body.state_objects[TEST_FROM].nonce).toBe(0);
+            }
+          },
+        })
+      )
+    )
+  );
+
   it.effect("maps returnValue from transaction.output (not input)", () =>
     Effect.gen(function* () {
       const layer = makeMockHttpClientLayer({

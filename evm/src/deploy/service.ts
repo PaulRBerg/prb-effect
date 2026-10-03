@@ -169,7 +169,7 @@ export const DeployServiceLive = Layer.effect(
         // Deploy the contract
         const hash = yield* Effect.tryPromise({
           catch: (cause) => {
-            const error = cause as Error;
+            const error = cause instanceof Error ? cause : new Error(String(cause));
             // Check if this is a revert error
             if (error.message.includes("revert") || error.message.includes("execution reverted")) {
               return new DeploymentRevertedError({
@@ -349,7 +349,7 @@ export const DeployServiceLive = Layer.effect(
             yield* tracker.set({ status: "signing" });
             const hash = yield* Effect.tryPromise({
               catch: (cause) => {
-                const error = cause as Error;
+                const error = cause instanceof Error ? cause : new Error(String(cause));
                 if (
                   error.message.includes("revert") ||
                   error.message.includes("execution reverted")

@@ -93,13 +93,6 @@ function getMessageCandidates(error: unknown): string[] {
   while (queue.length > 0) {
     const value = queue.shift();
 
-    if (Array.isArray(value)) {
-      for (const item of value) {
-        queue.push(item);
-      }
-      continue;
-    }
-
     pushCandidate(candidates, value);
 
     if (!isRecord(value) || visited.has(value)) {
@@ -107,6 +100,13 @@ function getMessageCandidates(error: unknown): string[] {
     }
 
     visited.add(value);
+
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        queue.push(item);
+      }
+      continue;
+    }
 
     pushCandidate(candidates, value.message);
     pushCandidate(candidates, value.shortMessage);

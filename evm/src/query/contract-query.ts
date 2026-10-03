@@ -1,5 +1,4 @@
-import type { Stream } from "effect";
-import { Context, Effect, Layer } from "effect";
+import { Context, Effect, Layer, Stream } from "effect";
 import type { Abi, ContractFunctionName } from "viem";
 import type { ClientNotFoundError, ContractReadError, MulticallError } from "#src/core/index.js";
 import { ContractReadError as ContractReadErrorClass } from "#src/core/index.js";
@@ -115,6 +114,7 @@ export const ContractQueryLive = Layer.effect(
           params.chainId,
           call,
           {
+            account: params.account,
             blockNumber: params.blockNumber,
             blockTag: params.blockTag,
           }
@@ -141,15 +141,11 @@ export const ContractQueryLive = Layer.effect(
     ) =>
       Effect.gen(function* () {
         const refetchOn = options?.refetchOn ?? (yield* chainHead.watch(params.chainId));
-        const key = stableKey(params as unknown as ReadParams<Abi, string>);
-
         const effect = read(params, options);
-        return queryClient.watch(key, effect, {
-          blockScoped: options?.blockScoped ?? true,
-          chainId: params.chainId,
-          refetchOn,
-          ttl: options?.ttl,
-        });
+        return Stream.concat(
+          Stream.fromEffect(effect),
+          refetchOn.pipe(Stream.mapEffect(() => effect))
+        );
       });
 
     return ContractQuery.of({ read, watchRead });

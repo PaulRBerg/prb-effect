@@ -224,7 +224,7 @@ function toTenderlyStateObjects(
     stateObjects[override.address] = {
       balance: override.balance?.toString(),
       code: override.code,
-      nonce: override.nonce ? Number(override.nonce) : undefined,
+      nonce: override.nonce === undefined ? undefined : Number(override.nonce),
       storage: override.state,
     };
   }
@@ -243,9 +243,9 @@ function toTenderlyRequestBody(params: {
   stateOverrides?: StateOverride[];
 }): TenderlySimulationRequest {
   return {
-    block_number: params.blockNumber ? Number(params.blockNumber) : undefined,
+    block_number: params.blockNumber === undefined ? undefined : Number(params.blockNumber),
     from: params.from,
-    gas: params.gas ? Number(params.gas) : undefined,
+    gas: params.gas === undefined ? undefined : Number(params.gas),
     input: params.data ?? "0x",
     network_id: params.chainId.toString(),
     save: false,
