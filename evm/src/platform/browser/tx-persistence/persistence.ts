@@ -135,10 +135,10 @@ function handleReplacement(options: {
       ],
     };
 
-    yield* options.txStore.upsert(updatedTx).pipe(Effect.catchAll(() => Effect.void));
+    yield* options.txStore.upsert(updatedTx);
 
     return options.state.newHash;
-  });
+  }).pipe(Effect.catchAll(() => Effect.succeed(options.state.newHash)));
 }
 
 /**
@@ -162,11 +162,11 @@ function handleStatusChange(options: {
       updatedAt: timestamp,
     };
 
-    yield* options.txStore.upsert(updatedTx).pipe(Effect.catchAll(() => Effect.void));
+    yield* options.txStore.upsert(updatedTx);
 
     // Return true if terminal state reached
     return isTerminalPersistedStatus(options.newStatus);
-  });
+  }).pipe(Effect.catchAll(() => Effect.succeed(isTerminalPersistedStatus(options.newStatus))));
 }
 
 /**

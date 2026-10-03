@@ -35,8 +35,10 @@ const WagmiWalletProviderRefSync = (props: { readonly config: Config }): null =>
 
   React.useEffect(() => {
     let cancelled = false;
+    let syncId = 0;
 
     const sync = async (account: ReturnType<typeof getAccount>): Promise<void> => {
+      const currentSyncId = ++syncId;
       if (!account.connector || account.chainId === undefined) {
         clearProvider();
         return;
@@ -47,7 +49,7 @@ const WagmiWalletProviderRefSync = (props: { readonly config: Config }): null =>
           chainId: account.chainId,
         });
         const provider = toWalletProvider(raw);
-        if (cancelled) {
+        if (cancelled || currentSyncId !== syncId) {
           return;
         }
 
@@ -57,7 +59,7 @@ const WagmiWalletProviderRefSync = (props: { readonly config: Config }): null =>
           clearProvider();
         }
       } catch {
-        if (!cancelled) {
+        if (!cancelled && currentSyncId === syncId) {
           clearProvider();
         }
       }

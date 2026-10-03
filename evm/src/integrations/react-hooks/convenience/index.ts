@@ -86,6 +86,7 @@ export const useWatchContractRead = <
     stableStringify(params.blockTag),
     stableStringify(options.blockScoped ?? true),
     stableStringify(options.ttl),
+    options.refetchOn,
   ];
 
   return useStreamEffect(
@@ -136,7 +137,9 @@ export const useWriteAndTrack = <
 
   React.useEffect(
     () => () => {
+      runIdRef.current += 1;
       closeRef.current?.();
+      closeRef.current = null;
     },
     []
   );
@@ -152,6 +155,10 @@ export const useWriteAndTrack = <
 
     (async () => {
       const scoped = await makeScopedRun(runtime);
+      if (runIdRef.current !== runId) {
+        scoped.close();
+        return;
+      }
       closeRef.current = scoped.close;
 
       const start = Effect.gen(function* () {
@@ -159,7 +166,7 @@ export const useWriteAndTrack = <
         return yield* pipeline.writeAndTrack(params);
       });
 
-      const started = await runtime.runPromise(Scope.extend(scoped.scope)(start));
+      const started = await runtime.runPromise(Fiber.join(scoped.fork(start)));
       if (runIdRef.current !== runId) {
         scoped.close();
         return;
@@ -195,6 +202,9 @@ export const useWriteAndTrack = <
         });
       }
     })().catch((cause) => {
+      if (runIdRef.current !== runId) {
+        return;
+      }
       setTerminal({
         error: fromUnknown(cause) as unknown as WriteAndTrackError,
         status: "error",

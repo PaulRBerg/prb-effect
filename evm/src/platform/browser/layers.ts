@@ -13,14 +13,12 @@ export type BrowserPersistenceConfig = {
 
 /**
  * Create a CursorStore layer backed by browser localStorage.
- * Requires BrowserStorage to be provided.
  */
 export const makeLocalStorageCursorStoreLayer = (_config?: { namespace?: string }) =>
   LocalStorageCursorStoreLive.pipe(Layer.provide(BrowserStorageLive));
 
 /**
  * Create a TxStore layer backed by browser localStorage with configurable limits.
- * Requires BrowserStorage to be provided.
  */
 export const makeLocalStorageTxStoreLayer = (config?: LocalStorageTxStoreConfig) =>
   makeLocalStorageTxStoreLive(config).pipe(Layer.provide(BrowserStorageLive));

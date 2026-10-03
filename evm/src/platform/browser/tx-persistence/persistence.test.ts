@@ -1,6 +1,7 @@
 import { describe, expect, it } from "@effect/vitest";
-import { Effect, SubscriptionRef } from "effect";
+import { Deferred, Effect, SubscriptionRef } from "effect";
 import type { Hash } from "viem";
+import { StorageUnavailableError } from "#src/platform/browser/storage/index.js";
 import type { PersistedTx, TxStoreShape } from "#src/platform/browser/tx-store/index.js";
 import { InMemoryTxStoreLive, makeTxId, TxStore } from "#src/platform/browser/tx-store/index.js";
 import type { TxManagerShape, TxState } from "#src/tx/index.js";
@@ -9,6 +10,7 @@ import { TxPersistence, TxPersistenceLive } from "./persistence.js";
 
 const TEST_CHAIN_ID = 1;
 const TEST_HASH = `0x${"1".repeat(64)}` as Hash;
+const REPLACEMENT_HASH = `0x${"2".repeat(64)}` as Hash;
 
 const PENDING_STATE: TxState = {
   confirmations: 1,
@@ -68,6 +70,59 @@ function setStateUntilPersisted(options: {
 }
 
 describe("TxPersistence", () => {
+  for (const state of [
+    PENDING_STATE,
+    { newHash: REPLACEMENT_HASH, oldHash: TEST_HASH, reason: "repriced", status: "replaced" },
+  ] satisfies TxState[]) {
+    it.effect(`continues after a storage read failure during ${state.status}`, () =>
+      Effect.gen(function* () {
+        const store = yield* TxStore;
+        const readAttempted = yield* Deferred.make<void>();
+        const txStateRef = yield* SubscriptionRef.make<TxState>(state);
+        const txId = makeTxId(TEST_CHAIN_ID, TEST_HASH);
+        let reads = 0;
+        const unavailableOnce: TxStoreShape = {
+          ...store,
+          get: (id) =>
+            Effect.suspend(() => {
+              reads += 1;
+              return reads === 1
+                ? Deferred.succeed(readAttempted, undefined).pipe(
+                    Effect.zipRight(
+                      Effect.fail(
+                        new StorageUnavailableError({ message: "temporarily unavailable" })
+                      )
+                    )
+                  )
+                : store.get(id);
+            }),
+        };
+        const program = Effect.gen(function* () {
+          const persistence = yield* TxPersistence;
+          yield* persistence.trackAndPersist(TEST_CHAIN_ID, TEST_HASH);
+          yield* Deferred.await(readAttempted);
+          yield* setStateUntilPersisted({
+            expectedStatus: "cancelled",
+            state: CANCELLED_STATE,
+            stateRef: txStateRef,
+            store,
+            txId,
+          });
+          const persisted = yield* store.get(txId);
+          expect(persisted?.currentHash).toBe(
+            state.status === "replaced" ? REPLACEMENT_HASH : TEST_HASH
+          );
+        });
+        yield* program.pipe(
+          Effect.provide(TxPersistenceLive),
+          Effect.provideService(TxStore, unavailableOnce),
+          Effect.provideService(TxManager, makeTxManagerMock(txStateRef).service),
+          Effect.scoped
+        );
+      }).pipe(Effect.provide(InMemoryTxStoreLive))
+    );
+  }
+
   it.effect("treats cancelled as terminal and ignores subsequent updates", () =>
     Effect.gen(function* () {
       const txStateRef = yield* SubscriptionRef.make<TxState>({ status: "idle" });
