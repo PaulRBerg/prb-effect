@@ -142,7 +142,7 @@ export type TransactionReceipt = {
   readonly slot: bigint;
 
   /**
-   * Number of confirmations. Null if not yet finalized.
+   * Number of confirmations. Null once finalized.
    */
   readonly confirmations: bigint | null;
 };

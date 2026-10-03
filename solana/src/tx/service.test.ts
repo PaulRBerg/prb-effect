@@ -2,7 +2,7 @@ import { describe, expect, it } from "@effect/vitest";
 import type { Transaction, TransactionError } from "@solana/web3.js";
 import { Keypair, PublicKey, TransactionInstruction } from "@solana/web3.js";
 import { Buffer } from "buffer";
-import { Effect } from "effect";
+import { Effect, Fiber, TestClock } from "effect";
 import { COMPUTE_BUDGET_PROGRAM_ADDRESS, SYSTEM_PROGRAM_ADDRESS } from "#src/constants/index.js";
 import {
   expectTaggedFailure,
@@ -53,6 +53,57 @@ const makeInstruction = (): TransactionInstruction =>
   });
 
 describe("TransactionService (Live)", () => {
+  it.effect("rejects a signer response that omits transactions", () =>
+    Effect.gen(function* () {
+      const service = yield* TransactionService;
+      const exit = yield* Effect.exit(
+        service.sendAndConfirmBatch([{ instructions: [makeInstruction()] }])
+      );
+      expectTaggedFailure(exit, "TransactionSendError");
+    }).pipe(
+      Effect.provide(
+        makeEffectSolanaTestLayer({
+          signerService: { signAllTransactions: () => Effect.succeed([]) },
+        })
+      )
+    )
+  );
+
+  it.effect("expires after the configured grace period on the Effect clock", () =>
+    Effect.gen(function* () {
+      const service = yield* TransactionService;
+      const fiber = yield* service
+        .confirm(TEST_SIGNATURE, {
+          pollInterval: "1 second",
+          timeout: 5000,
+          lifetime: {
+            blockhash: TEST_BLOCKHASH,
+            expiredStatusGracePeriod: "1 second",
+            lastValidBlockHeight: 1000,
+          },
+        })
+        .pipe(Effect.exit, Effect.fork);
+      yield* TestClock.adjust("5 seconds");
+      const exit = yield* Fiber.join(fiber);
+      expectTaggedFailure(exit, "BlockhashExpiredError");
+    }).pipe(
+      Effect.provide(
+        makeEffectSolanaTestLayer({
+          rpcService: {
+            getRpc: () =>
+              Effect.succeed(
+                makeMockRpc({
+                  getBlockHeight: () => Promise.resolve(1001),
+                  getSignatureStatuses: () =>
+                    Promise.resolve({ context: { slot: 0 }, value: [null] }),
+                })
+              ),
+          },
+        })
+      )
+    )
+  );
+
   it.effect("build prepends compute budget instructions when configured", () =>
     Effect.gen(function* () {
       const service = yield* TransactionService;

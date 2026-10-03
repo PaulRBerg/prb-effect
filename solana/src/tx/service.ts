@@ -1,6 +1,6 @@
 import type { Connection, TransactionInstruction, TransactionSignature } from "@solana/web3.js";
 import { ComputeBudgetProgram, PublicKey, Transaction } from "@solana/web3.js";
-import { Context, Duration, Effect, Layer, pipe, Schedule } from "effect";
+import { Clock, Context, Duration, Effect, Layer, pipe, Schedule } from "effect";
 import type { WalletNotConnectedError } from "#src/core/errors/index.js";
 import {
   BlockhashExpiredError,
@@ -215,7 +215,9 @@ const getExpiredAt = (
       try: () => connection.getBlockHeight(commitment),
     });
 
-    return blockHeight <= Number(opts.lifetime.lastValidBlockHeight) ? null : Date.now();
+    return blockHeight <= Number(opts.lifetime.lastValidBlockHeight)
+      ? null
+      : yield* Clock.currentTimeMillis;
   });
 
 const hasExceededExpiredGracePeriod = (
@@ -259,7 +261,7 @@ const pollForConfirmation = (
 
     const nextExpiredAt = yield* getExpiredAt(connection, signature, commitment, opts, expiredAt);
     if (opts.lifetime && nextExpiredAt !== null) {
-      const now = Date.now();
+      const now = yield* Clock.currentTimeMillis;
       if (hasExceededExpiredGracePeriod(opts, nextExpiredAt, now)) {
         return yield* Effect.fail(
           new BlockhashExpiredError({
@@ -460,6 +462,13 @@ const makeTransactionService = (
         const signed = yield* signerService
           .signAllTransactions(txs)
           .pipe(Effect.mapError(mapSignatureError));
+        if (signed.length !== txs.length) {
+          return yield* Effect.fail(
+            new TransactionSendError({
+              message: "Wallet returned a different number of signed transactions than requested",
+            })
+          );
+        }
         txs.forEach((tx, index) => {
           const signedTx = signed[index];
           if (signedTx) {
