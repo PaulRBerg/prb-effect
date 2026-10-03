@@ -1,8 +1,32 @@
 import { describe, expect, it } from "@effect/vitest";
 import { BigDecimal, Option } from "effect";
-import { formatGas, fromWei, multiplyBigintByDecimal, toWei } from "./numbers.js";
+import {
+  formatGas,
+  fromWei,
+  multiplyBigintByDecimal,
+  parseHexInt,
+  scaleByDecimals,
+  toWei,
+} from "./numbers.js";
 
 describe("internal/numbers", () => {
+  it("parses uppercase hex digits with either prefix case or no prefix", () => {
+    for (const input of ["0xFF", "0XFF", "FF"]) {
+      expect(parseHexInt(input)).toStrictEqual(Option.some(255));
+    }
+  });
+
+  it("scales by powers of ten without floating-point rounding", () => {
+    const one = BigDecimal.make(1n, 0);
+    for (const decimals of [23, 309]) {
+      const large = BigDecimal.make(1n, -decimals);
+      expect(BigDecimal.equals(scaleByDecimals(one, decimals, "up"), large)).toBe(true);
+      expect(BigDecimal.equals(scaleByDecimals(large, decimals, "down"), one)).toBe(true);
+      expect(BigDecimal.equals(scaleByDecimals(large, -decimals, "up"), one)).toBe(true);
+      expect(BigDecimal.equals(scaleByDecimals(one, -decimals, "down"), large)).toBe(true);
+    }
+  });
+
   describe("toWei / fromWei round-trip", () => {
     const roundTripCases: readonly bigint[] = [
       0n,

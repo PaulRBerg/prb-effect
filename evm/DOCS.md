@@ -306,6 +306,9 @@ Effect.runPromise(program.pipe(Effect.provide(ReadLayer)));
 
 Use `ContractReader.read` for single calls and `ContractReader.multicall` to batch.
 
+`ContractQuery` caches and batches reads through `MulticallBatcher`. Reads with an explicit `account` bypass multicall
+and use individual contract calls so contracts observe the requested `msg.sender`.
+
 ```typescript
 import { Effect } from "effect";
 import { ContractReader, erc20Abi, typedContract } from "@prb/effect-evm";

@@ -14,7 +14,7 @@ export type NumberFormatOptions = Intl.NumberFormatOptions & {
 const numberFormatterCache = new Map<string, Intl.NumberFormat>();
 
 // Regex patterns
-const HEX_PATTERN = /^[0-9a-f]+$/;
+const HEX_PATTERN = /^[0-9a-f]+$/i;
 const HEX_BYTE_PATTERN = /^[0-9a-fA-F]{2}$/;
 
 function getNumberFormatter(options: NumberFormatOptions = {}): Intl.NumberFormat {
@@ -185,7 +185,7 @@ export function scaleByDecimals(
     return value;
   }
 
-  const scale = BigDecimal.unsafeFromString(String(10 ** Math.abs(decimals)));
+  const scale = BigDecimal.make(1n, -Math.abs(decimals));
 
   if (direction === "up") {
     return decimals > 0 ? BigDecimal.multiply(value, scale) : BigDecimal.unsafeDivide(value, scale);
