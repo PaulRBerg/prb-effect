@@ -6,7 +6,7 @@ Bun workspace of Effect 3 libraries published to npm as `@prb/effect-*`: `evm` (
 
 ## Prerequisites and Setup
 
-Install [Node.js](https://nodejs.org) v20+, [Bun](https://bun.sh), [Just](https://github.com/casey/just), and
+Install [Node.js](https://nodejs.org) v24+, [Bun](https://bun.sh), [Just](https://github.com/casey/just), and
 [Ni](https://github.com/antfu-collective/ni) (`na`, `ni`, `nr`), then run `bun install` at the repository root.
 
 ## Commands

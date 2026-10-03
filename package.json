@@ -6,6 +6,9 @@
   "private": true,
   "type": "module",
   "version": "1.0.0",
+  "engines": {
+    "node": ">=24"
+  },
   "author": {
     "name": "Paul Razvan Berg",
     "url": "https://github.com/PaulRBerg"
