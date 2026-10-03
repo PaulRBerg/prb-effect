@@ -32,18 +32,25 @@ Then `cd` into the package directory before continuing.
 
 ## Step 2: Run release commands (publish from package directory)
 
-Run the release bump + push flow first:
+Run the release bump first. `ccbump` runs the `release-bumper` skill, which bumps `package.json`, updates the CHANGELOG,
+commits, and creates a `<package-directory>@<new-version>` tag without pushing it:
 
 ```bash
 zsh -ic 'ccbump <package-name>'
+```
+
+Read the new version from the package's `package.json`, then push the commit and the tag. The tag push triggers
+`.github/workflows/release.yml`, which creates the GitHub release:
+
+```bash
 git push origin
+git push origin <package-directory>@<new-version>
 ```
 
 Then run `npm publish` from within the released package's directory:
 
 ```bash
 cd <package-directory>
-eval "$(direnv export zsh)"
 npm publish
 ```
 
@@ -52,8 +59,6 @@ npm publish
 If any command exits with a non-zero code, **stop and report the error**. Do not proceed.
 
 ## Step 3: Verify npm Publication
-
-Read `package.json` to get the new version (ccbump modifies it in Step 2).
 
 Verify the package is available on npm:
 
@@ -95,8 +100,8 @@ Only execute this step if the package has a CHANGELOG.
 | **Added**   | Search consumer app directories for opportunities to adopt the new API. Implement the integration.          |
 | **Fixed**   | No action needed.                                                                                           |
 
-5. Draft a migration plan from the changelog entries and affected consumer apps, then pass it to the `work` skill for
-   implementation.
+5. Draft a migration plan from the changelog entries and affected consumer apps, then implement it in
+   `~/sablier/new-ui`.
 
 ## Step 6: Report Summary
 
