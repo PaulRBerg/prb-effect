@@ -8,7 +8,7 @@
  * @module safe/tx-lifecycle
  */
 
-import { Duration, Effect, Option } from "effect";
+import { Duration, Effect, Option, Ref } from "effect";
 import type { Hash, TransactionReceipt } from "viem";
 import type { SafeMultisigTxLookupError } from "./errors.js";
 import { SafeAppsService } from "./service.js";
@@ -208,61 +208,72 @@ export const waitForSafeMultisigTx = Effect.fn("waitForSafeMultisigTx")(function
   );
 
   const safeApps = yield* SafeAppsService;
-  let lastInfo: SafeMultisigTxInfo | null = null;
+  const lastInfoRef = yield* Ref.make<SafeMultisigTxInfo | null>(null);
 
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    // --- Fetch tx status, classifying errors ---
-    const queuedResult = yield* safeApps
-      .getTx(safeTxHash)
-      .pipe(
-        Effect.map(Option.some),
-        Effect.catchTag(
-          "SafeMultisigTxLookupError",
-          handleRetryablePoll<SafeMultisigTxInfo>(
-            "Retryable error polling Safe tx",
-            attempt,
-            safeTxHash
+  const completed = yield* Effect.gen(function* () {
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      // --- Fetch tx status, classifying errors ---
+      const queuedResult = yield* safeApps
+        .getTx(safeTxHash)
+        .pipe(
+          Effect.map(Option.some),
+          Effect.catchTag(
+            "SafeMultisigTxLookupError",
+            handleRetryablePoll<SafeMultisigTxInfo>(
+              "Retryable error polling Safe tx",
+              attempt,
+              safeTxHash
+            )
           )
-        )
-      );
+        );
 
-    if (Option.isSome(queuedResult)) {
-      const queued = queuedResult.value;
-      lastInfo = queued;
-      yield* Effect.logDebug("Safe tx poll status").pipe(
-        Effect.annotateLogs({
-          attempt,
-          hash: Option.isSome(queued.onchainHash) ? queued.onchainHash.value : "pending",
+      if (Option.isSome(queuedResult)) {
+        const queued = queuedResult.value;
+        yield* Ref.set(lastInfoRef, queued);
+        yield* Effect.logDebug("Safe tx poll status").pipe(
+          Effect.annotateLogs({
+            attempt,
+            hash: Option.isSome(queued.onchainHash) ? queued.onchainHash.value : "pending",
+            safeTxHash,
+            status: queued.status,
+          })
+        );
+
+        // Surface the per-poll info so callers can observe non-terminal transitions. Hook failures
+        // must not interrupt polling, so swallow them.
+        if (options.onProgress) {
+          yield* options.onProgress(queued).pipe(Effect.catchAllCause(() => Effect.void));
+        }
+
+        const terminalResult = yield* resolveTerminalWaitResult(
+          queued,
           safeTxHash,
-          status: queued.status,
-        })
-      );
-
-      // Surface the per-poll info so callers can observe non-terminal transitions. Hook failures
-      // must not interrupt polling, so swallow them.
-      if (options.onProgress) {
-        yield* options.onProgress(queued).pipe(Effect.catchAllCause(() => Effect.void));
-      }
-
-      const terminalResult = yield* resolveTerminalWaitResult(queued, safeTxHash, getReceipt).pipe(
-        Effect.catchTag(
-          "SafeMultisigTxLookupError",
-          handleRetryablePoll<SafeMultisigWaitResult>(
-            "Retryable error fetching receipt during Safe tx poll",
-            attempt,
-            safeTxHash
+          getReceipt
+        ).pipe(
+          Effect.catchTag(
+            "SafeMultisigTxLookupError",
+            handleRetryablePoll<SafeMultisigWaitResult>(
+              "Retryable error fetching receipt during Safe tx poll",
+              attempt,
+              safeTxHash
+            )
           )
-        )
-      );
-      if (Option.isSome(terminalResult)) {
-        return terminalResult.value;
+        );
+        if (Option.isSome(terminalResult)) {
+          return terminalResult.value;
+        }
+      }
+
+      // Still pending (no info, retryable error, or non-terminal status) — sleep before next attempt.
+      if (attempt < maxAttempts - 1) {
+        yield* Effect.sleep(interval);
       }
     }
+    return null;
+  }).pipe(Effect.timeoutOption(maxWait));
 
-    // Still pending (no info, retryable error, or non-terminal status) — sleep before next attempt.
-    if (attempt < maxAttempts - 1) {
-      yield* Effect.sleep(interval);
-    }
+  if (Option.isSome(completed) && completed.value !== null) {
+    return completed.value;
   }
 
   // Timed out without reaching a terminal state
@@ -274,6 +285,7 @@ export const waitForSafeMultisigTx = Effect.fn("waitForSafeMultisigTx")(function
     })
   );
 
+  const lastInfo = yield* Ref.get(lastInfoRef);
   return {
     _tag: "queued" as const,
     confirmations: lastInfo?.confirmations ?? null,

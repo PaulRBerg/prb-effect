@@ -218,6 +218,10 @@ export const safeWriteAndTrack = Effect.fn("safeWriteAndTrack")(function* (
               safeTxHash,
               status: info.status,
             })
+          ).pipe(
+            Effect.zipRight(
+              Effect.suspend(() => params.waitOptions?.onProgress?.(info) ?? Effect.void)
+            )
           ),
       }
     );

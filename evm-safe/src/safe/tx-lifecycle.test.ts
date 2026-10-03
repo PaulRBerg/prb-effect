@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@effect/vitest";
-import { Effect, Layer, Option } from "effect";
+import { Effect, Exit, Fiber, Layer, Option, TestClock } from "effect";
 import type { Hash, Hex, TransactionReceipt } from "viem";
 import { SafeMultisigTxLookupError } from "./errors.js";
 import type { SafeAppsServiceShape } from "./service.js";
@@ -50,6 +50,33 @@ function makeSafeAppsServiceLayer(
 }
 
 describe("waitForSafeMultisigTx", () => {
+  it.effect.each(["lookup", "receipt"])("bounds a hanging %s by maxWait", (phase) =>
+    Effect.gen(function* () {
+      const layer = makeSafeAppsServiceLayer(() =>
+        phase === "lookup"
+          ? Effect.never
+          : Effect.succeed({
+              confirmations: 2,
+              confirmationsRequired: 2,
+              onchainHash: Option.some(TEST_ONCHAIN_HASH),
+              status: "SUCCESS",
+            })
+      );
+      const fiber = yield* Effect.fork(
+        waitForSafeMultisigTx(TEST_SAFE_TX_HASH, () => Effect.never, {
+          maxWait: "1 second",
+        }).pipe(Effect.provide(layer))
+      );
+      yield* TestClock.adjust("1 second");
+      const completed = yield* Fiber.poll(fiber);
+      expect(Option.isSome(completed)).toBe(true);
+      if (Option.isSome(completed)) {
+        expect(Exit.isSuccess(completed.value)).toBe(true);
+        if (Exit.isSuccess(completed.value)) expect(completed.value.value._tag).toBe("queued");
+      }
+    })
+  );
+
   it.effect("returns onchainHash and safeTxHash when Safe tx executes", () =>
     Effect.gen(function* () {
       const result = yield* waitForSafeMultisigTx(TEST_SAFE_TX_HASH, getReceiptOk, DEFAULT_OPTIONS);

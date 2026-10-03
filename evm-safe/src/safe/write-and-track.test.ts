@@ -92,6 +92,7 @@ describe("safeWriteAndTrack", () => {
     return Effect.gen(function* () {
       const idx = yield* Ref.make(0);
       const seen = yield* Ref.make<string[]>([]);
+      const progress = yield* Ref.make<string[]>([]);
       const getTx = () =>
         Effect.gen(function* () {
           const i = yield* Ref.getAndUpdate(idx, (n) => Math.min(n + 1, responses.length - 1));
@@ -102,8 +103,12 @@ describe("safeWriteAndTrack", () => {
 
       const handle = yield* safeWriteAndTrack({
         transactions: [TX],
-        waitOptions: { interval: "10 millis", maxWait: "5 seconds" },
         onStateChange: (state) => Ref.update(seen, (xs) => [...xs, state.status]),
+        waitOptions: {
+          interval: "10 millis",
+          maxWait: "5 seconds",
+          onProgress: (info) => Ref.update(progress, (statuses) => [...statuses, info.status]),
+        },
       }).pipe(Effect.provide(layer));
 
       const result = yield* handle.result.pipe(Effect.provide(layer));
@@ -113,6 +118,7 @@ describe("safeWriteAndTrack", () => {
       expect(statuses).toContain("awaiting_confirmations");
       expect(statuses).toContain("awaiting_execution");
       expect(statuses).toContain("success");
+      expect(yield* Ref.get(progress)).toEqual(["AWAITING_EXECUTION", "SUCCESS"]);
     }).pipe(Effect.scoped);
   });
 
