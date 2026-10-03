@@ -108,14 +108,15 @@ export type TypedContract<TAbi extends Abi> = {
  * ```typescript
  * const erc20 = typedContract(erc20Abi, "0x...")
  *
- * // Type-safe reads
- * const balance = await erc20.read(1, "balanceOf", ["0x..."])
- *
- * // Type-safe writes
- * const hash = await erc20.write(1, "transfer", {
- *   args: ["0x...", 100n],
- *   account: "0x...",
+ * const program = Effect.gen(function* () {
+ *   const balance = yield* erc20.read(1, "balanceOf", ["0x..."])
+ *   const hash = yield* erc20.write(1, "transfer", {
+ *     args: ["0x...", 100n],
+ *     account: "0x...",
+ *   })
+ *   return { balance, hash }
  * })
+ * // Provide ContractReader and ContractWriter layers before running program.
  * ```
  */
 export function typedContract<TAbi extends Abi>(abi: TAbi, address: Address): TypedContract<TAbi> {

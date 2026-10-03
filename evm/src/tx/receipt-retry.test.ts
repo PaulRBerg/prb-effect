@@ -1,32 +1,14 @@
 import { describe, expect, it } from "@effect/vitest";
-import { Effect, Exit, Fiber, Schedule, TestClock } from "effect";
+import { Effect, Exit, Fiber, TestClock } from "effect";
 import {
   TransactionNotFoundError,
   TransactionReceiptNotFoundError,
   WaitForTransactionReceiptTimeoutError,
 } from "viem";
 import { ReceiptTimeoutError, TxFailedError, TxReplacedError } from "#src/core/index.js";
-import { makeBackoffSchedule } from "#src/internal/index.js";
-import { isRetryableError } from "#src/rpc/index.js";
-import { receiptRetryablePatterns } from "./internal/receipt-retry.js";
+import { makeReceiptRetrySchedule } from "./internal/receipt-retry.js";
 
-/**
- * Tests for the receipt retry schedule logic.
- * Uses exported patterns from internal/receipt-retry.ts to ensure test stays in sync with implementation.
- */
 describe("receipt retry schedule", () => {
-  // Use same patterns as production, but with minimal delays for testing
-  const makeTestRetrySchedule = () =>
-    makeBackoffSchedule({ baseDelay: 1, jitter: false, maxRetries: 3 }).pipe(
-      Schedule.whileInput<TxFailedError | ReceiptTimeoutError | TxReplacedError>((error) => {
-        // Only retry TxFailedError with retryable cause - not timeouts or replacements
-        if (error._tag === "TxFailedError" && error.cause) {
-          return isRetryableError(error.cause, receiptRetryablePatterns);
-        }
-        return false;
-      })
-    );
-
   const runWithTime = <A, E, R>(
     effect: Effect.Effect<A, E, R>,
     adjust: Parameters<typeof TestClock.adjust>[0] = "10 seconds"
@@ -52,7 +34,7 @@ describe("receipt retry schedule", () => {
           );
         }
         return "success";
-      }).pipe(Effect.retry(makeTestRetrySchedule()));
+      }).pipe(Effect.retry(makeReceiptRetrySchedule()));
 
       const result = yield* runWithTime(program);
 
@@ -76,7 +58,7 @@ describe("receipt retry schedule", () => {
           );
         }
         return "success";
-      }).pipe(Effect.retry(makeTestRetrySchedule()));
+      }).pipe(Effect.retry(makeReceiptRetrySchedule()));
 
       const result = yield* runWithTime(program);
 
@@ -100,7 +82,7 @@ describe("receipt retry schedule", () => {
           );
         }
         return "success";
-      }).pipe(Effect.retry(makeTestRetrySchedule()));
+      }).pipe(Effect.retry(makeReceiptRetrySchedule()));
 
       const result = yield* runWithTime(program);
 
@@ -124,7 +106,7 @@ describe("receipt retry schedule", () => {
           );
         }
         return "success";
-      }).pipe(Effect.retry(makeTestRetrySchedule()));
+      }).pipe(Effect.retry(makeReceiptRetrySchedule()));
 
       const result = yield* runWithTime(program);
 
@@ -148,7 +130,7 @@ describe("receipt retry schedule", () => {
           );
         }
         return "success";
-      }).pipe(Effect.retry(makeTestRetrySchedule()));
+      }).pipe(Effect.retry(makeReceiptRetrySchedule()));
 
       const result = yield* runWithTime(program);
 
@@ -172,7 +154,7 @@ describe("receipt retry schedule", () => {
           );
         }
         return "success";
-      }).pipe(Effect.retry(makeTestRetrySchedule()));
+      }).pipe(Effect.retry(makeReceiptRetrySchedule()));
 
       const result = yield* runWithTime(program);
 
@@ -193,7 +175,7 @@ describe("receipt retry schedule", () => {
             message: "Failed to get receipt",
           })
         );
-      }).pipe(Effect.retry(makeTestRetrySchedule()), Effect.exit);
+      }).pipe(Effect.retry(makeReceiptRetrySchedule()), Effect.exit);
 
       expect(Exit.isFailure(exit)).toBe(true);
       expect(attempts).toBe(1); // No retries
@@ -212,7 +194,7 @@ describe("receipt retry schedule", () => {
             message: "Failed to get receipt",
           })
         );
-      }).pipe(Effect.retry(makeTestRetrySchedule()), Effect.exit);
+      }).pipe(Effect.retry(makeReceiptRetrySchedule()), Effect.exit);
 
       expect(Exit.isFailure(exit)).toBe(true);
       expect(attempts).toBe(1); // No retries
@@ -231,7 +213,7 @@ describe("receipt retry schedule", () => {
             message: "Failed to get receipt",
           })
         );
-      }).pipe(Effect.retry(makeTestRetrySchedule()), Effect.exit);
+      }).pipe(Effect.retry(makeReceiptRetrySchedule()), Effect.exit);
 
       expect(Exit.isFailure(exit)).toBe(true);
       expect(attempts).toBe(1); // No retries - patterns are specific to transaction/receipt
@@ -249,7 +231,7 @@ describe("receipt retry schedule", () => {
             message: "Failed to get receipt",
           })
         );
-      }).pipe(Effect.retry(makeTestRetrySchedule()), Effect.exit);
+      }).pipe(Effect.retry(makeReceiptRetrySchedule()), Effect.exit);
 
       expect(Exit.isFailure(exit)).toBe(true);
       expect(attempts).toBe(1); // No retries
@@ -268,7 +250,7 @@ describe("receipt retry schedule", () => {
             message: "Failed to get receipt",
           })
         );
-      }).pipe(Effect.retry(makeTestRetrySchedule()), Effect.exit);
+      }).pipe(Effect.retry(makeReceiptRetrySchedule()), Effect.exit);
 
       const exit = yield* runWithTime(program);
 
@@ -289,7 +271,7 @@ describe("receipt retry schedule", () => {
             timeout: 60_000,
           })
         );
-      }).pipe(Effect.retry(makeTestRetrySchedule()), Effect.exit);
+      }).pipe(Effect.retry(makeReceiptRetrySchedule()), Effect.exit);
 
       expect(Exit.isFailure(exit)).toBe(true);
       expect(attempts).toBe(1); // No retries - timeouts are terminal
@@ -309,7 +291,7 @@ describe("receipt retry schedule", () => {
             reason: "repriced",
           })
         );
-      }).pipe(Effect.retry(makeTestRetrySchedule()), Effect.exit);
+      }).pipe(Effect.retry(makeReceiptRetrySchedule()), Effect.exit);
 
       expect(Exit.isFailure(exit)).toBe(true);
       expect(attempts).toBe(1); // No retries - replacements are terminal

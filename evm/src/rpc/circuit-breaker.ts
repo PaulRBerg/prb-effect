@@ -8,7 +8,7 @@ export type CircuitBreakerConfig = {
   failureThreshold?: number;
   /** Time in milliseconds before attempting recovery (default: 30_000) */
   resetTimeout?: number;
-  /** Number of successes needed to close from half-open (default: 2) */
+  /** Number of successes needed to close from half-open (default: 3) */
   successThreshold?: number;
 };
 

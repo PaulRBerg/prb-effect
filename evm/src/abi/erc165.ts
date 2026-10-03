@@ -15,7 +15,7 @@ export const erc165Abi = [
   },
 ] as const;
 
-/** ERC-165 interface ID for ERC-721 */
+/** ERC-165 interface ID */
 export const ERC165_INTERFACE_ID = "0x01ffc9a7" as const;
 
 /**

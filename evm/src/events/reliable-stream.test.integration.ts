@@ -157,8 +157,14 @@ describe("ReliableEventStream", () => {
           pollingInterval: 50,
         });
 
-        // Fork stream consumption
-        const fiber = yield* Effect.fork(Stream.runCollect(stream));
+        const emitted: Hash[] = [];
+        const fiber = yield* Effect.fork(
+          Stream.runForEach(stream, (event) =>
+            Effect.sync(() => {
+              emitted.push(event.transactionHash);
+            })
+          )
+        );
 
         // Emit event at block 1000
         yield* TestClock.adjust("20 millis");
@@ -172,6 +178,8 @@ describe("ReliableEventStream", () => {
         if (emitCallback) {
           const log = createMockTransferEvent(1000n, "0xabc123", 0, true);
           emitCallback(createDecodedEvent(log));
+          // A surviving event proves the confirmation poller has processed this block.
+          emitCallback(createDecodedEvent(createMockTransferEvent(1000n, "0xdef456", 0)));
         }
 
         // Advance block to confirm
@@ -185,12 +193,8 @@ describe("ReliableEventStream", () => {
         yield* Fiber.interrupt(fiber);
         const exit = yield* Fiber.await(fiber);
 
-        if (Exit.isSuccess(exit)) {
-          const events = Chunk.toReadonlyArray(exit.value);
-          expect(events).toHaveLength(0); // Event was reorged out
-        } else {
-          expect(Exit.isInterrupted(exit)).toBe(true);
-        }
+        expect(Exit.isInterrupted(exit)).toBe(true);
+        expect(emitted).toEqual(["0xdef456"]);
       })
     );
 

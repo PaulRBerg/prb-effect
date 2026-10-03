@@ -460,23 +460,8 @@ describe("decodeReceiptLogsByName", () => {
         },
       });
 
-      // Create an Approval event log (even though we don't have it in simplified erc20Abi,
-      // we'll use it for testing purposes)
-      const extendedAbi = [
-        ...erc20Abi,
-        {
-          name: "Approval",
-          type: "event",
-          inputs: [
-            { indexed: true, name: "owner", type: "address" },
-            { indexed: true, name: "spender", type: "address" },
-            { indexed: false, name: "value", type: "uint256" },
-          ],
-        },
-      ] as const;
-
       const approvalTopics = encodeEventTopics({
-        abi: extendedAbi,
+        abi: erc20Abi,
         eventName: "Approval",
         args: {
           owner: TEST_ADDRESS,
@@ -524,12 +509,12 @@ describe("decodeReceiptLogsByName", () => {
         ],
       };
 
-      const transferEvents = yield* decodeReceiptLogsByName(receipt, extendedAbi, "Transfer");
+      const transferEvents = yield* decodeReceiptLogsByName(receipt, erc20Abi, "Transfer");
       expect(transferEvents).toHaveLength(1);
       expect(transferEvents[0].eventName).toBe("Transfer");
       expect(transferEvents[0].logIndex).toBe(0);
 
-      const approvalEvents = yield* decodeReceiptLogsByName(receipt, extendedAbi, "Approval");
+      const approvalEvents = yield* decodeReceiptLogsByName(receipt, erc20Abi, "Approval");
       expect(approvalEvents).toHaveLength(1);
       expect(approvalEvents[0].eventName).toBe("Approval");
       expect(approvalEvents[0].logIndex).toBe(1);
