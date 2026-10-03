@@ -71,14 +71,18 @@ Verify the package is available on npm:
 npm view <package-name>@<new-version> version
 ```
 
-If the command fails (package not yet propagated), wait 10 seconds and retry once:
+Successful publication confirms registry acceptance, not immediate availability. npm's
+[publish-time scanning](https://github.blog/changelog/2026-07-28-npm-publish-time-malware-scanning-and-dual-use-metadata/)
+can keep a newly accepted version unavailable for several minutes. If the version lookup returns 404 after a successful
+publish, poll the read-only lookup at 30-second intervals while keeping the user informed:
 
 ```bash
-sleep 10 && npm view <package-name>@<new-version> version
+sleep 30 && npm view <package-name>@<new-version> version
 ```
 
-If still failing after the retry, warn the user that npm propagation is slow but continue to the next step — the version
-was published successfully if Step 2 succeeded.
+Do not republish to resolve a scanning delay. Diagnose other lookup errors separately. If availability remains delayed,
+inspect npm's publishing status or notifications and report the concrete state. Continue to consumer updates only after
+the exact version is available and the intended dist-tag points to it (`latest` for stable releases, `beta` for betas).
 
 ## Step 4: Bump in `~/sablier/new-ui`
 
