@@ -1,7 +1,9 @@
 import { describe, expect, it } from "@effect/vitest";
-import { Effect, Layer } from "effect";
+import { Effect } from "effect";
+import { afterEach, vi } from "vitest";
 import {
   BrowserStorage,
+  BrowserStorageLive,
   StorageDecodeError,
   StorageQuotaExceededError,
   StorageUnavailableError,
@@ -28,83 +30,12 @@ const makeMockLocalStorage = (): Storage => {
   };
 };
 
-/**
- * Create a mock BrowserStorage layer backed by a mock localStorage.
- */
-const makeMockBrowserStorageLayer = (mockStorage: Storage) =>
-  Layer.succeed(
-    BrowserStorage,
-    BrowserStorage.of({
-      get: (key: string) =>
-        Effect.try({
-          catch: (error) => {
-            if (error instanceof StorageUnavailableError) {
-              return error;
-            }
-            if (error instanceof Error && error.name === "SecurityError") {
-              return new StorageUnavailableError({
-                message: `localStorage access denied: ${error.message}`,
-              });
-            }
-            return new StorageDecodeError({
-              cause: error,
-              key,
-              message: "Failed to retrieve value from localStorage",
-            });
-          },
-          try: () => mockStorage.getItem(key),
-        }),
+function makeBrowserStorageLayer(mockStorage: Storage) {
+  vi.stubGlobal("window", { localStorage: mockStorage });
+  return BrowserStorageLive;
+}
 
-      remove: (key: string) =>
-        Effect.try({
-          catch: (error) => {
-            if (error instanceof StorageUnavailableError) {
-              return error;
-            }
-            if (error instanceof Error && error.name === "SecurityError") {
-              return new StorageUnavailableError({
-                message: `localStorage access denied: ${error.message}`,
-              });
-            }
-            return new StorageDecodeError({
-              cause: error,
-              key,
-              message: "Failed to remove value from localStorage",
-            });
-          },
-          try: () => mockStorage.removeItem(key),
-        }),
-
-      set: (key: string, value: string) =>
-        Effect.try({
-          catch: (error) => {
-            if (error instanceof StorageUnavailableError) {
-              return error;
-            }
-            if (
-              error instanceof Error &&
-              (error.name === "QuotaExceededError" || error.name === "NS_ERROR_DOM_QUOTA_REACHED")
-            ) {
-              return new StorageQuotaExceededError({
-                key,
-                message: "Storage quota exceeded",
-              });
-            }
-            if (error instanceof Error && error.name === "SecurityError") {
-              return new StorageUnavailableError({
-                message: `localStorage access denied: ${error.message}`,
-              });
-            }
-            return new StorageDecodeError({
-              cause: error,
-              key,
-              message: "Failed to store value in localStorage",
-            });
-          },
-          try: () => mockStorage.setItem(key, value),
-        }),
-    })
-  );
+afterEach(() => vi.unstubAllGlobals());
 
 describe("BrowserStorage", () => {
   it.effect("get returns null for non-existent keys", () =>
@@ -112,7 +43,7 @@ describe("BrowserStorage", () => {
       const storage = yield* BrowserStorage;
       const result = yield* storage.get("non-existent-key");
       expect(result).toBeNull();
-    }).pipe(Effect.provide(makeMockBrowserStorageLayer(makeMockLocalStorage())))
+    }).pipe(Effect.provide(makeBrowserStorageLayer(makeMockLocalStorage())))
   );
 
   it.effect("set and get round-trip", () =>
@@ -125,7 +56,7 @@ describe("BrowserStorage", () => {
       // Get the value back
       const result = yield* storage.get("test-key");
       expect(result).toBe("test-value");
-    }).pipe(Effect.provide(makeMockBrowserStorageLayer(makeMockLocalStorage())))
+    }).pipe(Effect.provide(makeBrowserStorageLayer(makeMockLocalStorage())))
   );
 
   it.effect("remove deletes keys", () =>
@@ -145,7 +76,7 @@ describe("BrowserStorage", () => {
       // Verify it's gone
       const after = yield* storage.get("test-key");
       expect(after).toBeNull();
-    }).pipe(Effect.provide(makeMockBrowserStorageLayer(makeMockLocalStorage())))
+    }).pipe(Effect.provide(makeBrowserStorageLayer(makeMockLocalStorage())))
   );
 
   it.effect("handles multiple keys independently", () =>
@@ -169,7 +100,7 @@ describe("BrowserStorage", () => {
       expect(yield* storage.get("key1")).toBe("value1");
       expect(yield* storage.get("key2")).toBeNull();
       expect(yield* storage.get("key3")).toBe("value3");
-    }).pipe(Effect.provide(makeMockBrowserStorageLayer(makeMockLocalStorage())))
+    }).pipe(Effect.provide(makeBrowserStorageLayer(makeMockLocalStorage())))
   );
 
   it.effect("overwrites existing values", () =>
@@ -183,7 +114,7 @@ describe("BrowserStorage", () => {
       // Overwrite with new value
       yield* storage.set("test-key", "updated-value");
       expect(yield* storage.get("test-key")).toBe("updated-value");
-    }).pipe(Effect.provide(makeMockBrowserStorageLayer(makeMockLocalStorage())))
+    }).pipe(Effect.provide(makeBrowserStorageLayer(makeMockLocalStorage())))
   );
 
   it.effect("handles StorageQuotaExceededError", () => {
@@ -208,7 +139,7 @@ describe("BrowserStorage", () => {
           expect(result.left.key).toBe("test-key");
         }
       }
-    }).pipe(Effect.provide(makeMockBrowserStorageLayer(mockStorage)));
+    }).pipe(Effect.provide(makeBrowserStorageLayer(mockStorage)));
   });
 
   it.effect("handles SecurityError as StorageUnavailableError", () => {
@@ -230,7 +161,7 @@ describe("BrowserStorage", () => {
       if (result._tag === "Left") {
         expect(result.left).toBeInstanceOf(StorageUnavailableError);
       }
-    }).pipe(Effect.provide(makeMockBrowserStorageLayer(mockStorage)));
+    }).pipe(Effect.provide(makeBrowserStorageLayer(mockStorage)));
   });
 
   it.effect("handles unknown errors as StorageDecodeError", () => {
@@ -253,7 +184,7 @@ describe("BrowserStorage", () => {
           expect(result.left.key).toBe("test-key");
         }
       }
-    }).pipe(Effect.provide(makeMockBrowserStorageLayer(mockStorage)));
+    }).pipe(Effect.provide(makeBrowserStorageLayer(mockStorage)));
   });
 
   it.effect("stores and retrieves JSON-encoded data", () =>
@@ -273,7 +204,7 @@ describe("BrowserStorage", () => {
         const decoded = JSON.parse(retrieved);
         expect(decoded).toEqual(data);
       }
-    }).pipe(Effect.provide(makeMockBrowserStorageLayer(makeMockLocalStorage())))
+    }).pipe(Effect.provide(makeBrowserStorageLayer(makeMockLocalStorage())))
   );
 
   it.effect("handles empty string values", () =>
@@ -286,6 +217,6 @@ describe("BrowserStorage", () => {
       // Should retrieve empty string, not null
       const result = yield* storage.get("empty-key");
       expect(result).toBe("");
-    }).pipe(Effect.provide(makeMockBrowserStorageLayer(makeMockLocalStorage())))
+    }).pipe(Effect.provide(makeBrowserStorageLayer(makeMockLocalStorage())))
   );
 });
