@@ -23,6 +23,26 @@ const transferLog = {
 };
 
 describe("EventBackfill (retry + typed errors)", () => {
+  it.effect("rejects nonpositive batch sizes instead of blocking range construction", () =>
+    Effect.gen(function* () {
+      const backfill = yield* EventBackfill;
+      for (const batchSize of [0n, -1n]) {
+        const error = yield* backfill
+          .fetch({
+            abi: erc20Abi,
+            batchSize,
+            chainId: TEST_CHAIN_ID,
+            eventName: "Transfer",
+            fromBlock: 1n,
+            toBlock: 10n,
+          })
+          .pipe(Effect.flip);
+        expect(error).toBeInstanceOf(EventBackfillError);
+        expect(error.message).toContain("greater than zero");
+      }
+    }).pipe(Effect.provide(Layer.provide(EventBackfillLive, makeMockPublicClientLayer())))
+  );
+
   it.live("retries a transient getLogs rejection then delivers all events", () => {
     let calls = 0;
     const layer = Layer.provide(

@@ -29,7 +29,7 @@ export type RpcCacheShape = {
 export class RpcCache extends Context.Tag("ew3/RpcCache")<RpcCache, RpcCacheShape>() {}
 
 /**
- * Create a cache layer with LRU eviction using Effect's Cache module
+ * Create a cache layer with LRU eviction
  */
 export const makeRpcCacheLive = (config?: CacheConfig): Layer.Layer<RpcCache> => {
   const defaultTtl = config?.ttl ?? 12_000;
@@ -62,7 +62,7 @@ export const makeRpcCacheLive = (config?: CacheConfig): Layer.Layer<RpcCache> =>
             }
           }
 
-          if (oldestKey) {
+          if (oldestKey !== null) {
             const keyToEvict = oldestKey;
             yield* Ref.update(entriesRef, (e) => {
               const newEntries = new Map(e);
@@ -127,7 +127,9 @@ export const makeRpcCacheLive = (config?: CacheConfig): Layer.Layer<RpcCache> =>
           const now = yield* Clock.currentTimeMillis;
 
           // Evict oldest entry if at capacity
-          yield* evictOldest;
+          if (!(yield* Ref.get(entriesRef)).has(key)) {
+            yield* evictOldest;
+          }
 
           // Store entry with timestamp
           yield* Ref.update(entriesRef, (entries) => {

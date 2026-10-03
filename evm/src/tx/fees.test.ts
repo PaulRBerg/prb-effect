@@ -121,6 +121,30 @@ describe("deriveTxType", () => {
 });
 
 describe("deriveFeeOverrides", () => {
+  it.effect("uses legacy fees when policy forces a legacy transaction on an EIP-1559 chain", () =>
+    Effect.gen(function* () {
+      const result = yield* deriveFeeOverrides({
+        chainId: TEST_CHAIN_ID,
+        policy: { txType: "legacy" },
+      });
+      expect(result.gasPrice).toBeDefined();
+      expect(result.maxFeePerGas).toBeUndefined();
+      expect(result.maxPriorityFeePerGas).toBeUndefined();
+    }).pipe(Effect.provide(makeEip1559Layer()))
+  );
+
+  it.effect("uses fee fields for the explicit transaction type before the policy type", () =>
+    Effect.gen(function* () {
+      const result = yield* deriveFeeOverrides({
+        chainId: TEST_CHAIN_ID,
+        policy: { txType: "legacy" },
+        userOverrides: { type: "eip1559" },
+      });
+      expect(result.gasPrice).toBeUndefined();
+      expect(result.maxFeePerGas).toBeDefined();
+    }).pipe(Effect.provide(makeLegacyLayer()))
+  );
+
   it.effect("returns user gasPrice when provided", () =>
     Effect.gen(function* () {
       const result = yield* deriveFeeOverrides({

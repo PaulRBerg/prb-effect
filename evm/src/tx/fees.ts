@@ -72,15 +72,13 @@ export const deriveFeeOverrides = (params: {
     }
 
     const gasService = yield* GasService;
-    const supportsEip1559 = yield* gasService.supportsEip1559({
-      chainId: params.chainId,
-    });
+    const txType = yield* deriveTxType(params);
     const estimate = yield* gasService.estimateFees({
       chainId: params.chainId,
       speed: policy?.feeSpeed,
     });
 
-    if (!supportsEip1559) {
+    if (txType === "legacy" || txType === "eip2930") {
       const gasPrice = cap(estimate.gasPrice ?? estimate.maxFeePerGas, policy?.maxFeePerGas);
       return { gasPrice };
     }

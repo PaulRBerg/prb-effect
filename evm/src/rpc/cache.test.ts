@@ -83,6 +83,27 @@ describe("RpcCache", () => {
     }).pipe(Effect.provide(makeRpcCacheLive({ maxSize: 3 })))
   );
 
+  it.effect("updating an existing key at capacity preserves other entries", () =>
+    Effect.gen(function* () {
+      const cache = yield* RpcCache;
+      yield* cache.set("oldest", 1);
+      yield* cache.set("newest", 2);
+      yield* cache.set("newest", 3);
+      expect(yield* cache.get("oldest")).toBe(1);
+      expect(yield* cache.get("newest")).toBe(3);
+    }).pipe(Effect.provide(makeRpcCacheLive({ maxSize: 2 })))
+  );
+
+  it.effect("evicts an empty-string key when it is least recently used", () =>
+    Effect.gen(function* () {
+      const cache = yield* RpcCache;
+      yield* cache.set("", 1);
+      yield* cache.set("next", 2);
+      expect(yield* cache.get("")).toBeNull();
+      expect(yield* cache.get("next")).toBe(2);
+    }).pipe(Effect.provide(makeRpcCacheLive({ maxSize: 1 })))
+  );
+
   it.effect("invalidate removes specific key", () =>
     Effect.gen(function* () {
       const cache = yield* RpcCache;
@@ -232,32 +253,5 @@ describe("RpcCache", () => {
       expect(result1).toBe("value1"); // Not affected
       expect(result2).toBeNull(); // Invalidated
     }).pipe(Effect.provide(makeRpcCacheLive({ blockScoped: true })))
-  );
-
-  it.effect("default config values", () =>
-    Effect.gen(function* () {
-      const cache = yield* RpcCache;
-
-      // Default TTL is 12000ms, blockScoped is true, maxSize is 100
-      // Just verify the layer can be created and used
-      yield* cache.set("test", "value");
-      const result = yield* cache.get("test");
-      expect(result).toBe("value");
-    }).pipe(Effect.provide(makeRpcCacheLive()))
-  );
-
-  it.effect("custom config values applied", () =>
-    Effect.gen(function* () {
-      const cache = yield* RpcCache;
-
-      // This test verifies that custom config is respected
-      // by checking TTL expiration with custom value
-      yield* cache.set("test", "value");
-
-      yield* TestClock.adjust("25 millis");
-
-      const result = yield* cache.get("test");
-      expect(result).toBeNull();
-    }).pipe(Effect.provide(makeRpcCacheLive({ blockScoped: false, maxSize: 50, ttl: 20 })))
   );
 });

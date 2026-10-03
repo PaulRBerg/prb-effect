@@ -77,6 +77,14 @@ export const EventBackfillLive = Layer.effect(
       Effect.gen(function* () {
         const client = yield* publicClientService.get(params.chainId);
         const batchSize = params.batchSize ?? 2000n;
+        if (batchSize <= 0n) {
+          return yield* Effect.fail(
+            new EventBackfillError({
+              chainId: params.chainId,
+              message: "Backfill batch size must be greater than zero",
+            })
+          );
+        }
 
         // Resolve the end of the range. Only hit the RPC when the caller did not
         // supply `toBlock` — running it unconditionally adds a needless failure point.
