@@ -1,4 +1,4 @@
-import { Effect, Layer, Option, Stream, SubscriptionRef } from "effect";
+import { Effect, Layer, Option, Schema, Stream, SubscriptionRef } from "effect";
 import { BrowserStorage } from "../storage/index.js";
 import type { TxStoreError } from "./errors.js";
 import { TxStore } from "./store.js";
@@ -39,6 +39,45 @@ const INDEX_KEY = "ew3:v1:tx:index";
  */
 const CORRUPT_KEY_PREFIX = "ew3:v1:tx:corrupt:";
 
+const HashSchema = Schema.TemplateLiteral("0x", Schema.String);
+const isPersistedTx = Schema.is(
+  Schema.Struct({
+    chainId: Schema.Int,
+    createdAt: Schema.Finite,
+    currentHash: HashSchema,
+    data: Schema.optional(Schema.String),
+    description: Schema.optional(Schema.String),
+    from: Schema.optional(Schema.String),
+    id: Schema.String,
+    replacements: Schema.mutable(
+      Schema.Array(
+        Schema.Struct({
+          at: Schema.Finite,
+          newHash: HashSchema,
+          oldHash: HashSchema,
+          reason: Schema.Literal("cancelled", "replaced", "repriced"),
+        })
+      )
+    ),
+    rootHash: HashSchema,
+    status: Schema.Literal("submitted", "pending", "queued", "mined", "failed", "cancelled"),
+    tags: Schema.optional(Schema.mutable(Schema.Array(Schema.String))),
+    to: Schema.optional(Schema.String),
+    txMeta: Schema.optional(
+      Schema.Struct({
+        gas: Schema.optional(Schema.String),
+        gasPrice: Schema.optional(Schema.String),
+        maxFeePerGas: Schema.optional(Schema.String),
+        maxPriorityFeePerGas: Schema.optional(Schema.String),
+        nonce: Schema.optional(Schema.String),
+        type: Schema.optional(Schema.String),
+      })
+    ),
+    updatedAt: Schema.Finite,
+    value: Schema.optional(Schema.String),
+  })
+);
+
 /**
  * Generate a storage key for a transaction.
  */
@@ -55,8 +94,8 @@ function parseTxId(id: string): { chainId: number; rootHash: string } | null {
     return null;
   }
 
-  const chainId = Number.parseInt(parts[0], 10);
-  if (Number.isNaN(chainId)) {
+  const chainId = Number(parts[0]);
+  if (!Number.isInteger(chainId) || String(chainId) !== parts[0] || !parts[1].startsWith("0x")) {
     return null;
   }
 
@@ -73,13 +112,23 @@ function readIndex(storage: BrowserStorage): Effect.Effect<string[], TxStoreErro
       return [];
     }
 
+    let parsed: unknown;
     try {
-      const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? parsed : [];
+      parsed = JSON.parse(raw);
     } catch {
-      // Index corrupted, reset to empty
-      return [];
+      parsed = null;
     }
+    const index = Array.isArray(parsed)
+      ? [
+          ...new Set(
+            parsed.filter((id): id is string => typeof id === "string" && parseTxId(id) !== null)
+          ),
+        ]
+      : [];
+    if (!Array.isArray(parsed) || index.length !== parsed.length) {
+      yield* writeIndex(storage, index);
+    }
+    return index;
   });
 }
 
@@ -111,15 +160,17 @@ function readTx(
     }
 
     try {
-      const tx = JSON.parse(raw) as PersistedTx;
-      return tx;
+      const tx: unknown = JSON.parse(raw);
+      if (isPersistedTx(tx) && tx.id === id && tx.id === `${tx.chainId}:${tx.rootHash}`) {
+        return tx;
+      }
     } catch {
-      // Quarantine corrupt data
-      const quarantineKey = `${CORRUPT_KEY_PREFIX}${id}:${Date.now()}`;
-      yield* storage.set(quarantineKey, raw);
-      yield* storage.remove(key);
-      return null;
+      // Invalid JSON follows the same quarantine path as an invalid record.
     }
+    const quarantineKey = `${CORRUPT_KEY_PREFIX}${id}:${Date.now()}`;
+    yield* storage.set(quarantineKey, raw);
+    yield* storage.remove(key);
+    return null;
   });
 }
 

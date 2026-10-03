@@ -224,6 +224,55 @@ describe("InMemoryTxStore", () => {
 });
 
 describe("LocalStorageTxStore", () => {
+  it.effect("repairs invalid and duplicate index entries before loading", () => {
+    const mockStorage = makeMockLocalStorage();
+    const tx = makeTestTx();
+    mockStorage.setItem(`ew3:v1:tx:${tx.id}`, JSON.stringify(tx));
+    mockStorage.setItem(
+      "ew3:v1:tx:index",
+      JSON.stringify([1, null, "invalid", "1oops:0xABC", tx.id, tx.id])
+    );
+    return Effect.gen(function* () {
+      const store = yield* TxStore;
+      expect(yield* store.getAll()).toEqual([tx]);
+      expect(JSON.parse(mockStorage.getItem("ew3:v1:tx:index") ?? "null")).toEqual([tx.id]);
+    }).pipe(
+      Effect.provide(makeLocalStorageTxStoreLive()),
+      Effect.provide(makeMockBrowserStorageLayer(mockStorage))
+    );
+  });
+
+  it.effect.each([
+    ["null", null],
+    ["missing fields", { status: "pending" }],
+    ["mismatched id", { ...makeTestTx(), id: "1:0xOTHER" }],
+    ["mismatched root", { ...makeTestTx(), rootHash: "0xOTHER" }],
+    ["invalid status", { ...makeTestTx(), status: "unknown" }],
+    ["invalid timestamp", { ...makeTestTx(), updatedAt: "yesterday" }],
+    ["invalid replacement", { ...makeTestTx(), replacements: [{ at: 1 }] }],
+    ["invalid metadata", { ...makeTestTx(), txMeta: { nonce: 1 } }],
+    ["invalid tags", { ...makeTestTx(), tags: [1] }],
+  ])("quarantines valid JSON containing %s", ([_label, invalid]) => {
+    const mockStorage = makeMockLocalStorage();
+    const id = makeTestTx().id;
+    const raw = JSON.stringify(invalid);
+    mockStorage.setItem(`ew3:v1:tx:${id}`, raw);
+    mockStorage.setItem("ew3:v1:tx:index", JSON.stringify([id]));
+    return Effect.gen(function* () {
+      const store = yield* TxStore;
+      expect(yield* store.getAll()).toEqual([]);
+      expect(mockStorage.getItem(`ew3:v1:tx:${id}`)).toBeNull();
+      const keys = Array.from({ length: mockStorage.length }, (_, i) => mockStorage.key(i));
+      const quarantineKey = keys.find((key) => key?.startsWith(`ew3:v1:tx:corrupt:${id}:`));
+      expect(quarantineKey).toBeDefined();
+      expect(mockStorage.getItem(quarantineKey as string)).toBe(raw);
+      expect(JSON.parse(mockStorage.getItem("ew3:v1:tx:index") ?? "null")).toEqual([]);
+    }).pipe(
+      Effect.provide(makeLocalStorageTxStoreLive()),
+      Effect.provide(makeMockBrowserStorageLayer(mockStorage))
+    );
+  });
+
   it.effect("basic CRUD operations", () =>
     Effect.gen(function* () {
       const store = yield* TxStore;

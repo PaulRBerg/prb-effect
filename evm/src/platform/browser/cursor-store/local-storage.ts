@@ -1,4 +1,4 @@
-import { Effect, Layer, Ref } from "effect";
+import { Effect, Layer, Ref, Schema } from "effect";
 import { DEFAULT_CURSOR_FLUSH_DELAY } from "#src/constants/index.js";
 import type { StreamCursor } from "#src/events/index.js";
 import { CursorStore } from "#src/events/index.js";
@@ -9,6 +9,17 @@ import { BrowserStorage } from "#src/platform/browser/storage/index.js";
  * Format: ew3:v1:cursor:{cursorKey}
  */
 const makeCursorStorageKey = (cursorKey: string): string => `ew3:v1:cursor:${cursorKey}`;
+
+const decodeCursor = Schema.decodeUnknownSync(
+  Schema.Struct({
+    address: Schema.String,
+    chainId: Schema.Int,
+    eventName: Schema.String,
+    lastBlockNumber: Schema.BigInt,
+    lastLogIndex: Schema.Int,
+    updatedAt: Schema.Finite,
+  })
+);
 
 /**
  * Serialize a StreamCursor to JSON string.
@@ -28,17 +39,7 @@ const serializeCursor = (cursor: StreamCursor): string =>
  * Deserialize a JSON string to StreamCursor.
  * Converts string lastBlockNumber back to bigint.
  */
-const deserializeCursor = (json: string): StreamCursor => {
-  const parsed = JSON.parse(json);
-  return {
-    address: parsed.address,
-    chainId: parsed.chainId,
-    eventName: parsed.eventName,
-    lastBlockNumber: BigInt(parsed.lastBlockNumber),
-    lastLogIndex: parsed.lastLogIndex,
-    updatedAt: parsed.updatedAt,
-  };
-};
+const deserializeCursor = (json: string): StreamCursor => decodeCursor(JSON.parse(json));
 
 /**
  * Pending write slot for a key.

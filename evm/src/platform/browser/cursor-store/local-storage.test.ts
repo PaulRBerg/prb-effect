@@ -216,6 +216,27 @@ describe("LocalStorageCursorStore", () => {
     );
   });
 
+  it.effect.each([
+    { lastBlockNumber: "1" },
+    { ...testCursor, chainId: "1", lastBlockNumber: "1" },
+    { ...testCursor, lastBlockNumber: "1", lastLogIndex: null },
+    { ...testCursor, address: null, lastBlockNumber: "1" },
+    { ...testCursor, lastBlockNumber: "1", updatedAt: "yesterday" },
+    { ...testCursor, eventName: null, lastBlockNumber: "1" },
+    { ...testCursor, lastBlockNumber: 1 },
+  ])("deletes cursor with invalid persisted fields: %j", (invalid) => {
+    const mockStorage = makeMockLocalStorage();
+    mockStorage.setItem("ew3:v1:cursor:invalid-fields", JSON.stringify(invalid));
+    return Effect.gen(function* () {
+      const store = yield* CursorStore;
+      expect(yield* store.get("invalid-fields")).toBeNull();
+      expect(mockStorage.getItem("ew3:v1:cursor:invalid-fields")).toBeNull();
+    }).pipe(
+      Effect.provide(LocalStorageCursorStoreLive),
+      Effect.provide(makeMockBrowserStorageLayer(mockStorage))
+    );
+  });
+
   it.effect("write throttling: multiple sets within 250ms", () => {
     const mockStorage = makeMockLocalStorage();
     return runWithTime(
