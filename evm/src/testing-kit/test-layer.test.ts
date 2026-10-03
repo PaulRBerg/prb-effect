@@ -4,7 +4,7 @@ import type { Address, Hash } from "viem";
 import { erc20Abi } from "viem";
 import { BalanceService } from "#src/balance/index.js";
 import { BlockService } from "#src/block/index.js";
-import { ContractReader } from "#src/contract/index.js";
+import { ContractPipeline, ContractReader } from "#src/contract/index.js";
 import { EnsResolver } from "#src/ens/index.js";
 import { GasService } from "#src/gas/index.js";
 import { NonceService } from "#src/nonce/index.js";
@@ -15,6 +15,7 @@ import {
   makeMockWalletClientLayer,
   TEST_ADDRESS,
   TEST_CHAIN_ID,
+  TEST_TX_HASH,
   UNKNOWN_CHAIN_ID,
 } from "#src/testing-kit/index.js";
 
@@ -81,6 +82,47 @@ describe("Testing Kit", () => {
   });
 
   describe("makeEffectEvmTestLayer", () => {
+    it.effect("provides service overrides to dependent live services", () => {
+      let submitted: unknown;
+      const layer = makeEffectEvmTestLayer({
+        nonceService: { reserve: () => Effect.succeed(42n) },
+        gasService: {
+          estimateFees: () =>
+            Effect.succeed({
+              confidence: 100,
+              estimatedBaseFee: 1n,
+              maxFeePerGas: 900n,
+              maxPriorityFeePerGas: 1n,
+            }),
+        },
+        walletClient: {
+          writeContract: (params) => {
+            submitted = params;
+            return Promise.resolve(TEST_TX_HASH);
+          },
+        },
+      });
+
+      return Effect.gen(function* () {
+        const pipeline = yield* ContractPipeline;
+        const terminal = yield* pipeline.writeAndWait({
+          abi: erc20Abi,
+          account: TEST_ADDRESS,
+          address: TEST_ADDRESS,
+          args: [TEST_ADDRESS, 1n],
+          chainId: TEST_CHAIN_ID,
+          functionName: "transfer",
+        });
+
+        expect(terminal._tag).toBe("success");
+        expect(submitted).toMatchObject({
+          maxFeePerGas: 900n,
+          maxPriorityFeePerGas: 1n,
+          nonce: 42n,
+        });
+      }).pipe(Effect.provide(layer));
+    });
+
     it.effect("provides all services with mocked boundaries", () =>
       Effect.gen(function* () {
         const balance = yield* BalanceService;

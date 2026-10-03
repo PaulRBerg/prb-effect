@@ -137,44 +137,6 @@ export type TestLayerConfig = {
 };
 
 /**
- * Internal layer combining all application services
- * Requires PublicClientService and WalletClientService to be provided
- *
- * Layer composition order matters:
- * 1. Base services (directly client-bound, no service deps)
- * 2. Dependent services (require base services, e.g. Balance uses ContractReader, Deploy uses TxManager)
- * 3. High-level services (ContractPipeline, ReliableEventStream, Simulation)
- */
-const baseServices = Layer.mergeAll(
-  BlockServiceLive,
-  ContractReaderLive,
-  ContractWriterLive,
-  GasServiceLive,
-  NonceServiceLive,
-  SignatureServiceLive,
-  SubscriptionServiceLive,
-  EventStreamLive,
-  EnsResolverLive
-);
-
-const txServices = Layer.provideMerge(
-  TxManagerLive,
-  Layer.provideMerge(TxReplacementLive, baseServices)
-);
-
-const applicationServices = Layer.provideMerge(
-  Layer.mergeAll(
-    BalanceServiceLive,
-    ContractPipelineLive,
-    DeployServiceLive,
-    Erc721ServiceLive,
-    ReliableEventStreamLive,
-    SimulationServiceLive
-  ),
-  txServices
-).pipe(Layer.provide(FetchHttpClient.layer));
-
-/**
  * Creates a complete effect-evm test layer with mocked boundaries
  *
  * This layer provides all effect-evm services with mocked PublicClientService
@@ -236,92 +198,57 @@ export function makeEffectEvmTestLayer(
 > {
   const chainId = config.chainId ?? mainnet.id;
 
-  // Create boundary mocks - use real services if no config provided
+  // All live services use the configured client boundaries.
   const clientLayers = Layer.mergeAll(
     makeMockPublicClientLayer(config.publicClient ?? {}, chainId),
     makeMockWalletClientLayer(config.walletClient ?? {}, chainId)
   );
 
-  // Create service mocks if config is provided, otherwise use real implementations from applicationServices
-  let serviceMockLayer = Layer.empty;
+  // Choose overrides before building dependents so they share the same service instances.
+  const baseServices = Layer.mergeAll(
+    config.blockService
+      ? makeMockBlockServiceLayer(config.blockService, chainId)
+      : BlockServiceLive,
+    ContractReaderLive,
+    ContractWriterLive,
+    config.gasService ? makeMockGasServiceLayer(config.gasService, chainId) : GasServiceLive,
+    config.nonceService
+      ? makeMockNonceServiceLayer(config.nonceService, chainId)
+      : NonceServiceLive,
+    config.signatureService
+      ? makeMockSignatureServiceLayer(config.signatureService)
+      : SignatureServiceLive,
+    config.subscriptionService
+      ? makeMockSubscriptionServiceLayer(config.subscriptionService, chainId)
+      : SubscriptionServiceLive,
+    EventStreamLive,
+    EnsResolverLive
+  );
 
-  if (config.balanceService) {
-    serviceMockLayer = Layer.merge(
-      serviceMockLayer,
-      makeMockBalanceServiceLayer(config.balanceService, chainId)
-    );
-  }
-  if (config.blockService) {
-    serviceMockLayer = Layer.merge(
-      serviceMockLayer,
-      makeMockBlockServiceLayer(config.blockService, chainId)
-    );
-  }
-  if (config.erc721Service) {
-    serviceMockLayer = Layer.merge(
-      serviceMockLayer,
-      makeMockErc721ServiceLayer(config.erc721Service, chainId)
-    );
-  }
-  if (config.gasService) {
-    serviceMockLayer = Layer.merge(
-      serviceMockLayer,
-      makeMockGasServiceLayer(config.gasService, chainId)
-    );
-  }
-  if (config.nonceService) {
-    serviceMockLayer = Layer.merge(
-      serviceMockLayer,
-      makeMockNonceServiceLayer(config.nonceService, chainId)
-    );
-  }
-  if (config.signatureService) {
-    serviceMockLayer = Layer.merge(
-      serviceMockLayer,
-      makeMockSignatureServiceLayer(config.signatureService)
-    );
-  }
-  if (config.subscriptionService) {
-    serviceMockLayer = Layer.merge(
-      serviceMockLayer,
-      makeMockSubscriptionServiceLayer(config.subscriptionService, chainId)
-    );
-  }
-  if (config.deployService) {
-    serviceMockLayer = Layer.merge(
-      serviceMockLayer,
-      makeMockDeployServiceLayer(config.deployService, chainId)
-    );
-  }
-  if (config.simulationService) {
-    serviceMockLayer = Layer.merge(
-      serviceMockLayer,
-      makeMockSimulationServiceLayer(config.simulationService, chainId)
-    );
-  }
+  const txServices = Layer.provideMerge(
+    TxManagerLive,
+    Layer.provideMerge(TxReplacementLive, baseServices)
+  );
 
-  // Provide boundary mocks and service mocks to application services
-  const baseLayer = Layer.provideMerge(applicationServices, clientLayers);
+  const applicationServices = Layer.provideMerge(
+    Layer.mergeAll(
+      config.balanceService
+        ? makeMockBalanceServiceLayer(config.balanceService, chainId)
+        : BalanceServiceLive,
+      ContractPipelineLive,
+      config.deployService
+        ? makeMockDeployServiceLayer(config.deployService, chainId)
+        : DeployServiceLive,
+      config.erc721Service
+        ? makeMockErc721ServiceLayer(config.erc721Service, chainId)
+        : Erc721ServiceLive,
+      ReliableEventStreamLive,
+      config.simulationService
+        ? makeMockSimulationServiceLayer(config.simulationService, chainId)
+        : SimulationServiceLive
+    ),
+    txServices
+  ).pipe(Layer.provide(FetchHttpClient.layer));
 
-  return Layer.merge(baseLayer, serviceMockLayer) as Layer.Layer<
-    | PublicClientService
-    | WalletClientService
-    | BalanceService
-    | BlockService
-    | ContractReader
-    | ContractWriter
-    | ContractPipeline
-    | TxManager
-    | TxReplacement
-    | EventStream
-    | ReliableEventStream
-    | EnsResolver
-    | Erc721Service
-    | GasService
-    | NonceService
-    | SignatureService
-    | SubscriptionService
-    | DeployService
-    | SimulationService
-  >;
+  return Layer.provideMerge(applicationServices, clientLayers);
 }
