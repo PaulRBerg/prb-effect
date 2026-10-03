@@ -177,15 +177,6 @@ describe("testing-kit: makeMockSubscriptionServiceLayer", () => {
   });
 
   describe("hasWebSocket", () => {
-    it.effect("returns boolean", () =>
-      Effect.gen(function* () {
-        const service = yield* SubscriptionService;
-        const hasWs = yield* service.hasWebSocket(1);
-
-        expect(typeof hasWs).toBe("boolean");
-      }).pipe(Effect.provide(makeMockSubscriptionServiceLayer()))
-    );
-
     it.effect("returns false by default", () =>
       Effect.gen(function* () {
         const service = yield* SubscriptionService;

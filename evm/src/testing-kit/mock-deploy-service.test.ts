@@ -150,18 +150,6 @@ describe("testing-kit: makeMockDeployServiceLayer", () => {
   });
 
   describe("verifyDeployment", () => {
-    it.effect("returns boolean", () =>
-      Effect.gen(function* () {
-        const service = yield* DeployService;
-        const verified = yield* service.verifyDeployment({
-          address: "0x1234567890123456789012345678901234567890" as Address,
-          chainId: mainnet.id,
-        });
-
-        expect(typeof verified).toBe("boolean");
-      }).pipe(Effect.provide(makeMockDeployServiceLayer()))
-    );
-
     it.effect("returns true by default", () =>
       Effect.gen(function* () {
         const service = yield* DeployService;

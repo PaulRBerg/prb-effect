@@ -23,11 +23,13 @@ describe("testing-kit: makeMockSimulationServiceLayer", () => {
         expect(result).toHaveProperty("gasLimit");
         expect(result).toHaveProperty("logs");
         expect(result).toHaveProperty("stateDiff");
-        expect(typeof result.success).toBe("boolean");
-        expect(typeof result.gasUsed).toBe("bigint");
+        expect(result.success).toBe(true);
+        expect(result.gasUsed).toBe(MIN_TX_GAS);
         expect(typeof result.gasLimit).toBe("bigint");
         expect(Array.isArray(result.logs)).toBe(true);
         expect(Array.isArray(result.stateDiff)).toBe(true);
+        expect(result.logs.length).toBe(0);
+        expect(result.stateDiff.length).toBe(0);
       }).pipe(Effect.provide(makeMockSimulationServiceLayer()))
     );
 
@@ -45,60 +47,6 @@ describe("testing-kit: makeMockSimulationServiceLayer", () => {
         });
 
         expect(result.success).toBe(true);
-      }).pipe(Effect.provide(makeMockSimulationServiceLayer()))
-    );
-
-    it.effect("returns success field", () =>
-      Effect.gen(function* () {
-        const service = yield* SimulationService;
-        const result = yield* service.simulate({
-          chainId: mainnet.id,
-          from: "0x1234567890123456789012345678901234567890" as Address,
-          to: "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd" as Address,
-        });
-
-        expect(result.success).toBe(true);
-      }).pipe(Effect.provide(makeMockSimulationServiceLayer()))
-    );
-
-    it.effect("returns gasUsed field", () =>
-      Effect.gen(function* () {
-        const service = yield* SimulationService;
-        const result = yield* service.simulate({
-          chainId: mainnet.id,
-          from: "0x1234567890123456789012345678901234567890" as Address,
-          to: "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd" as Address,
-        });
-
-        expect(result.gasUsed).toBe(MIN_TX_GAS);
-      }).pipe(Effect.provide(makeMockSimulationServiceLayer()))
-    );
-
-    it.effect("returns logs array", () =>
-      Effect.gen(function* () {
-        const service = yield* SimulationService;
-        const result = yield* service.simulate({
-          chainId: mainnet.id,
-          from: "0x1234567890123456789012345678901234567890" as Address,
-          to: "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd" as Address,
-        });
-
-        expect(Array.isArray(result.logs)).toBe(true);
-        expect(result.logs.length).toBe(0);
-      }).pipe(Effect.provide(makeMockSimulationServiceLayer()))
-    );
-
-    it.effect("returns stateDiff array", () =>
-      Effect.gen(function* () {
-        const service = yield* SimulationService;
-        const result = yield* service.simulate({
-          chainId: mainnet.id,
-          from: "0x1234567890123456789012345678901234567890" as Address,
-          to: "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd" as Address,
-        });
-
-        expect(Array.isArray(result.stateDiff)).toBe(true);
-        expect(result.stateDiff.length).toBe(0);
       }).pipe(Effect.provide(makeMockSimulationServiceLayer()))
     );
 
@@ -251,7 +199,7 @@ describe("testing-kit: makeMockSimulationServiceLayer", () => {
   });
 
   describe("getReadableSummary", () => {
-    it.effect("returns string", () =>
+    it.effect("returns a summary with status and gas information", () =>
       Effect.gen(function* () {
         const service = yield* SimulationService;
         const result: SimulationResult = {
@@ -265,39 +213,7 @@ describe("testing-kit: makeMockSimulationServiceLayer", () => {
         const summary = yield* service.getReadableSummary(result);
 
         expect(typeof summary).toBe("string");
-      }).pipe(Effect.provide(makeMockSimulationServiceLayer()))
-    );
-
-    it.effect("includes status in summary", () =>
-      Effect.gen(function* () {
-        const service = yield* SimulationService;
-        const result: SimulationResult = {
-          gasLimit: 100000n,
-          gasUsed: 50000n,
-          logs: [],
-          stateDiff: [],
-          success: true,
-        };
-
-        const summary = yield* service.getReadableSummary(result);
-
         expect(summary).toContain("Status:");
-      }).pipe(Effect.provide(makeMockSimulationServiceLayer()))
-    );
-
-    it.effect("includes gas information in summary", () =>
-      Effect.gen(function* () {
-        const service = yield* SimulationService;
-        const result: SimulationResult = {
-          gasLimit: 100000n,
-          gasUsed: 50000n,
-          logs: [],
-          stateDiff: [],
-          success: true,
-        };
-
-        const summary = yield* service.getReadableSummary(result);
-
         expect(summary).toContain("Gas:");
       }).pipe(Effect.provide(makeMockSimulationServiceLayer()))
     );
