@@ -47,14 +47,19 @@ git push origin
 git push origin <package-directory>@<new-version>
 ```
 
-Then run `npm publish` from within the released package's directory:
+Then pack with Bun and publish the tarball with npm from the released package's directory. Bun resolves `catalog:` and
+`workspace:` dependency ranges in the packed manifest; direct `npm publish` leaves those ranges unresolved. The pack
+step runs the package's `prepack` build. Use `latest` for stable versions and the prerelease identifier (such as `beta`)
+for prereleases:
 
 ```bash
 cd <package-directory>
-npm publish
+bun pm pack --filename release.tgz
+npm publish ./release.tgz --tag "$(jq -r '.version | capture("^[^-]+-(?<tag>[^.+]+)").tag // "latest"' package.json)"
 ```
 
-`npm publish` MUST run from the package directory (e.g., `evm-safe/` for `@prb/effect-evm-safe`), not the monorepo root.
+Both commands MUST run from the package directory (e.g., `evm-safe/` for `@prb/effect-evm-safe`), not the monorepo root.
+Publish the Bun-generated tarball, not the source directory.
 
 If any command exits with a non-zero code, **stop and report the error**. Do not proceed.
 
