@@ -280,7 +280,12 @@ const refreshValue = <A, R, StoreR>(
       return yield* Effect.fail(makeRefreshError(options.key, exit.cause));
     }
 
-    const decoded = yield* decodeValue<A>(options.key, exit.value, options.schema);
+    const schema = options.schema as Schema.Schema<A, unknown, never> | undefined;
+    const decoded = yield* decodeValue<A>(
+      options.key,
+      exit.value,
+      schema === undefined ? undefined : Schema.typeSchema(schema)
+    );
     const now = yield* Clock.currentTimeMillis;
     const ttlMs = toMillis(options.ttl);
     const staleMs =
@@ -292,7 +297,15 @@ const refreshValue = <A, R, StoreR>(
       value: decoded,
     };
 
-    const writeResult = yield* writeEntry(options.store, options.key, entry).pipe(Effect.either);
+    const writeResult = yield* Effect.gen(function* () {
+      const value =
+        schema === undefined
+          ? decoded
+          : yield* Schema.encode(schema)(decoded).pipe(
+              Effect.mapError((cause) => makeWriteError(options.key, cause))
+            );
+      yield* writeEntry(options.store, options.key, { ...entry, value });
+    }).pipe(Effect.either);
     if (Either.isLeft(writeResult) && policy === "fail-closed") {
       return yield* Effect.fail(writeResult.left);
     }

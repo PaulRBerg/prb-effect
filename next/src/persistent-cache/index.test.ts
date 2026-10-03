@@ -163,6 +163,25 @@ describe("persistent cache", () => {
     })
   );
 
+  it.effect("encodes refreshed values and decodes cache hits with transforming schemas", () =>
+    Effect.gen(function* () {
+      const store = makeInMemoryPersistentCacheStore();
+      let calls = 0;
+      const cached = cachedEffect(
+        Effect.sync(() => {
+          calls += 1;
+          return 42;
+        }),
+        { key: "transform", schema: Schema.NumberFromString, store, ttl: "1 minute" }
+      );
+
+      expect(yield* cached).toBe(42);
+      expect((yield* store.get("transform"))?.value).toBe("42");
+      expect(yield* cached).toBe(42);
+      expect(calls).toBe(1);
+    })
+  );
+
   it.effect("refreshes expired invalid entries instead of decoding them", () =>
     Effect.gen(function* () {
       const store = makeInMemoryPersistentCacheStore();
