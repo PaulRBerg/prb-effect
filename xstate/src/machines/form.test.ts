@@ -6,6 +6,28 @@ import { createActor, waitFor } from "xstate";
 const { createFormMachine } = await import("./form.js");
 
 describe("machines/form", () => {
+  it("restarts pending CHECK with the latest input and interrupts the old effect", async () => {
+    const finalized = vi.fn();
+    const onCheck = vi.fn((input: number) =>
+      input === 1 ? Effect.never.pipe(Effect.ensuring(Effect.sync(finalized))) : Effect.void
+    );
+    const actor = createActor(
+      createFormMachine({
+        id: "replace-check",
+        services: { onCheck, onProcess: () => Effect.void, onValidate: () => Effect.void },
+      })
+    ).start();
+    try {
+      actor.send({ payload: 1, type: "CHECK" });
+      actor.send({ payload: 2, type: "CHECK" });
+      await waitFor(actor, (snapshot) => snapshot.value === "initial", { timeout: 1000 });
+      expect(onCheck.mock.calls).toEqual([[1], [2]]);
+      await vi.waitFor(() => expect(finalized).toHaveBeenCalledOnce());
+    } finally {
+      actor.stop();
+    }
+  });
+
   it("CHECK invokes onCheck and returns to initial (reset)", async () => {
     const onCheck = vi.fn((_: { dep: string }) => Effect.succeed(undefined));
 

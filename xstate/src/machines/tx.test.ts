@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@effect/vitest";
-import { Effect } from "effect";
+import { Effect, Schema } from "effect";
 import { vi } from "vitest";
 import { createActor, waitFor } from "xstate";
 import type { TxMachineServices } from "./tx.js";
@@ -93,6 +93,27 @@ function createOverflow() {
 // =============================================================================
 
 describe("machines/tx", () => {
+  it("interrupts pending confirmation when the actor stops", async () => {
+    const finalized = vi.fn();
+    const started = Promise.withResolvers<void>();
+    const services = createMockServices({
+      onConfirm: () =>
+        Effect.sync(() => started.resolve()).pipe(
+          Effect.zipRight(Effect.never),
+          Effect.ensuring(Effect.sync(finalized))
+        ),
+    });
+    const actor = createActor(createTestMachine({ services })).start();
+    try {
+      actor.send({ payload: { amount: 100, isSafe: false }, type: "SUBMIT" });
+      await started.promise;
+      actor.stop();
+      await vi.waitFor(() => expect(finalized).toHaveBeenCalledOnce());
+    } finally {
+      actor.stop();
+    }
+  });
+
   // ---------------------------------------------------------------------------
   // 1. EOA wallet happy path
   // ---------------------------------------------------------------------------
@@ -481,6 +502,28 @@ describe("machines/tx", () => {
   // 6. User rejection during signing
   // ---------------------------------------------------------------------------
   describe("User rejection during signing", () => {
+    it("passes the original tagged failure to the user rejection predicate", async () => {
+      class Rejected extends Schema.TaggedError<Rejected>()("Rejected", {
+        message: Schema.String,
+      }) {}
+      const error = new Rejected({ message: "declined" });
+      const isUserRejectedError = vi.fn((cause: unknown) => cause instanceof Rejected);
+      const actor = createActor(
+        createTestMachine({
+          isUserRejectedError,
+          services: createMockServices({ onSign: () => Effect.fail(error) }),
+        })
+      ).start();
+      try {
+        actor.send({ payload: { amount: 100, isSafe: false }, type: "SUBMIT" });
+        await waitFor(actor, (snapshot) => snapshot.value === "initial", { timeout: 1000 });
+        expect(isUserRejectedError).toHaveBeenCalledWith(error);
+        expect(actor.getSnapshot().context.error).toBeNull();
+      } finally {
+        actor.stop();
+      }
+    });
+
     it("resets to initial state when user rejects transaction", async () => {
       const services = createMockServices({
         onSign: vi.fn(() => Effect.fail(new Error("User rejected the request"))),

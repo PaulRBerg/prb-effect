@@ -1,5 +1,6 @@
-import { Effect } from "effect";
+import type { Effect } from "effect";
 import { assign, fromPromise, setup } from "xstate";
+import { runEffect } from "../internal/run-effect.js";
 
 /**
  * Eligibility status for facilitated resources
@@ -127,12 +128,18 @@ function createFacilitatorMachine<TCheck, TCreate, TTransitive>({
       }),
     },
     actors: {
-      doCheck: fromPromise(async ({ input }: { input: TCheck & { soft?: boolean } }) =>
-        Effect.runPromise(services.onCheck(input))
+      doCheck: fromPromise(
+        async ({ input, signal }: { signal: AbortSignal; input: TCheck & { soft?: boolean } }) =>
+          runEffect(services.onCheck(input), signal)
       ),
       doCreate: fromPromise(
-        async ({ input }: { input: { create: TCreate; transitive: TTransitive | null } }) =>
-          Effect.runPromise(services.onCreate(input))
+        async ({
+          input,
+          signal,
+        }: {
+          signal: AbortSignal;
+          input: { create: TCreate; transitive: TTransitive | null };
+        }) => runEffect(services.onCreate(input), signal)
       ),
     },
     guards: {
@@ -188,6 +195,7 @@ function createFacilitatorMachine<TCheck, TCreate, TTransitive>({
         },
         on: {
           CHECK: {
+            reenter: true,
             target: "checking",
           },
           RESET: {

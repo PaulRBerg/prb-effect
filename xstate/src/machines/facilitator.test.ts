@@ -6,6 +6,29 @@ import { createActor, waitFor } from "xstate";
 const { createFacilitatorMachine } = await import("./facilitator.js");
 
 describe("machines/facilitator", () => {
+  it("replaces a pending CHECK and clears its running effect on RESET", async () => {
+    const finalized = vi.fn();
+    const onCheck = vi.fn((_input: { user: string }) =>
+      Effect.never.pipe(Effect.ensuring(Effect.sync(finalized)))
+    );
+    const actor = createActor(
+      createFacilitatorMachine({
+        id: "replace-check",
+        services: { onCheck, onCreate: () => Effect.void },
+      })
+    ).start();
+    try {
+      actor.send({ payload: { user: "alice" }, type: "CHECK" });
+      actor.send({ payload: { user: "bob" }, type: "CHECK" });
+      expect(onCheck.mock.calls).toEqual([[{ user: "alice" }], [{ user: "bob" }]]);
+      actor.send({ type: "RESET" });
+      expect(actor.getSnapshot().value).toBe("idle");
+      await vi.waitFor(() => expect(finalized).toHaveBeenCalledTimes(2));
+    } finally {
+      actor.stop();
+    }
+  });
+
   it("CHECK caches status + transitive and transitions to checked", async () => {
     const onCheck = vi.fn((_: { user: string }) =>
       Effect.succeed({ status: "true" as const, transitive: { proof: "0xabc" } })

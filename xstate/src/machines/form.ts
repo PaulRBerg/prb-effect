@@ -1,5 +1,6 @@
-import { Effect } from "effect";
+import type { Effect } from "effect";
 import { assign, fromPromise, setup } from "xstate";
+import { runEffect } from "../internal/run-effect.js";
 
 /**
  * Machine context for form workflow
@@ -140,15 +141,20 @@ function createFormMachine<TCheck, TPayload, TResult, TPreprocess = undefined>({
       }),
     },
     actors: {
-      doCheck: fromPromise(async ({ input }: { input: TCheck }) =>
-        Effect.runPromise(services.onCheck(input))
+      doCheck: fromPromise(async ({ input, signal }: { signal: AbortSignal; input: TCheck }) =>
+        runEffect(services.onCheck(input), signal)
       ),
       doProcess: fromPromise(
-        async ({ input }: { input: { payload: TPayload; preprocess: TPreprocess } }) =>
-          Effect.runPromise(services.onProcess(input))
+        async ({
+          input,
+          signal,
+        }: {
+          signal: AbortSignal;
+          input: { payload: TPayload; preprocess: TPreprocess };
+        }) => runEffect(services.onProcess(input), signal)
       ),
-      doValidate: fromPromise(async ({ input }: { input: TPayload }) =>
-        Effect.runPromise(services.onValidate(input))
+      doValidate: fromPromise(async ({ input, signal }: { signal: AbortSignal; input: TPayload }) =>
+        runEffect(services.onValidate(input), signal)
       ),
     },
     types: {
@@ -188,6 +194,7 @@ function createFormMachine<TCheck, TPayload, TResult, TPreprocess = undefined>({
         on: {
           CHECK: {
             actions: "doReset",
+            reenter: true,
             target: "check",
           },
         },

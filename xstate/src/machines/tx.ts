@@ -1,7 +1,9 @@
-import { Effect, Schema } from "effect";
+import type { Effect } from "effect";
+import { Schema } from "effect";
 import { assign, fromPromise, setup } from "xstate";
 import type { TxError } from "#src/errors/index.js";
 import { extractErrorData } from "#src/errors/index.js";
+import { runEffect } from "../internal/run-effect.js";
 
 /**
  * Gas limit overflow information
@@ -329,16 +331,28 @@ function createTxMachine<TPayload, TPreprocess, TSignResult, TResult>({
     },
     actors: {
       doConfirm: fromPromise(
-        async ({ input }: { input: { payload: TPayload; signResult: TSignResult } }) => {
-          const output = await Effect.runPromise(services.onConfirm(input));
+        async ({
+          input,
+          signal,
+        }: {
+          signal: AbortSignal;
+          input: { payload: TPayload; signResult: TSignResult };
+        }) => {
+          const output = await runEffect(services.onConfirm(input), signal);
           validateConfirmOutput(output);
           return output;
         }
       ),
       doGasCheck: fromPromise(
-        async ({ input }: { input: { payload: TPayload; preprocess: TPreprocess } }) => {
+        async ({
+          input,
+          signal,
+        }: {
+          signal: AbortSignal;
+          input: { payload: TPayload; preprocess: TPreprocess };
+        }) => {
           const output = services.onGasCheck
-            ? await Effect.runPromise(services.onGasCheck(input))
+            ? await runEffect(services.onGasCheck(input), signal)
             : { gasLimit: undefined };
           return decodeGasCheckOutput(output);
         }
@@ -346,24 +360,32 @@ function createTxMachine<TPayload, TPreprocess, TSignResult, TResult>({
       doSign: fromPromise(
         async ({
           input,
+          signal,
         }: {
+          signal: AbortSignal;
           input: { payload: TPayload; preprocess: TPreprocess; gasLimit?: bigint };
         }) => {
-          const output = await Effect.runPromise(services.onSign(input));
+          const output = await runEffect(services.onSign(input), signal);
           validateSignOutput(output);
           return output;
         }
       ),
       doSimulate: fromPromise(
-        async ({ input }: { input: { payload: TPayload; preprocess: TPreprocess } }) => {
+        async ({
+          input,
+          signal,
+        }: {
+          signal: AbortSignal;
+          input: { payload: TPayload; preprocess: TPreprocess };
+        }) => {
           const output = services.onSimulate
-            ? await Effect.runPromise(services.onSimulate(input))
+            ? await runEffect(services.onSimulate(input), signal)
             : undefined;
           return decodeSimulateOutput(output);
         }
       ),
-      doValidate: fromPromise(async ({ input }: { input: TPayload }) =>
-        Effect.runPromise(services.onValidate(input))
+      doValidate: fromPromise(async ({ input, signal }: { signal: AbortSignal; input: TPayload }) =>
+        runEffect(services.onValidate(input), signal)
       ),
     },
     guards: {
