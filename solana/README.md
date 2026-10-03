@@ -25,6 +25,7 @@ bun add @prb/effect-solana effect
 Required:
 
 - `effect` ^3.x
+- `@effect/platform` ^0.96.1
 - `@solana/web3.js` ^1.98.4
 
 Optional:

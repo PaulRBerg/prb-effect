@@ -5,6 +5,7 @@
 - Project overview: @README.md
 - Dependencies: @package.json
 
-## Aliases
+## Testing
 
-`just b` (build), `just t` (test), `just tui` (test-ui)
+Tests resolve `@prb/effect-evm` from the built `evm/dist` (see `vitest.config.ts`), while type checks read `evm/src`
+through `tsconfig.json` paths. After changing `evm`, run `just build evm` from the root before running evm-safe tests.
