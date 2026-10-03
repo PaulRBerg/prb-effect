@@ -354,6 +354,21 @@ describe("ProgramReader", () => {
   });
 
   describe("viewWithProgram", () => {
+    it.effect("returns ProgramReadError for malformed account addresses", () =>
+      Effect.gen(function* () {
+        const reader = yield* ProgramReader;
+        const program = yield* reader.createProgram({ idl: VIEW_IDL });
+        const exit = yield* Effect.exit(
+          reader.viewWithProgram(program, {
+            accounts: { stream: "bad" },
+            args: [],
+            method: "viewValue",
+          })
+        );
+        expect(expectFailError(exit)).toBeInstanceOf(ProgramReadError);
+      }).pipe(Effect.provide(makeTestLayer()))
+    );
+
     it.effect("returns InstructionNotFoundError for non-existent method", () =>
       Effect.gen(function* () {
         const reader = yield* ProgramReader;

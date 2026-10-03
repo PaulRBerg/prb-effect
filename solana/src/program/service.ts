@@ -127,18 +127,6 @@ export const ProgramWriterLive = Layer.effect(
             );
           }
 
-          // Convert args to Anchor format (bigint -> BN)
-          const anchorArgs = toAnchorArgs(args);
-
-          // Convert accounts to PublicKeys
-          const anchorAccounts = toAnchorAccounts(accounts);
-
-          // Build instruction using Anchor's fluent API
-          const builder = (methodFn as (...methodArgs: unknown[]) => unknown)(...anchorArgs);
-          const withAccounts = (
-            builder as { accountsPartial: (a: unknown) => unknown }
-          ).accountsPartial(anchorAccounts);
-
           const anchorInstruction = yield* Effect.tryPromise({
             catch: (error) =>
               new InstructionBuildError({
@@ -146,10 +134,18 @@ export const ProgramWriterLive = Layer.effect(
                 message: `Failed to build instruction "${method}"`,
                 method,
               }),
-            try: () =>
-              (
+            try: () => {
+              const anchorArgs = toAnchorArgs(args);
+              const anchorAccounts = toAnchorAccounts(accounts);
+              const builder = (methodFn as (...methodArgs: unknown[]) => unknown)(...anchorArgs);
+              const withAccounts = (
+                builder as { accountsPartial: (a: unknown) => unknown }
+              ).accountsPartial(anchorAccounts);
+
+              return (
                 withAccounts as { instruction: () => Promise<TransactionInstruction> }
-              ).instruction(),
+              ).instruction();
+            },
           });
 
           return anchorInstruction;

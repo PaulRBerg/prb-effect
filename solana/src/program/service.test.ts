@@ -1,7 +1,11 @@
 import type { Idl } from "@coral-xyz/anchor";
 import { describe, expect, it } from "@effect/vitest";
 import { Effect, Exit, Layer } from "effect";
-import { makeMockRpc, makeMockRpcServiceLayer } from "#src/testing-kit/index.js";
+import {
+  expectTaggedFailure,
+  makeMockRpc,
+  makeMockRpcServiceLayer,
+} from "#src/testing-kit/index.js";
 import type { Address } from "#src/types/index.js";
 import {
   InstructionNotFoundError,
@@ -92,6 +96,21 @@ describe("ProgramWriter", () => {
   });
 
   describe("buildInstruction", () => {
+    it.effect("returns InstructionBuildError for malformed account addresses", () =>
+      Effect.gen(function* () {
+        const writer = yield* ProgramWriter;
+        const program = yield* writer.createProgram({ idl: TEST_IDL });
+        const exit = yield* Effect.exit(
+          writer.buildInstruction(program, {
+            accounts: { from: "bad", to: TEST_IDL.address },
+            args: [1n],
+            method: "transfer",
+          })
+        );
+        expectTaggedFailure(exit, "InstructionBuildError");
+      }).pipe(Effect.provide(Layer.provide(ProgramWriterLive, makeMockRpcServiceLayer())))
+    );
+
     it.effect("returns InstructionNotFoundError for non-existent method", () =>
       Effect.gen(function* () {
         const writer = yield* ProgramWriter;

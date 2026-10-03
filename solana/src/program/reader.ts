@@ -244,7 +244,7 @@ function resolveViewBuilder<T extends Idl>(
   params: Pick<ViewParams, "method" | "args" | "accounts">
 ): Effect.Effect<
   { view: () => Promise<unknown> },
-  InstructionNotFoundError | ViewNotSupportedError
+  InstructionNotFoundError | ViewNotSupportedError | ProgramReadError
 > {
   return Effect.gen(function* () {
     const { method, args, accounts } = params;
@@ -288,12 +288,17 @@ function resolveViewBuilder<T extends Idl>(
       );
     }
 
-    const anchorArgs = toAnchorArgs(args);
-    const anchorAccounts = toAnchorAccounts(accounts);
-    const builder = (methodFn as (...methodArgs: unknown[]) => unknown)(...anchorArgs);
-    const withAccounts = (builder as { accountsPartial: (a: unknown) => unknown }).accountsPartial(
-      anchorAccounts
-    );
+    const withAccounts = yield* Effect.try({
+      catch: (cause) => makeProgramReadError(method, cause),
+      try: () => {
+        const anchorArgs = toAnchorArgs(args);
+        const anchorAccounts = toAnchorAccounts(accounts);
+        const builder = (methodFn as (...methodArgs: unknown[]) => unknown)(...anchorArgs);
+        return (builder as { accountsPartial: (a: unknown) => unknown }).accountsPartial(
+          anchorAccounts
+        );
+      },
+    });
 
     if (!withAccounts || typeof (withAccounts as { view?: unknown }).view !== "function") {
       return yield* Effect.fail(makeViewNotSupportedError(method, idlName));

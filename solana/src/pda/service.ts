@@ -54,7 +54,6 @@ const makeService = (): PdaServiceShape => {
   const service: PdaServiceShape = {
     derive: (seeds, programAddress) =>
       Effect.gen(function* () {
-        const seedBytes = seeds.map(toSeedBytes);
         return yield* Effect.try({
           catch: (cause) =>
             new PdaDerivationError({
@@ -64,7 +63,7 @@ const makeService = (): PdaServiceShape => {
             }),
           try: () => {
             const [address, bump] = PublicKey.findProgramAddressSync(
-              seedBytes,
+              seeds.map(toSeedBytes),
               new PublicKey(programAddress)
             );
             return [address.toBase58() as Address, bump] as const;
