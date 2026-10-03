@@ -7,7 +7,7 @@ on:
       # == Workspace configs ==
       - "**/*.just"
       - "**/justfile"
-      - .prettierrc.js
+      - .prettierrc.mjs
       - biome.jsonc
       - bun.lock
       - bunfig.toml
