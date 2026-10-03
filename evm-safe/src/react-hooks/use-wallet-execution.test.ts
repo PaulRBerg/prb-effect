@@ -26,10 +26,59 @@ const render = (node: React.ReactElement) => {
       });
       container.remove();
     },
+    rerender: (next: React.ReactElement) => {
+      void act(() => {
+        root.render(next);
+      });
+    },
   };
 };
 
 describe("useWalletExecution", () => {
+  it.each([
+    "address",
+    "chain",
+  ])("does not reuse a Safe owners probe after switching %s", async (changed) => {
+    vi.resetModules();
+    let address = "0x0000000000000000000000000000000000000001";
+    const publicClient = {
+      chain: { id: 1 },
+      readContract: vi
+        .fn()
+        .mockResolvedValueOnce([address])
+        .mockReturnValue(new Promise(() => undefined)),
+    };
+    vi.doMock("wagmi", () => ({
+      useAccount: () => ({ address, connector: { id: "injected" }, isConnected: true }),
+      usePublicClient: () => publicClient,
+    }));
+    vi.doMock("./use-is-safe-app-context.js", () => ({
+      useIsSafeAppContext: () => false,
+    }));
+    const { useWalletExecution } = await import("./use-wallet-execution.js");
+    const snapshots: ReturnType<typeof useWalletExecution>[] = [];
+    function Probe(): null {
+      snapshots.push(useWalletExecution());
+      return null;
+    }
+    const { cleanup, rerender } = render(React.createElement(Probe));
+    try {
+      await act(async () => {
+        await flush();
+      });
+      expect(snapshots.at(-1)?.walletType).toBe("safe-multisig");
+      if (changed === "address") {
+        address = "0x0000000000000000000000000000000000000002";
+      } else {
+        publicClient.chain.id = 10;
+      }
+      rerender(React.createElement(Probe));
+      expect(snapshots.at(-1)?.walletType).toBe("eoa");
+    } finally {
+      cleanup();
+    }
+  });
+
   it("prefers safe-context detection", async () => {
     vi.resetModules();
     vi.doMock("wagmi", () => ({

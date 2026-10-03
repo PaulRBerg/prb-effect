@@ -184,6 +184,33 @@ describe("reactCacheFn", () => {
 });
 
 describe("reactCacheWithKey", () => {
+  it("releases argument handoffs after invoking the cached function", async () => {
+    const runtime = ManagedRuntime.make(Layer.empty);
+    const key = "argument-retention-regression";
+    const originalSet = Map.prototype.set;
+    let argumentMap: Map<unknown, unknown> | undefined;
+    const spy = vi.spyOn(Map.prototype, "set").mockImplementation(function (
+      this: Map<unknown, unknown>,
+      entryKey,
+      value
+    ) {
+      if (entryKey === key && Array.isArray(value)) argumentMap = this;
+      return originalSet.call(this, entryKey, value);
+    });
+    try {
+      const cached = reactCacheWithKey(
+        (value: string) => Effect.succeed(value),
+        () => key,
+        runtime
+      );
+      expect(await cached("value")).toBe("value");
+      expect(argumentMap?.has(key) ?? false).toBe(false);
+    } finally {
+      spy.mockRestore();
+      await runtime.dispose();
+    }
+  });
+
   it("uses custom key for caching", async () => {
     const runtime = ManagedRuntime.make(Layer.empty);
     let callCount = 0;

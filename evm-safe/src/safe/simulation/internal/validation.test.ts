@@ -57,4 +57,16 @@ describe("validateSimulationParams", () => {
       expect(result).toEqual(baseParams);
     })
   );
+
+  it.effect.each([Number.NaN, 95.5, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY])(
+    "rejects invalid gas threshold %s before bigint conversion",
+    (gasThresholdPercent) =>
+      Effect.gen(function* () {
+        const error = yield* validateSimulationParams({
+          ...baseParams,
+          gasThresholdPercent,
+        }).pipe(Effect.flip);
+        expect(error).toBeInstanceOf(InvalidGasThresholdError);
+      })
+  );
 });

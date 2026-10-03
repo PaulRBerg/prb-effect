@@ -130,9 +130,8 @@ export function reactCacheWithKey<Args extends readonly unknown[], A, E, R>(
   keyFn: (...args: Args) => string,
   runtime: ManagedRuntime.ManagedRuntime<R, never>
 ): (...args: Args) => Promise<A> {
-  // Store args by key so the cached function can access them.
-  // This is request-scoped in practice because React's cache() is request-scoped,
-  // so concurrent requests won't interfere with each other's cached results.
+  // Hand arguments to React's synchronous cache callback without including their
+  // object identity in the cache key. Release the handoff after each invocation.
   const argsForKey = new Map<string, Args>();
 
   // Only pass the key to React's cache() - this ensures deduplication is based
@@ -147,6 +146,10 @@ export function reactCacheWithKey<Args extends readonly unknown[], A, E, R>(
   return (...args: Args) => {
     const key = keyFn(...args);
     argsForKey.set(key, args);
-    return cachedFn(key);
+    try {
+      return cachedFn(key);
+    } finally {
+      argsForKey.delete(key);
+    }
   };
 }

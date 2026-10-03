@@ -36,11 +36,13 @@ export function validateSimulationParams(
 
     if (
       gasThresholdPercent !== undefined &&
-      (gasThresholdPercent < 1 || gasThresholdPercent > 100)
+      (!Number.isInteger(gasThresholdPercent) ||
+        gasThresholdPercent < 1 ||
+        gasThresholdPercent > 100)
     ) {
       return yield* Effect.fail(
         new InvalidGasThresholdError({
-          message: "gasThresholdPercent must be between 1 and 100 (inclusive)",
+          message: "gasThresholdPercent must be an integer between 1 and 100 (inclusive)",
           value: gasThresholdPercent,
         })
       );

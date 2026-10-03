@@ -21,7 +21,7 @@ export type SafeMultisigSimulateBatchParams = {
   transactions: SafeMultisigSimulationTx[];
   /** Optional transaction size limit in bytes (for ZK chains) */
   txSizeLimit?: number;
-  /** Gas threshold as percentage of block gas limit (1-100, default 95) */
+  /** Gas threshold as an integer percentage of block gas limit (1-100, default 95) */
   gasThresholdPercent?: number;
 };
 

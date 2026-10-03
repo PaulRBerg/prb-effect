@@ -81,7 +81,18 @@ export function useWalletExecution(options: WalletExecutionOptions = {}): Wallet
   );
 
   const enableOwnersProbe = options.enableOwnersProbe ?? true;
-  const [ownersProbeDetectedSafe, setOwnersProbeDetectedSafe] = useState(false);
+  const [ownersProbe, setOwnersProbe] = useState<{
+    address: string;
+    chainId: number | undefined;
+    isSafe: boolean;
+  } | null>(null);
+  const chainId = publicClient?.chain?.id;
+  const ownersProbeDetectedSafe =
+    enableOwnersProbe &&
+    isConnected &&
+    ownersProbe?.address === address &&
+    ownersProbe?.chainId === chainId &&
+    ownersProbe?.isSafe === true;
 
   const isSafeConnector = isConnected && connector?.id === "safe";
 
@@ -95,7 +106,7 @@ export function useWalletExecution(options: WalletExecutionOptions = {}): Wallet
       isSafeConnector ||
       isSafeOrigin
     ) {
-      setOwnersProbeDetectedSafe(false);
+      setOwnersProbe(null);
       return;
     }
 
@@ -109,12 +120,17 @@ export function useWalletExecution(options: WalletExecutionOptions = {}): Wallet
       })
       .then((owners) => {
         if (!cancelled) {
-          setOwnersProbeDetectedSafe(Array.isArray(owners) && owners.length > 0);
+          const isSafe = Array.isArray(owners) && owners.length > 0;
+          setOwnersProbe((current) =>
+            current?.address === address && current.chainId === chainId && current.isSafe === isSafe
+              ? current
+              : { address, chainId, isSafe }
+          );
         }
       })
       .catch(() => {
         if (!cancelled) {
-          setOwnersProbeDetectedSafe(false);
+          setOwnersProbe(null);
         }
       });
 
@@ -123,6 +139,7 @@ export function useWalletExecution(options: WalletExecutionOptions = {}): Wallet
     };
   }, [
     address,
+    chainId,
     enableOwnersProbe,
     isConnected,
     isSafeConnector,
