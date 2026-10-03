@@ -6,127 +6,12 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { renderToString } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { EffectEvmRuntime } from "./internal/runtime.js";
-import { useEffectMemoFactory } from "./primitives.js";
-import {
-  EffectEvmLayerProvider,
-  EffectEvmProviderSync,
-  useEffectEvmLayer,
-  useEffectEvmRuntime,
-} from "./provider.js";
-
-const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
-
-const globalWithAct = globalThis as typeof globalThis & {
-  IS_REACT_ACT_ENVIRONMENT?: boolean;
-};
-globalWithAct.IS_REACT_ACT_ENVIRONMENT = true;
-
-const render = (node: React.ReactElement) => {
-  const container = document.createElement("div");
-  document.body.appendChild(container);
-  const root = createRoot(container);
-  void act(() => {
-    root.render(node);
-  });
-  return {
-    cleanup: () => {
-      void act(() => {
-        root.unmount();
-      });
-      container.remove();
-    },
-  };
-};
-
-describe("react-hooks provider", () => {
-  it("EffectEvmProviderSync exposes runtime with runPromiseExit", async () => {
-    const runtimeRef: { current: EffectEvmRuntime | null } = { current: null };
-
-    const Probe = (): null => {
-      const runtime = useEffectEvmRuntime();
-      React.useEffect(() => {
-        runtimeRef.current = runtime;
-      }, [runtime]);
-      return null;
-    };
-
-    const { cleanup } = render(
-      React.createElement(EffectEvmProviderSync, {
-        children: React.createElement(Probe),
-        layer: Layer.empty,
-      })
-    );
-
-    await act(async () => {
-      await flush();
-    });
-
-    expect(runtimeRef.current?.runPromiseExit).toBeTypeOf("function");
-    cleanup();
-  });
-
-  it("EffectEvmLayerProvider supplies the layer", async () => {
-    const layer: Layer.Layer<never, unknown, never> = Layer.empty;
-    const seen: { current: Layer.Layer<never, unknown, never> | null } = { current: null };
-
-    const Probe = (): null => {
-      const provided = useEffectEvmLayer();
-      React.useEffect(() => {
-        seen.current = provided;
-      }, [provided]);
-      return null;
-    };
-
-    const { cleanup } = render(
-      React.createElement(EffectEvmLayerProvider, {
-        children: React.createElement(Probe),
-        layer,
-      })
-    );
-
-    await act(async () => {
-      await flush();
-    });
-
-    expect(seen.current).toBe(layer);
-    cleanup();
-  });
-});
-
-describe("useEffectMemoFactory", () => {
-  it("runs effect and updates value", async () => {
-    const values: Array<number | undefined> = [];
-
-    const Probe = (): null => {
-      const value = useEffectMemoFactory(() => Effect.succeed(456), [], { transition: false });
-
-      React.useEffect(() => {
-        values.push(value);
-      }, [value]);
-
-      return null;
-    };
-
-    const { cleanup } = render(
-      React.createElement(EffectEvmProviderSync, {
-        children: React.createElement(Probe),
-        layer: Layer.empty,
-      })
-    );
-
-    await act(async () => {
-      await flush();
-      await flush();
-    });
-
-    expect(values.at(-1)).toBe(456);
-    cleanup();
-  });
-});
+import { EffectSolanaProviderSync, useEffectSolanaRuntime } from "./provider.js";
 
 type Resource = { readonly name: string; closed: boolean };
 const Resource = Context.GenericTag<Resource>("provider-test-resource");
+const actEnvironment = globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean };
+actEnvironment.IS_REACT_ACT_ENVIRONMENT = true;
 let root: ReturnType<typeof createRoot> | undefined;
 
 afterEach(async () => {
@@ -159,11 +44,11 @@ async function mount(node: React.ReactNode) {
   return container;
 }
 
-describe("EffectEvmProviderSync lifecycle", () => {
+describe("EffectSolanaProviderSync lifecycle", () => {
   it("renders fallback on the server without acquiring resources", () => {
     const acquired: Resource[] = [];
     const html = renderToString(
-      React.createElement(EffectEvmProviderSync, {
+      React.createElement(EffectSolanaProviderSync, {
         children: "ready",
         fallback: "pending",
         layer: resourceLayer("server", acquired),
@@ -183,7 +68,9 @@ describe("EffectEvmProviderSync lifecycle", () => {
       React.createElement(
         React.Suspense,
         { fallback: "suspended" },
-        React.createElement(EffectEvmProviderSync, { layer: resourceLayer("abandoned", acquired) }),
+        React.createElement(EffectSolanaProviderSync, {
+          layer: resourceLayer("abandoned", acquired),
+        }),
         React.createElement(Suspend)
       )
     );
@@ -195,7 +82,7 @@ describe("EffectEvmProviderSync lifecycle", () => {
     const acquired: Resource[] = [];
     const seen: Resource[] = [];
     function Probe() {
-      const runtime = useEffectEvmRuntime();
+      const runtime = useEffectSolanaRuntime();
       React.useEffect(() => {
         void runtime.runPromise(Resource).then((resource) => seen.push(resource));
       }, [runtime]);
@@ -205,7 +92,7 @@ describe("EffectEvmProviderSync lifecycle", () => {
       React.createElement(
         React.StrictMode,
         null,
-        React.createElement(EffectEvmProviderSync, {
+        React.createElement(EffectSolanaProviderSync, {
           children: React.createElement(Probe),
           layer: resourceLayer("strict", acquired),
         })
@@ -235,7 +122,7 @@ describe("EffectEvmProviderSync lifecycle", () => {
       return "pending";
     }
     function Probe({ expected }: { readonly expected: string }) {
-      const runtime = useEffectEvmRuntime();
+      const runtime = useEffectSolanaRuntime();
       React.useLayoutEffect(() => {
         void runtime
           .runPromise(Resource)
@@ -245,7 +132,7 @@ describe("EffectEvmProviderSync lifecycle", () => {
     }
     function tree(replaced: boolean) {
       const layer = replaced && dependency === "layer" ? secondLayer : firstLayer;
-      return React.createElement(EffectEvmProviderSync, {
+      return React.createElement(EffectSolanaProviderSync, {
         children: React.createElement(Probe, { expected: replaced ? "new" : "old" }),
         fallback: React.createElement(Fallback),
         layer,
@@ -285,7 +172,7 @@ describe("EffectEvmProviderSync lifecycle", () => {
       React.createElement(
         Boundary,
         null,
-        React.createElement(EffectEvmProviderSync, { layer, onUnhandledError })
+        React.createElement(EffectSolanaProviderSync, { layer, onUnhandledError })
       )
     );
     expect(container.textContent).toBe("failed");

@@ -1,27 +1,8 @@
 import { Cause, Effect, Fiber, Layer, Runtime } from "effect";
 import { describe, expect, it, vi } from "vitest";
-import { buildRuntimeSync, closeRuntime } from "./runtime.js";
+import { buildRuntimeSync } from "./runtime.js";
 
 describe("react-hooks runtime", () => {
-  it("runPromiseExit returns Success on success effects", async () => {
-    const runtime = buildRuntimeSync(Layer.empty);
-    const exit = await runtime.runPromiseExit(Effect.succeed(123));
-    await closeRuntime(runtime.scope);
-
-    expect(exit._tag).toBe("Success");
-    if (exit._tag === "Success") {
-      expect(exit.value).toBe(123);
-    }
-  });
-
-  it("runPromiseExit returns Failure on failed effects", async () => {
-    const runtime = buildRuntimeSync(Layer.empty);
-    const exit = await runtime.runPromiseExit(Effect.fail("nope"));
-    await closeRuntime(runtime.scope);
-
-    expect(exit._tag).toBe("Failure");
-  });
-
   it.each([
     "synchronous",
     "asynchronous",

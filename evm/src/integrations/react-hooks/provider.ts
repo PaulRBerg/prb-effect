@@ -61,26 +61,35 @@ export const EffectEvmProvider = (props: EffectEvmProviderProps): React.ReactEle
   return React.createElement(EffectEvmRuntimeContext.Provider, { value: runtime }, children);
 };
 
+/** Builds synchronous layers after commit; renders fallback until the runtime is ready. */
 export const EffectEvmProviderSync = (props: EffectEvmProviderProps): React.ReactElement => {
-  const { children, layer, onUnhandledError } = props;
+  const { children, fallback = null, layer, onUnhandledError } = props;
+  const [built, setBuilt] = React.useState<{
+    readonly layer: typeof layer;
+    readonly onUnhandledError: typeof onUnhandledError;
+    readonly runtime: EffectEvmRuntime;
+  } | null>(null);
 
-  const runtime = React.useMemo(() => {
+  React.useEffect(() => {
+    let runtime: EffectEvmRuntime;
     try {
-      return buildRuntimeSync(layer);
+      runtime = buildRuntimeSync(layer);
     } catch (cause) {
       onUnhandledError?.(cause);
       throw cause;
     }
+
+    setBuilt({ layer, onUnhandledError, runtime });
+    return () => {
+      void closeRuntime(runtime.scope).catch(noop);
+    };
   }, [layer, onUnhandledError]);
 
-  React.useEffect(
-    () => () => {
-      void closeRuntime(runtime.scope).catch(noop);
-    },
-    [runtime]
-  );
+  if (built === null || built.layer !== layer || built.onUnhandledError !== onUnhandledError) {
+    return React.createElement(React.Fragment, null, fallback);
+  }
 
-  return React.createElement(EffectEvmRuntimeContext.Provider, { value: runtime }, children);
+  return React.createElement(EffectEvmRuntimeContext.Provider, { value: built.runtime }, children);
 };
 
 export const EffectEvmLayerProvider = (props: EffectEvmLayerProviderProps): React.ReactElement => {

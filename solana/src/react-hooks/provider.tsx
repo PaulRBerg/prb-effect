@@ -63,26 +63,39 @@ export const EffectSolanaProvider = (props: EffectSolanaProviderProps): React.Re
   return React.createElement(EffectSolanaRuntimeContext.Provider, { value: runtime }, children);
 };
 
+/** Builds synchronous layers after commit; renders fallback until the runtime is ready. */
 export const EffectSolanaProviderSync = (props: EffectSolanaProviderProps): React.ReactElement => {
-  const { children, layer, onUnhandledError } = props;
+  const { children, fallback = null, layer, onUnhandledError } = props;
+  const [built, setBuilt] = React.useState<{
+    readonly layer: typeof layer;
+    readonly onUnhandledError: typeof onUnhandledError;
+    readonly runtime: EffectSolanaRuntime;
+  } | null>(null);
 
-  const runtime = React.useMemo(() => {
+  React.useEffect(() => {
+    let runtime: EffectSolanaRuntime;
     try {
-      return buildRuntimeSync(layer);
+      runtime = buildRuntimeSync(layer);
     } catch (cause) {
       onUnhandledError?.(cause);
       throw cause;
     }
+
+    setBuilt({ layer, onUnhandledError, runtime });
+    return () => {
+      void closeRuntime(runtime.scope).catch(noop);
+    };
   }, [layer, onUnhandledError]);
 
-  React.useEffect(
-    () => () => {
-      void closeRuntime(runtime.scope).catch(noop);
-    },
-    [runtime]
-  );
+  if (built === null || built.layer !== layer || built.onUnhandledError !== onUnhandledError) {
+    return React.createElement(React.Fragment, null, fallback);
+  }
 
-  return React.createElement(EffectSolanaRuntimeContext.Provider, { value: runtime }, children);
+  return React.createElement(
+    EffectSolanaRuntimeContext.Provider,
+    { value: built.runtime },
+    children
+  );
 };
 
 export const EffectSolanaLayerProvider = (

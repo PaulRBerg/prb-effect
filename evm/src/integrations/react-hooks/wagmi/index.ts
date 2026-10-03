@@ -114,7 +114,7 @@ export const WagmiEffectEvmProvider = (props: WagmiEffectEvmProviderProps): Reac
 export const WagmiEffectEvmProviderSync = (
   props: WagmiEffectEvmProviderProps
 ): React.ReactElement => {
-  const { children, config, layer: extraLayer, onUnhandledError } = props;
+  const { children, config, fallback, layer: extraLayer, onUnhandledError } = props;
 
   const baseLayer = React.useMemo(
     () => makeEffectEvmLayerFromWagmiWithWalletProviderRef(config),
@@ -128,6 +128,7 @@ export const WagmiEffectEvmProviderSync = (
   return React.createElement(
     EffectEvmProviderSync,
     {
+      fallback,
       layer: fullLayer,
       onUnhandledError,
     },

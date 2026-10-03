@@ -1,7 +1,8 @@
 import type * as Effect from "effect/Effect";
 import * as Effect_ from "effect/Effect";
 import * as Exit from "effect/Exit";
-import type * as Fiber from "effect/Fiber";
+import * as Fiber from "effect/Fiber";
+import { constVoid as noop } from "effect/Function";
 import type * as Layer from "effect/Layer";
 import * as Layer_ from "effect/Layer";
 import type * as Runtime from "effect/Runtime";
@@ -60,9 +61,18 @@ export const buildRuntime = async (
 
 export const buildRuntimeSync = (layer: Layer.Layer<never, unknown, never>): EffectEvmRuntime => {
   const scope = Effect_.runSync(Scope_.make());
-  const runtime = Effect_.runSync(
-    Scope_.extend(scope)(Layer_.toRuntime(layer as Layer.Layer<unknown, unknown, never>))
-  );
+  let runtime: Runtime.Runtime<unknown>;
+  try {
+    runtime = Effect_.runSync(
+      Scope_.extend(scope)(Layer_.toRuntime(layer as Layer.Layer<unknown, unknown, never>)).pipe(
+        Effect_.forkIn(scope),
+        Effect_.flatMap(Fiber.join)
+      )
+    );
+  } catch (cause) {
+    void Effect_.runPromise(Scope_.close(scope, Exit.fail(cause))).catch(noop);
+    throw cause;
+  }
 
   const runFork = <A, E, R>(
     effect: Effect.Effect<A, E, R>,

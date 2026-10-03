@@ -5,8 +5,9 @@ import { Layer } from "effect";
 import * as React from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
+import { renderToString } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { WagmiEffectEvmProvider } from "./index.js";
+import { WagmiEffectEvmProvider, WagmiEffectEvmProviderSync } from "./index.js";
 
 const mocks = vi.hoisted(() => ({
   clearProvider: vi.fn(),
@@ -20,7 +21,7 @@ vi.mock("#src/wagmi/index.js", () => ({
 }));
 vi.mock("../provider.js", () => ({
   EffectEvmProvider: ({ children }: { children: React.ReactNode }) => children,
-  EffectEvmProviderSync: ({ children }: { children: React.ReactNode }) => children,
+  EffectEvmProviderSync: ({ fallback }: { fallback?: React.ReactNode }) => fallback,
 }));
 vi.mock("../wallet-provider-ref.js", () => ({
   useWalletProviderRef: () => ({
@@ -91,5 +92,19 @@ describe("Wagmi wallet provider synchronization", () => {
     });
     expect(mocks.clearProvider).toHaveBeenCalledOnce();
     expect(mocks.setProvider).not.toHaveBeenCalled();
+  });
+});
+
+describe("Wagmi synchronous provider", () => {
+  it("forwards fallback to the runtime provider", () => {
+    expect(
+      renderToString(
+        React.createElement(WagmiEffectEvmProviderSync, {
+          children: "ready",
+          config: {} as Config,
+          fallback: "pending",
+        })
+      )
+    ).toBe("pending");
   });
 });

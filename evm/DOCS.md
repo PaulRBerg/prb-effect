@@ -193,6 +193,14 @@ function App() {
 }
 ```
 
+`EffectEvmProviderSync` and `WagmiEffectEvmProviderSync` build synchronous layers in a committed React effect. They
+render `fallback` (default `null`) initially, during server rendering, and when the `layer` or `onUnhandledError`
+identity changes. Children receive the runtime after commit. Keep these identities stable to avoid rebuilding.
+
+When migrating from render-time synchronous provisioning, allow for this initial fallback. Scoped resources belong to
+the committed effect and are released on replacement or unmount, including StrictMode replay. Layers must still acquire
+synchronously; use the non-Sync providers for asynchronous layers.
+
 ### Safe App vs Safe multisig
 
 Safe App and Safe multisig detection hooks live in `@prb/effect-evm-safe/react-hooks`.

@@ -317,6 +317,12 @@ const AppLayer = Layer.mergeAll(
 
 ## ⚛️ React Integration
 
+`EffectSolanaProviderSync` builds synchronous layers in a committed React effect. It renders `fallback` (default `null`)
+initially, during server rendering, and while its `layer` or `onUnhandledError` identity changes. Children receive a
+runtime after commit. Keep these identities stable to avoid rebuilding. Use `EffectSolanaProvider` for layers that
+acquire asynchronously. Both providers own runtime cleanup; the synchronous provider also supports StrictMode replay
+without acquiring resources during render.
+
 ```typescript
 import { EffectSolanaProvider, useEffectMemo } from "@prb/effect-solana";
 import { BalanceService } from "@prb/effect-solana";
