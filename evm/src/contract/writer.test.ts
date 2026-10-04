@@ -313,11 +313,11 @@ describe("ContractWriter", () => {
             chainId: TEST_CHAIN_ID,
             functionName: "transfer",
           })
-          .pipe(Effect.either);
+          .pipe(Effect.result);
 
-        expect(result._tag).toBe("Left");
-        if (result._tag === "Left") {
-          expect(result.left._tag).toBe("ContractWriteError");
+        expect(result._tag).toBe("Failure");
+        if (result._tag === "Failure") {
+          expect(result.failure._tag).toBe("ContractWriteError");
         }
       }).pipe(
         Effect.provide(
@@ -350,13 +350,13 @@ describe("ContractWriter", () => {
             chainId: TEST_CHAIN_ID,
             functionName: "transfer",
           })
-          .pipe(Effect.either);
+          .pipe(Effect.result);
 
-        expect(result._tag).toBe("Left");
-        if (result._tag === "Left") {
-          expect(result.left).toBeInstanceOf(TransactionSubmissionError);
-          if (result.left._tag === "TransactionSubmissionError") {
-            expect(result.left.cause).toBe(providerError);
+        expect(result._tag).toBe("Failure");
+        if (result._tag === "Failure") {
+          expect(result.failure).toBeInstanceOf(TransactionSubmissionError);
+          if (result.failure._tag === "TransactionSubmissionError") {
+            expect(result.failure.cause).toBe(providerError);
           }
         }
       }).pipe(

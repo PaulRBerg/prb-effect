@@ -1,6 +1,6 @@
 "use client";
 
-import { Cause, Chunk, Effect, Exit, Fiber, Stream, SubscriptionRef } from "effect";
+import { Cause, Effect, Exit, Fiber, Stream, SubscriptionRef } from "effect";
 import type * as ManagedRuntime from "effect/ManagedRuntime";
 import type { DependencyList } from "react";
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
@@ -53,9 +53,9 @@ export function useEffectMemo<A, E, R>(
       if (Exit.isSuccess(exit)) {
         setState({ value: exit.value });
       } else {
-        const errors = Cause.failures(exit.cause);
-        if (!Chunk.isEmpty(errors)) {
-          setState({ error: Chunk.unsafeHead(errors) });
+        const errors = exit.cause.reasons.filter(Cause.isFailReason).map((reason) => reason.error);
+        if (errors.length > 0) {
+          setState({ error: errors[0] });
         }
       }
     });
@@ -146,7 +146,7 @@ export function useSubscriptionRef<A>(
   const subscribe = useCallback(
     (onStoreChange: () => void) => {
       const fiber = runtime.runFork(
-        ref.changes.pipe(Stream.runForEach(() => Effect.sync(onStoreChange)))
+        SubscriptionRef.changes(ref).pipe(Stream.runForEach(() => Effect.sync(onStoreChange)))
       );
       return () => {
         runtime.runFork(Fiber.interrupt(fiber));
@@ -216,7 +216,7 @@ export function useStream<A, E, R>(
             setError(undefined);
           })
         ),
-        Effect.catchAll((err) =>
+        Effect.catch((err) =>
           Effect.sync(() => {
             setError({ value: err });
             console.error("[useStream] Stream failed:", err);
@@ -278,7 +278,7 @@ export function useStreamLatest<A, E, R>(
             setError(undefined);
           })
         ),
-        Effect.catchAll((err) =>
+        Effect.catch((err) =>
           Effect.sync(() => {
             setError({ value: err });
             console.error("[useStreamLatest] Stream failed:", err);

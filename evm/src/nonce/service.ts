@@ -49,10 +49,9 @@ export type NonceServiceShape = {
   }) => Effect.Effect<bigint, ClientNotFoundError | TransportError>;
 };
 
-export class NonceService extends Context.Tag("ew3/NonceService")<
-  NonceService,
-  NonceServiceShape
->() {}
+export class NonceService extends Context.Service<NonceService, NonceServiceShape>()(
+  "ew3/NonceService"
+) {}
 
 export const NonceServiceLive = Layer.effect(
   NonceService,

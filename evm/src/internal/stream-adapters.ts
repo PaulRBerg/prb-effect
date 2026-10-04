@@ -1,4 +1,4 @@
-import { Effect, Stream } from "effect";
+import { Cause, Effect, Queue, Stream } from "effect";
 
 /**
  * Configuration for creating a Stream from a watch callback
@@ -29,10 +29,18 @@ export type WatchConfig<T, E> = {
  * ```
  */
 export const fromWatchCallback = <T, E>(config: WatchConfig<T, E>): Stream.Stream<T, E> =>
-  Stream.async<T, E>((emit) => {
-    const unwatch = config.watch({
-      onData: (data) => emit.single(data),
-      onError: (error) => emit.fail(config.mapError(error)),
-    });
-    return Effect.sync(() => unwatch());
-  });
+  Stream.callback<T, E>((queue) =>
+    Effect.acquireRelease(
+      Effect.sync(() =>
+        config.watch({
+          onData: (data) => {
+            Queue.offerUnsafe(queue, data);
+          },
+          onError: (error) => {
+            Queue.failCauseUnsafe(queue, Cause.fail(config.mapError(error)));
+          },
+        })
+      ),
+      (unwatch) => Effect.sync(unwatch)
+    )
+  );

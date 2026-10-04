@@ -7,7 +7,7 @@
   "sideEffects": false,
   "type": "module",
   "types": "./dist/index.d.ts",
-  "version": "1.0.0-beta.9",
+  "version": "1.0.0",
   "scripts": {
     "build": "just build",
     "prepack": "bun install --frozen-lockfile && just build"
@@ -31,7 +31,6 @@
   "devDependencies": {
     "@biomejs/biome": "catalog:dev",
     "@coral-xyz/anchor": "^0.32.1",
-    "@effect/platform": "catalog:effect",
     "@effect/vitest": "catalog:dev",
     "@prb/devkit": "catalog:dev",
     "@solana/web3.js": "^1.98.4",
@@ -61,7 +60,8 @@
   },
   "files": [
     "dist/**",
-    "DOCS.md"
+    "DOCS.md",
+    "CHANGELOG.md"
   ],
   "keywords": [
     "anchor",
@@ -75,7 +75,6 @@
   ],
   "peerDependencies": {
     "@coral-xyz/anchor": "^0.32.1",
-    "@effect/platform": "catalog:peers",
     "@solana/web3.js": "^1.98.4",
     "effect": "catalog:peers",
     "react": "catalog:peers",

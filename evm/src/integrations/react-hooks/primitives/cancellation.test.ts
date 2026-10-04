@@ -85,13 +85,14 @@ describe("hook cancellation", () => {
       close: () => {
         void runtime.runPromise(Scope.close(scope, Exit.void)).then(closed.resolve);
       },
-      fork: (effect) => runtime.runFork(Scope.extend(effect, scope), { scope }),
+      fork: (effect) =>
+        Effect.runSyncWith(runtime.context)(Effect.forkIn(Scope.provide(effect, scope), scope)),
       scope,
     };
     mocks.makeScopedRun.mockResolvedValueOnce(scoped);
     useStreamEffect(
       () =>
-        Effect.async<Stream.Stream<never>>((resume) => {
+        Effect.callback<Stream.Stream<never>>((resume) => {
           resumeFactory = resume;
           started.resolve();
           return Effect.sync(finalized);

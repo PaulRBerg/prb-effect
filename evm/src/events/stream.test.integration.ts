@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@effect/vitest";
-import { Chunk, Effect, Exit, Layer, Stream } from "effect";
+import { Effect, Exit, Layer, Stream } from "effect";
 import { constVoid as noop } from "effect/Function";
 import type { Log, TransactionReceipt, WatchContractEventParameters } from "viem";
 import { erc20Abi } from "viem";
@@ -25,7 +25,7 @@ describe("EventStream", () => {
         });
 
         const events = yield* Stream.runCollect(Stream.take(eventStream, 1));
-        const eventArray = Chunk.toReadonlyArray(events);
+        const eventArray = events;
 
         expect(eventArray).toHaveLength(1);
         expect(eventArray[0].eventName).toBe("Transfer");

@@ -29,7 +29,7 @@ export type CursorStorage = {
   readonly delete: (key: string) => Effect.Effect<void, CursorStoreError>;
 };
 
-export class CursorStore extends Context.Tag("ew3/CursorStore")<CursorStore, CursorStorage>() {}
+export class CursorStore extends Context.Service<CursorStore, CursorStorage>()("ew3/CursorStore") {}
 
 export const InMemoryCursorStoreLive = Layer.effect(
   CursorStore,
@@ -111,10 +111,9 @@ export type CursorStreamShape = {
   >;
 };
 
-export class CursorStream extends Context.Tag("ew3/CursorStream")<
-  CursorStream,
-  CursorStreamShape
->() {}
+export class CursorStream extends Context.Service<CursorStream, CursorStreamShape>()(
+  "ew3/CursorStream"
+) {}
 
 export const CursorStreamLive = Layer.effect(
   CursorStream,

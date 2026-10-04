@@ -9,10 +9,10 @@ import { Schema } from "effect";
 export class GasLimitOverflowError extends Schema.TaggedError<GasLimitOverflowError>()(
   "GasLimitOverflowError",
   {
-    blockGasLimit: Schema.BigInt,
-    estimatedGas: Schema.BigInt,
+    blockGasLimit: Schema.BigIntFromString,
+    estimatedGas: Schema.BigIntFromString,
     message: Schema.String,
-    threshold: Schema.BigInt,
+    threshold: Schema.BigIntFromString,
   }
 ) {}
 
@@ -31,7 +31,7 @@ export class SafeMultisigContractsNotDeployedError extends Schema.TaggedError<Sa
   {
     chainId: Schema.Number,
     message: Schema.String,
-    missingContract: Schema.Literal("multiSend", "simulateAccessor"),
+    missingContract: Schema.Literals(["multiSend", "simulateAccessor"]),
   }
 ) {}
 

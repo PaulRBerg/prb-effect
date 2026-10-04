@@ -12,8 +12,8 @@ export class InsufficientBalanceError extends Schema.TaggedError<InsufficientBal
   "InsufficientBalanceError",
   {
     address: Schema.String,
-    available: Schema.BigInt,
+    available: Schema.BigIntFromString,
     message: Schema.String,
-    required: Schema.BigInt,
+    required: Schema.BigIntFromString,
   }
 ) {}

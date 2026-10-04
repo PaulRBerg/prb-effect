@@ -126,7 +126,7 @@ describe("useEffectMemoFactory", () => {
 });
 
 type Resource = { readonly name: string; closed: boolean };
-const Resource = Context.GenericTag<Resource>("provider-test-resource");
+const Resource = Context.Service<Resource>("provider-test-resource");
 let root: ReturnType<typeof createRoot> | undefined;
 
 afterEach(async () => {
@@ -136,7 +136,7 @@ afterEach(async () => {
 });
 
 function resourceLayer(name: string, acquired: Resource[]) {
-  return Layer.scoped(
+  return Layer.effect(
     Resource,
     Effect.acquireRelease(
       Effect.sync(() => {
@@ -265,7 +265,7 @@ describe("EffectEvmProviderSync lifecycle", () => {
     const acquired: Resource[] = [];
     const onUnhandledError = vi.fn();
     const error = new Error("layer failed");
-    const layer = Layer.scopedDiscard(
+    const layer = Layer.effectDiscard(
       Effect.gen(function* () {
         yield* Layer.build(resourceLayer("failed", acquired));
         return yield* Effect.fail(error);

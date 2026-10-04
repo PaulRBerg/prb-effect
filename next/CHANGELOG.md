@@ -10,6 +10,28 @@ The format is based on [Common Changelog](https://common-changelog.org/).
 [1.1.1]: https://github.com/PaulRBerg/prb-effect/releases/tag/next%401.1.1
 [1.2.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/next%401.2.0
 [1.2.1]: https://github.com/PaulRBerg/prb-effect/releases/tag/next@1.2.1
+[2.0.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/next@2.0.0
+
+## [2.0.0] - 2026-10-04
+
+### Changed
+
+- Require Effect `^4.0.0`; remove the `@effect/platform` and `@effect/opentelemetry` peers in favor of `effect/http` and
+  `effect/observability`.
+- Back middleware `Tag` factories and service exports with native `Context.Service` keys; retain middleware metadata,
+  wrapping, and failure inference.
+- Return `Effect<Context.Context<R>, E>` from `createStatefulContext`; use `ManagedRuntime.contextEffect` and provide
+  extracted contexts with `Effect.provide` or retrieve services with `Context.get`.
+- Use native schema constraints and codecs, preserving separate decoding and encoding service requirements; parameter
+  decoders require decoding services and persistent caches require both directions plus storage services.
+- Capture the first caller's context in Effect-returning `reactCache` and execute cached exits with
+  `Effect.runPromiseExitWith`; retain request coalescing, tracing, memoized failures, and compile-time Scope rejection.
+- Use `Duration.Input`, native `Result`, flattened Cause reasons, `Deferred.into`, and detached refresh fibers while
+  retaining cache TTL, stale refreshes, codec round trips, failure policies, and cancellation cleanup.
+- Expose native `OtlpExporter.Flusher` from configured OTLP layers; disabled and unconfigured layers remain empty.
+  Custom-client layers retain `HttpClient` requirements, including conservatively typed dynamic options.
+- Preserve Next.js typed navigation and native control-flow defects at execution boundaries, first typed failure
+  selection for actions/hooks/testing helpers, and suppressed unhandled logs in managed handlers.
 
 ## [1.2.1] - 2026-10-03
 

@@ -43,10 +43,9 @@ export type EventBackfillShape = {
   ) => Effect.Effect<DecodedEvent<TAbi, TEventName>[], ClientNotFoundError | EventBackfillError>;
 };
 
-export class EventBackfill extends Context.Tag("ew3/EventBackfill")<
-  EventBackfill,
-  EventBackfillShape
->() {}
+export class EventBackfill extends Context.Service<EventBackfill, EventBackfillShape>()(
+  "ew3/EventBackfill"
+) {}
 
 /**
  * Run an RPC call, retrying transient failures with backoff. The raw rejection

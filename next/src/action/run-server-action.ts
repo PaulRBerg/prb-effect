@@ -1,6 +1,6 @@
 import "server-only";
 import type { Effect } from "effect";
-import { Cause, Chunk, Exit } from "effect";
+import { Cause, Exit, Inspectable } from "effect";
 import type * as ManagedRuntime from "effect/ManagedRuntime";
 import { executeWithRuntime, executeWithRuntimeExit } from "../internal/executor.js";
 import type { ServerActionResult } from "./types.js";
@@ -33,12 +33,15 @@ export async function runServerAction<A, E, R>(
   }
 
   // Extract first failure from cause chain for error tag
-  const failures = Cause.failures(exit.cause);
-  const firstError = Chunk.isEmpty(failures) ? null : Chunk.unsafeHead(failures);
+  const failures = exit.cause.reasons.filter(Cause.isFailReason).map((reason) => reason.error);
+  const firstError = failures[0] ?? null;
 
   // Get full error message from cause (includes stack traces, all errors)
   const prettyErrors = Cause.prettyErrors(exit.cause);
-  const message = prettyErrors[0]?.message ?? "Unknown error";
+  const message =
+    firstError !== null && typeof firstError === "object" && !(firstError instanceof Error)
+      ? Inspectable.toStringUnknown(firstError, 0)
+      : (prettyErrors[0]?.message ?? "Unknown error");
 
   return {
     error: new ServerActionError({

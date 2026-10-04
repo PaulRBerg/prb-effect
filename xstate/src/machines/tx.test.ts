@@ -99,7 +99,7 @@ describe("machines/tx", () => {
     const services = createMockServices({
       onConfirm: () =>
         Effect.sync(() => started.resolve()).pipe(
-          Effect.zipRight(Effect.never),
+          Effect.andThen(Effect.never),
           Effect.ensuring(Effect.sync(finalized))
         ),
     });

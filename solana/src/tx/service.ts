@@ -118,10 +118,10 @@ export type TransactionServiceShape = {
  *
  * @category Services
  */
-export class TransactionService extends Context.Tag("esolana/TransactionService")<
+export class TransactionService extends Context.Service<
   TransactionService,
   TransactionServiceShape
->() {}
+>()("esolana/TransactionService") {}
 
 type Commitment = "processed" | "confirmed" | "finalized";
 
@@ -354,7 +354,7 @@ const makeTransactionService = (
 
         return yield* pollForConfirmation(connection, signature, opts ?? {}).pipe(
           Effect.timeout(`${timeout} millis`),
-          Effect.catchTag("TimeoutException", () =>
+          Effect.catchTag("TimeoutError", () =>
             Effect.fail(
               new TransactionTimeoutError({
                 message: `Transaction confirmation timed out after ${timeout}ms`,
@@ -392,7 +392,7 @@ const makeTransactionService = (
 
           const retrySchedule = pipe(
             Schedule.recurs(retries),
-            Schedule.addDelay(() => Duration.millis(retryDelay))
+            Schedule.addDelay(() => Effect.succeed(Duration.millis(retryDelay)))
           );
 
           return sendEffect.pipe(Effect.retry(retrySchedule));

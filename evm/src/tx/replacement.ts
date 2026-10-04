@@ -40,10 +40,9 @@ export type TxReplacementShape = {
   >;
 };
 
-export class TxReplacement extends Context.Tag("ew3/TxReplacement")<
-  TxReplacement,
-  TxReplacementShape
->() {}
+export class TxReplacement extends Context.Service<TxReplacement, TxReplacementShape>()(
+  "ew3/TxReplacement"
+) {}
 
 const cap = (value: bigint, max: bigint | undefined): bigint =>
   max !== undefined && value > max ? max : value;

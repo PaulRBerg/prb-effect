@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, it } from "@effect/vitest";
-import { Context, Effect, Layer, ManagedRuntime } from "effect";
+import { Context, Effect, Layer, ManagedRuntime, Option } from "effect";
 import { vi } from "vitest";
 
 // Mock server-only to prevent import errors
 vi.mock("server-only", () => ({}));
 
 // Mock React's cache with a WeakMap+Map implementation that preserves function identity
-const resetFns: Array<() => void> = [];
+const { resetFns } = vi.hoisted(() => ({ resetFns: [] as Array<() => void> }));
 
 vi.mock("react", () => {
   return {
@@ -99,7 +99,7 @@ describe("reactCache", () => {
     });
 
     it("context is ignored — first call wins", async () => {
-      class Locale extends Context.Tag("Locale")<Locale, string>() {}
+      class Locale extends Context.Service<Locale, string>()("Locale") {}
 
       const fn = reactCache((id: string) =>
         Effect.gen(function* () {
@@ -208,13 +208,14 @@ describe("reactCache", () => {
 
   describe("span preservation", () => {
     it("preserves spans through the cache", async () => {
-      const fn = reactCache((id: string) =>
-        Effect.succeed(`user-${id}`).pipe(Effect.withSpan("getUser"))
-      );
-
-      const result = await Effect.runPromise(fn("123").pipe(Effect.withSpan("outer")));
-
-      expect(result).toBe("user-123");
+      const fn = reactCache((_id: string) => Effect.currentSpan.pipe(Effect.withSpan("getUser")));
+      const first = await Effect.runPromise(fn("123").pipe(Effect.withSpan("first-caller")));
+      const second = await Effect.runPromise(fn("123").pipe(Effect.withSpan("second-caller")));
+      expect(second).toBe(first);
+      expect(first.name).toBe("getUser");
+      expect(
+        Option.isSome(first.parent) && first.parent.value._tag === "Span" && first.parent.value.name
+      ).toBe("first-caller");
     });
   });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@effect/vitest";
-import { Effect, Exit, Layer, Option, Ref, Scope } from "effect";
+import { Cause, Effect, Exit, Layer, Option, Ref, Scope } from "effect";
 import type { Hash, TransactionReceipt } from "viem";
 import { vi } from "vitest";
 import type { SafeAppsServiceShape } from "./service.js";
@@ -9,10 +9,10 @@ import { SafeAppsService } from "./service.js";
 vi.mock("@prb/effect-evm/tx", async () => {
   const { Context } = await import("effect");
 
-  class MockTxManager extends Context.Tag("ew3/TxManager")<
+  class MockTxManager extends Context.Service<
     MockTxManager,
     { readonly waitForReceipt: (...args: readonly unknown[]) => Effect.Effect<unknown> }
-  >() {}
+  >()("ew3/TxManager") {}
 
   return { TxManager: MockTxManager };
 });
@@ -42,17 +42,17 @@ function makeSafeAppsServiceLayer(
     SafeAppsService.of({
       enableOffchainSigning: () => Effect.void,
       getInfo: () => Effect.succeed({ chainId: TEST_CHAIN_ID, safeAddress: TEST_SAFE_ADDRESS }),
-      getOffchainSignature: () => Effect.dieMessage("unused"),
+      getOffchainSignature: () => Effect.die(new Error("unused")),
       getTx,
-      pollOffchainSignature: () => Effect.dieMessage("unused"),
+      pollOffchainSignature: () => Effect.die(new Error("unused")),
       sendTxs: () =>
         Effect.succeed({
           chainId: TEST_CHAIN_ID,
           safeAddress: TEST_SAFE_ADDRESS,
           safeTxHash: TEST_SAFE_TX_HASH,
         }),
-      signTypedData: () => Effect.dieMessage("unused"),
-      waitForTxReceipt: () => Effect.dieMessage("unused"),
+      signTypedData: () => Effect.die(new Error("unused")),
+      waitForTxReceipt: () => Effect.die(new Error("unused")),
     } as unknown as SafeAppsServiceShape)
   );
 }
@@ -168,6 +168,39 @@ describe("safeWriteAndTrack", () => {
     }).pipe(Effect.scoped);
   });
 
+  it.effect("interrupts the result when its scope closes before the worker starts", () =>
+    Effect.gen(function* () {
+      const scope = yield* Scope.make();
+      const layer = Layer.merge(
+        makeSafeAppsServiceLayer(() => Effect.never),
+        txManagerLayer
+      );
+      const handle = yield* safeWriteAndTrack({ transactions: [TX] }).pipe(
+        Effect.provide(layer),
+        Scope.provide(scope)
+      );
+
+      yield* Scope.close(scope, Exit.void);
+      const exit = yield* handle.result.pipe(Effect.exit);
+      expect(Exit.isFailure(exit) && Cause.hasInterrupts(exit.cause)).toBe(true);
+    })
+  );
+
+  it.effect("completes the result with a background worker defect", () =>
+    Effect.gen(function* () {
+      const defect = new Error("unexpected lookup defect");
+      const layer = Layer.merge(
+        makeSafeAppsServiceLayer(() => Effect.die(defect)),
+        txManagerLayer
+      );
+      const handle = yield* safeWriteAndTrack({ transactions: [TX] }).pipe(Effect.provide(layer));
+      const exit = yield* handle.result.pipe(Effect.exit);
+      expect(Exit.isFailure(exit) && exit.cause.reasons).toContainEqual(
+        expect.objectContaining({ _tag: "Die", defect })
+      );
+    })
+  );
+
   it.live("result fails with interruption when the scope closes mid-poll (no hang)", () => {
     // getTx never reaches a terminal state, so polling runs until the scope is torn down.
     const getTx = () =>
@@ -186,7 +219,7 @@ describe("safeWriteAndTrack", () => {
       const handle = yield* safeWriteAndTrack({
         transactions: [TX],
         waitOptions: { interval: "10 millis", maxWait: "10 minutes" },
-      }).pipe(Effect.provide(layer), Scope.extend(scope));
+      }).pipe(Effect.provide(layer), Scope.provide(scope));
 
       // Let polling start, then close the scope to interrupt the forked program.
       yield* Effect.sleep("30 millis");
@@ -195,7 +228,7 @@ describe("safeWriteAndTrack", () => {
       // Without Effect.ensuring(Deferred.interrupt), this await would hang forever.
       const exit = yield* handle.result.pipe(Effect.provide(layer), Effect.exit);
 
-      expect(Exit.isInterrupted(exit)).toBe(true);
+      expect(Exit.isFailure(exit) && Cause.hasInterrupts(exit.cause)).toBe(true);
     });
   });
 });

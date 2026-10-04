@@ -85,10 +85,9 @@ export type ProgramWriterShape = {
  *
  * @category Services
  */
-export class ProgramWriter extends Context.Tag("esolana/ProgramWriter")<
-  ProgramWriter,
-  ProgramWriterShape
->() {}
+export class ProgramWriter extends Context.Service<ProgramWriter, ProgramWriterShape>()(
+  "esolana/ProgramWriter"
+) {}
 
 // =============================================================================
 // Service Implementation

@@ -7,6 +7,7 @@ import type { PublicClientServiceShape } from "#src/core/index.js";
 import { isNonceTooLowError, TxFailedError } from "#src/core/index.js";
 import type { EventStreamShape } from "#src/events/index.js";
 import type { GasServiceShape } from "#src/gas/index.js";
+import { fromWatchCallback } from "#src/internal/index.js";
 import type { NonceServiceShape } from "#src/nonce/index.js";
 import type {
   TxFailedPhase,
@@ -192,6 +193,9 @@ export const makeWriteAndTrack = (deps: WriteAndTrackDeps) =>
       WriteAndTrackTerminal<TAbi>,
       WriteAndTrackError
     >();
+    // Register with the owner before forking: the scope can close before the
+    // deferred-start worker runs and completes the terminal Deferred.
+    yield* Effect.addFinalizer(() => Deferred.interrupt(terminalDeferred));
     const preflightMode = params.preflight?.mode ?? "strict";
     let failurePhase: TxFailedPhase = "preflight";
     let preflightWarning: TxPreflightWarning | undefined;
@@ -292,19 +296,19 @@ export const makeWriteAndTrack = (deps: WriteAndTrackDeps) =>
 
           const performAutoReplacement = (currentHash: Hash, now: number) =>
             Ref.set(autoReplacingRef, true).pipe(
-              Effect.zipRight(
+              Effect.andThen(
                 (replacementStrategy === "cancel"
                   ? txReplacement.cancel(params.chainId, currentHash, policy)
                   : txReplacement.speedup(params.chainId, currentHash, policy)
                 ).pipe(
-                  Effect.either,
+                  Effect.result,
                   Effect.ensuring(Ref.set(autoReplacingRef, false)),
                   Effect.flatMap((replaced) => {
-                    if (replaced._tag === "Left") {
+                    if (replaced._tag === "Failure") {
                       return Effect.void;
                     }
 
-                    const newHash = replaced.right;
+                    const newHash = replaced.success;
                     return Effect.all([
                       Ref.set(currentHashRef, newHash),
                       Ref.set(blocksElapsedRef, 0),
@@ -353,16 +357,14 @@ export const makeWriteAndTrack = (deps: WriteAndTrackDeps) =>
           });
 
           const pendingFiber = yield* Stream.runForEach(
-            Stream.async<bigint, unknown>((emit) => {
-              const unwatch = publicClient.watchBlockNumber({
-                pollingInterval: policy.pollingInterval,
-                onBlockNumber: (blockNumber: bigint) => emit.single(blockNumber),
-                onError: (error) => emit.fail(error as unknown),
-              });
-
-              return Effect.sync(() => {
-                unwatch();
-              });
+            fromWatchCallback<bigint, unknown>({
+              mapError: (error) => error,
+              watch: ({ onData, onError }) =>
+                publicClient.watchBlockNumber({
+                  onBlockNumber: onData,
+                  pollingInterval: policy.pollingInterval,
+                  onError,
+                }),
             }),
             () => onPendingBlock
           ).pipe(Effect.forkScoped);
@@ -374,13 +376,13 @@ export const makeWriteAndTrack = (deps: WriteAndTrackDeps) =>
             while (true) {
               const exit = yield* txManager
                 .waitForReceipt(params.chainId, waitHash, policy)
-                .pipe(Effect.either);
+                .pipe(Effect.result);
 
-              if (exit._tag === "Right") {
-                return exit.right;
+              if (exit._tag === "Success") {
+                return exit.success;
               }
 
-              const error = exit.left;
+              const error = exit.failure;
               if (error._tag === "TxReplacedError") {
                 const newHash = error.newHash as Hash;
                 const now = yield* Clock.currentTimeMillis;
@@ -545,13 +547,17 @@ export const makeWriteAndTrack = (deps: WriteAndTrackDeps) =>
                 ...params,
                 overrides: overridesWithGasAndNonce,
               })
-              .pipe(Effect.either);
+              .pipe(Effect.result);
 
-            if (writeResult._tag === "Left") {
-              return yield* recoverManagedNonceTooLow(attempt, writeResult.left, nonceReservation);
+            if (writeResult._tag === "Failure") {
+              return yield* recoverManagedNonceTooLow(
+                attempt,
+                writeResult.failure,
+                nonceReservation
+              );
             }
 
-            const hash = writeResult.right;
+            const hash = writeResult.success;
 
             yield* nonceReservation.markSubmitted;
             const terminal = yield* trackSubmittedTransaction(hash, nonceReservation);
@@ -621,7 +627,7 @@ export const makeWriteAndTrack = (deps: WriteAndTrackDeps) =>
 
       return yield* submitWithNonceRecovery(0);
     }).pipe(
-      Effect.catchAll((error) =>
+      Effect.catch((error) =>
         Effect.gen(function* () {
           const currentHash = yield* Ref.get(currentHashRef);
           const failedError = toTxFailedError(error, currentHash);
@@ -642,20 +648,7 @@ export const makeWriteAndTrack = (deps: WriteAndTrackDeps) =>
       )
     );
 
-    yield* run.pipe(
-      Effect.either,
-      Effect.flatMap((either) =>
-        either._tag === "Right"
-          ? Deferred.succeed(terminalDeferred, either.right)
-          : Deferred.fail(terminalDeferred, either.left)
-      ),
-      // If the tracking scope closes mid-flight this fiber is interrupted before the
-      // Deferred resolves; interrupt the Deferred so an out-of-scope `terminal`
-      // awaiter fails with interruption instead of hanging forever. No-op once the
-      // Deferred is already completed above.
-      Effect.ensuring(Deferred.interrupt(terminalDeferred)),
-      Effect.forkScoped
-    );
+    yield* run.pipe(Deferred.into(terminalDeferred), Effect.forkScoped);
 
     return {
       stateRef: tracker.ref,

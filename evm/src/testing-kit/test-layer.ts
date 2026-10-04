@@ -1,5 +1,5 @@
-import { FetchHttpClient } from "@effect/platform";
 import { Layer } from "effect";
+import { FetchHttpClient } from "effect/http";
 import { mainnet } from "viem/chains";
 import type { BalanceService } from "#src/balance/index.js";
 import { BalanceServiceLive } from "#src/balance/index.js";
@@ -250,5 +250,5 @@ export function makeEffectEvmTestLayer(
     txServices
   ).pipe(Layer.provide(FetchHttpClient.layer));
 
-  return Layer.provideMerge(applicationServices, clientLayers);
+  return Layer.provideMerge(applicationServices, clientLayers).pipe(Layer.fresh);
 }

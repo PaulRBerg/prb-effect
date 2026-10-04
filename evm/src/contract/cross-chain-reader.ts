@@ -76,10 +76,9 @@ export type CrossChainReaderShape = {
   >;
 };
 
-export class CrossChainReader extends Context.Tag("ew3/CrossChainReader")<
-  CrossChainReader,
-  CrossChainReaderShape
->() {}
+export class CrossChainReader extends Context.Service<CrossChainReader, CrossChainReaderShape>()(
+  "ew3/CrossChainReader"
+) {}
 
 /**
  * Helper function to group items by a key

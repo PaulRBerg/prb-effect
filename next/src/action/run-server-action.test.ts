@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@effect/vitest";
-import { Effect, Layer, ManagedRuntime } from "effect";
+import { Cause, Context, Effect, Layer, ManagedRuntime } from "effect";
 import { vi } from "vitest";
 
 /**
@@ -106,14 +106,34 @@ describe("runServerAction", () => {
     }
   });
 
+  it("returns a failure result for tagged errors containing bigint", async () => {
+    const result = await runServerAction(Effect.fail({ _tag: "AmountError", amount: 123n }));
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.errorTag).toBe("AmountError");
+      expect(result.error.message).toContain("123");
+    }
+  });
+
+  it("returns a failure result for circular tagged errors", async () => {
+    const error: { _tag: string; self?: unknown } = { _tag: "CircularError" };
+    error.self = error;
+    const result = await runServerAction(Effect.fail(error));
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.errorTag).toBe("CircularError");
+      expect(result.error.message).toContain("CircularError");
+    }
+  });
+
   it("works with custom runtime", async () => {
     // Create a simple service for testing
-    class TestService extends Effect.Service<TestService>()("TestService", {
-      effect: Effect.succeed({
-        _tag: "TestService",
-        getValue: () => "custom-value",
-      }),
-    }) {}
+    class TestService extends Context.Service<
+      TestService,
+      { readonly _tag: string; readonly getValue: () => string }
+    >()("TestService") {}
 
     const layer = Layer.succeed(TestService, {
       _tag: "TestService",
@@ -199,12 +219,10 @@ describe("runServerActionOrThrow", () => {
   });
 
   it("works with custom runtime", async () => {
-    class TestService extends Effect.Service<TestService>()("TestService", {
-      effect: Effect.succeed({
-        _tag: "TestService",
-        getValue: () => "runtime-value",
-      }),
-    }) {}
+    class TestService extends Context.Service<
+      TestService,
+      { readonly _tag: string; readonly getValue: () => string }
+    >()("TestService") {}
 
     const layer = Layer.succeed(TestService, {
       _tag: "TestService",
@@ -226,5 +244,28 @@ describe("runServerActionOrThrow", () => {
   it("throws for defects", async () => {
     const effect = Effect.die(new Error("fatal error"));
     await expect(runServerActionOrThrow(effect)).rejects.toThrow();
+  });
+});
+
+describe("server action Cause policy", () => {
+  it("selects the first typed failure among defects and interruptions", async () => {
+    const cause = Cause.fromReasons([
+      Cause.makeDieReason(new Error("defect")),
+      Cause.makeFailReason({ _tag: "First", message: "first" }),
+      Cause.makeInterruptReason(),
+      Cause.makeFailReason({ _tag: "Second", message: "second" }),
+    ]);
+    const result = await runServerAction(Effect.failCause(cause));
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error.errorTag).toBe("First");
+  });
+
+  it("returns an error result for interruption without inventing an error tag", async () => {
+    const result = await runServerAction(Effect.interrupt);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.errorTag).toBeNull();
+      expect(result.error.message).toBeTruthy();
+    }
   });
 });

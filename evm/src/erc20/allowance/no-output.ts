@@ -17,10 +17,10 @@ import type {
 } from "#src/erc20/allowance/index.js";
 import { TxManager } from "#src/tx/index.js";
 
-export class Erc20NoOutputAllowanceService extends Context.Tag("ew3/Erc20NoOutputAllowanceService")<
+export class Erc20NoOutputAllowanceService extends Context.Service<
   Erc20NoOutputAllowanceService,
   Erc20AllowanceServiceShape
->() {}
+>()("ew3/Erc20NoOutputAllowanceService") {}
 
 export const Erc20NoOutputAllowanceServiceLive = Layer.effect(
   Erc20NoOutputAllowanceService,
@@ -122,20 +122,20 @@ export const Erc20NoOutputAllowanceServiceLive = Layer.effect(
         chainId: params.chainId,
         spender: params.spender,
         tokenAddress: params.tokenAddress,
-      }).pipe(Effect.either);
+      }).pipe(Effect.result);
 
       const directResult = yield* direct;
-      if (directResult._tag === "Right") {
+      if (directResult._tag === "Success") {
         return {
           approveAmount,
           currentAllowance,
-          hashes: [directResult.right],
+          hashes: [directResult.success],
           mode: "direct",
           status: "approved",
         } as const;
       }
 
-      const failure = directResult.left;
+      const failure = directResult.failure;
       if (failure._tag !== "ApprovalError" || !zeroFirst || currentAllowance === 0n) {
         return yield* Effect.fail(failure);
       }

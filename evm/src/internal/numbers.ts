@@ -56,7 +56,7 @@ export function fromNumber(input: number): Option.Option<BigDecimal.BigDecimal> 
   if (!Number.isFinite(input)) {
     return Option.none();
   }
-  return Option.some(BigDecimal.fromNumber(input));
+  return BigDecimal.fromNumber(input);
 }
 
 /**
@@ -109,9 +109,9 @@ export function percentageBD(
   value: BigDecimal.BigDecimal,
   percent: BigDecimal.BigDecimal
 ): BigDecimal.BigDecimal {
-  const hundred = BigDecimal.unsafeFromString("100");
-  // divide returns Option, but we know 100 is not zero, so we can use unsafeDivide
-  const fraction = BigDecimal.unsafeDivide(percent, hundred);
+  const hundred = BigDecimal.fromStringUnsafe("100");
+  // divide returns Option, but we know 100 is not zero, so we can use divideUnsafe
+  const fraction = BigDecimal.divideUnsafe(percent, hundred);
   return BigDecimal.multiply(value, fraction);
 }
 
@@ -188,9 +188,9 @@ export function scaleByDecimals(
   const scale = BigDecimal.make(1n, -Math.abs(decimals));
 
   if (direction === "up") {
-    return decimals > 0 ? BigDecimal.multiply(value, scale) : BigDecimal.unsafeDivide(value, scale);
+    return decimals > 0 ? BigDecimal.multiply(value, scale) : BigDecimal.divideUnsafe(value, scale);
   }
-  return decimals > 0 ? BigDecimal.unsafeDivide(value, scale) : BigDecimal.multiply(value, scale);
+  return decimals > 0 ? BigDecimal.divideUnsafe(value, scale) : BigDecimal.multiply(value, scale);
 }
 
 /**
@@ -255,7 +255,7 @@ export function tokenAmountBD(
   value: BigDecimal.BigDecimal,
   options: Omit<NumberFormatOptions, "maximumFractionDigits" | "minimumFractionDigits"> = {}
 ): string {
-  const numericValue = BigDecimal.unsafeToNumber(value);
+  const numericValue = BigDecimal.toNumberUnsafe(value);
   if (!Number.isFinite(numericValue)) {
     return String(value);
   }

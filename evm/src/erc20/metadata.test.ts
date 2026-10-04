@@ -28,7 +28,7 @@ const makeReaderLayer = (records: MulticallRecord[], results: readonly Multicall
         records.push({ calls, chainId });
         return Effect.succeed(results);
       }) as unknown as ContractReaderShape["multicall"],
-      read: (() => Effect.dieMessage("unused")) as unknown as ContractReaderShape["read"],
+      read: (() => Effect.die(new Error("unused"))) as unknown as ContractReaderShape["read"],
     } satisfies ContractReaderShape)
   );
 

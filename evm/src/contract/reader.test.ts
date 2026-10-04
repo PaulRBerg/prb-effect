@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@effect/vitest";
-import { Effect, Exit, Layer } from "effect";
+import { Cause, Effect, Exit, Layer } from "effect";
 import { erc20Abi } from "viem";
 import { ContractReader, ContractReaderLive } from "#src/contract/index.js";
 import {
@@ -77,7 +77,7 @@ describe("ContractReader", () => {
         expect(Exit.isFailure(exit)).toBe(true);
         if (Exit.isFailure(exit)) {
           const error = exit.cause;
-          expect(error._tag).toBe("Fail");
+          expect(Cause.findErrorOption(error)._tag).toBe("Some");
         }
       }).pipe(Effect.provide(Layer.provide(ContractReaderLive, makeMockPublicClientLayer())))
     );

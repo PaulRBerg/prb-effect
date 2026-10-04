@@ -24,8 +24,8 @@ import "server-only";
  * @see https://react.dev/reference/react/cache
  */
 
-import type { Exit } from "effect";
-import { Effect, Runtime } from "effect";
+import type { Context, Exit } from "effect";
+import { Effect } from "effect";
 import type * as Scope from "effect/Scope";
 import { cache } from "react";
 
@@ -42,9 +42,9 @@ const runEffectCachedFn = cache(
     ...args: Args
   ) => {
     let promise: Promise<Exit.Exit<A, E>>;
-    return (runtime: Runtime.Runtime<NoScope<R>>) => {
+    return (runtime: Context.Context<NoScope<R>>) => {
       if (!promise) {
-        promise = Runtime.runPromiseExit(runtime, effect(...args));
+        promise = Effect.runPromiseExitWith(runtime)(effect(...args));
       }
       return promise;
     };
@@ -56,7 +56,7 @@ export function reactCache<A, E, R, Args extends unknown[]>(
 ) {
   return (...args: Args): Effect.Effect<A, E, NoScope<R>> =>
     Effect.gen(function* () {
-      const runtime = yield* Effect.runtime<NoScope<R>>();
+      const runtime = yield* Effect.context<NoScope<R>>();
       const exit = yield* Effect.promise(() => runEffectCachedFn(effect, ...args)(runtime));
       return yield* exit;
     });

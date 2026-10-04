@@ -1,7 +1,7 @@
 # @prb/effect-evm-safe
 
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](../LICENSE)
-[![Effect](https://img.shields.io/badge/Effect-v3-7C3AED)](https://effect.website)
+[![Effect](https://img.shields.io/badge/Effect-v4-7C3AED)](https://effect.website)
 
 > [!WARNING]
 >
@@ -19,9 +19,8 @@ bun add @prb/effect-evm-safe @prb/effect-evm @safe-global/safe-apps-sdk
 
 Peer dependencies
 
-- `effect@^3.21.3`
-- `@effect/platform@^0.96.1`
-- `@prb/effect-evm@^2.0.0 || ^3.0.0 || ^4.0.0`
+- `effect@^4.0.0`
+- `@prb/effect-evm@^5.0.0`
 - `@safe-global/safe-apps-sdk@9.1.0`
 - `viem@^2.43`
 - Optional: `@wagmi/core@>=2.0.0` (for hooks using wagmi)
@@ -38,6 +37,41 @@ import { SafeAppsServiceLive } from "@prb/effect-evm-safe";
 const baseLayer = makeEffectEvmLayer(/* chain configs */, window.ethereum);
 const layer = Layer.provideMerge(SafeAppsServiceLive(), baseLayer);
 ```
+
+## Migration to v6 (Effect 4)
+
+Upgrade `effect` to `^4.0.0` and `@prb/effect-evm` to `^5.0.0` together. The Safe services are native `Context.Service`
+classes; mock layers can still use `Layer.succeed(SafeAppsService, SafeAppsService.of({...}))`. Custom service keys use
+`Context.Service<MyService, MyServiceShape>()("MyService")`, and service shapes are available through
+`typeof SafeAppsService.Service` or `Context.Service.Shape<typeof SafeAppsService>`.
+
+Use `Effect.result` to inspect expected failures. `Result` uses `Success.success` and `Failure.failure`:
+
+```typescript
+import { Effect } from "effect";
+import { SafeAppsService } from "@prb/effect-evm-safe";
+
+const program = Effect.gen(function* () {
+  const safe = yield* SafeAppsService;
+  return yield* safe.getInfo();
+});
+const result = await Effect.runPromise(program.pipe(Effect.result, Effect.provide(layer)));
+if (result._tag === "Failure") console.error(result.failure.message);
+else console.log(result.success.safeAddress);
+```
+
+For a previously captured runtime, use a service context with `Effect.runPromiseWith(context)(program)` or
+`Effect.runForkWith(context)(program)`. React runtimes from `@prb/effect-evm` expose `.context`; their bound runners
+remain available. Tagged Safe errors retain `Schema.TaggedError` and can be recovered with `Effect.catchTag`. Simulation
+error bigint fields still encode as decimal strings through `Schema.BigIntFromString`.
+
+Keep `safeWriteAndTrack` and pipeline adapter executions inside the owning `Effect.scoped` lifetime. Observe state with
+`SubscriptionRef.changes(handle.stateRef)`, and await `handle.result` (or the adapter's `terminal`) before closing that
+scope. Closing it interrupts pending terminal waiters. Queued and cancelled results, receipt-based success and revert
+detection, retryable lookup failures, progress callbacks, and the total `maxWait` budget retain their behavior.
+
+Tests import `TestClock` from `effect/testing/TestClock` and use `Effect.forkChild` or `Effect.forkScoped`; forked
+workers start on the scheduler, so coordinate registration before sending test callbacks.
 
 ## Exports
 

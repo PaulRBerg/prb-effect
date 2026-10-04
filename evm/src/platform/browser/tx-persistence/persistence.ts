@@ -1,5 +1,5 @@
-import type { Scope, SubscriptionRef } from "effect";
-import { Clock, Context, Effect, Layer, Stream } from "effect";
+import type { Scope } from "effect";
+import { Clock, Context, Effect, Layer, Stream, SubscriptionRef } from "effect";
 import type { Hash } from "viem";
 import type { ClientNotFoundError } from "#src/core/index.js";
 import type { PersistedTx, TxStoreShape } from "#src/platform/browser/tx-store/index.js";
@@ -50,10 +50,9 @@ export type TxPersistenceShape = {
 /**
  * Context tag for TxPersistence service.
  */
-export class TxPersistence extends Context.Tag("ew3/TxPersistence")<
-  TxPersistence,
-  TxPersistenceShape
->() {}
+export class TxPersistence extends Context.Service<TxPersistence, TxPersistenceShape>()(
+  "ew3/TxPersistence"
+) {}
 
 /**
  * Convert TxState to PersistedTx status.
@@ -138,7 +137,7 @@ function handleReplacement(options: {
     yield* options.txStore.upsert(updatedTx);
 
     return options.state.newHash;
-  }).pipe(Effect.catchAll(() => Effect.succeed(options.state.newHash)));
+  }).pipe(Effect.catch(() => Effect.succeed(options.state.newHash)));
 }
 
 /**
@@ -166,7 +165,7 @@ function handleStatusChange(options: {
 
     // Return true if terminal state reached
     return isTerminalPersistedStatus(options.newStatus);
-  }).pipe(Effect.catchAll(() => Effect.succeed(isTerminalPersistedStatus(options.newStatus))));
+  }).pipe(Effect.catch(() => Effect.succeed(isTerminalPersistedStatus(options.newStatus))));
 }
 
 /**
@@ -200,7 +199,7 @@ export const TxPersistenceLive = Layer.effect(
           };
 
           // Persist initial state (ignore errors)
-          yield* txStore.upsert(initialTx).pipe(Effect.catchAll(() => Effect.void));
+          yield* txStore.upsert(initialTx).pipe(Effect.catch(() => Effect.void));
 
           // Track the transaction
           const stateRef = yield* txManager.track(chainId, hash);
@@ -211,7 +210,7 @@ export const TxPersistenceLive = Layer.effect(
               let lastStatus: PersistedTx["status"] = "submitted";
               let currentHash = hash;
 
-              yield* Stream.runForEach(stateRef.changes, (state) =>
+              yield* Stream.runForEach(SubscriptionRef.changes(stateRef), (state) =>
                 Effect.gen(function* () {
                   const newStatus = mapTxStateToStatus(state);
 
@@ -261,7 +260,7 @@ const rehydrateAll = Effect.gen(function* () {
   const txStore = yield* TxStore;
   const txManager = yield* TxManager;
 
-  const inFlightTxs = yield* txStore.getInFlight().pipe(Effect.catchAll(() => Effect.succeed([])));
+  const inFlightTxs = yield* txStore.getInFlight().pipe(Effect.catch(() => Effect.succeed([])));
 
   yield* Effect.all(
     inFlightTxs.map(
@@ -276,7 +275,7 @@ const rehydrateAll = Effect.gen(function* () {
               let lastStatus = tx.status;
               let currentHash = tx.currentHash;
 
-              yield* Stream.runForEach(stateRef.changes, (state) =>
+              yield* Stream.runForEach(SubscriptionRef.changes(stateRef), (state) =>
                 Effect.gen(function* () {
                   const newStatus = mapTxStateToStatus(state);
 
@@ -311,7 +310,7 @@ const rehydrateAll = Effect.gen(function* () {
               );
             })
           );
-        }).pipe(Effect.catchAll(() => Effect.void)) // Ignore errors for individual txs
+        }).pipe(Effect.catch(() => Effect.void)) // Ignore errors for individual txs
     ),
     { concurrency: "unbounded" }
   );
@@ -321,6 +320,6 @@ const rehydrateAll = Effect.gen(function* () {
  * Live implementation with auto-rehydration.
  * On initialization, loads all in-flight transactions and starts tracking them.
  */
-export const TxPersistenceWithRehydrationLive = Layer.scopedDiscard(
+export const TxPersistenceWithRehydrationLive = Layer.effectDiscard(
   Effect.forkScoped(rehydrateAll)
 ).pipe(Layer.provideMerge(TxPersistenceLive));

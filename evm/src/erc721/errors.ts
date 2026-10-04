@@ -6,7 +6,7 @@ export class Erc721OwnerNotFoundError extends Schema.TaggedError<Erc721OwnerNotF
     address: Schema.String,
     chainId: Schema.Number,
     message: Schema.String,
-    tokenId: Schema.BigIntFromSelf,
+    tokenId: Schema.BigInt,
   }
 ) {}
 
@@ -16,7 +16,7 @@ export class Erc721NoTokenURIError extends Schema.TaggedError<Erc721NoTokenURIEr
     address: Schema.String,
     chainId: Schema.Number,
     message: Schema.String,
-    tokenId: Schema.BigIntFromSelf,
+    tokenId: Schema.BigInt,
   }
 ) {}
 
@@ -27,7 +27,7 @@ export class Erc721MetadataFetchError extends Schema.TaggedError<Erc721MetadataF
     cause: Schema.optional(Schema.Unknown),
     chainId: Schema.Number,
     message: Schema.String,
-    tokenId: Schema.BigIntFromSelf,
+    tokenId: Schema.BigInt,
     uri: Schema.String,
   }
 ) {}
@@ -40,6 +40,6 @@ export class Erc721TransferError extends Schema.TaggedError<Erc721TransferError>
     from: Schema.String,
     message: Schema.String,
     to: Schema.String,
-    tokenId: Schema.BigIntFromSelf,
+    tokenId: Schema.BigInt,
   }
 ) {}

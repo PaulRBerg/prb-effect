@@ -1,7 +1,7 @@
-import type { HttpClientRequest } from "@effect/platform";
-import { HttpClient, HttpClientResponse } from "@effect/platform";
 import { describe, expect, it } from "@effect/vitest";
-import { ConfigProvider, Effect, Exit, Layer } from "effect";
+import { Cause, ConfigProvider, Effect, Exit, Layer, Option } from "effect";
+import type { HttpClientRequest } from "effect/http";
+import { HttpClient, HttpClientResponse } from "effect/http";
 import type { Address, Hex } from "viem";
 import { mainnet } from "viem/chains";
 import {
@@ -10,13 +10,11 @@ import {
   TenderlyRateLimitError,
 } from "#src/simulation/index.js";
 
-const configProvider = ConfigProvider.fromMap(
-  new Map([
-    ["TENDERLY_ACCESS_KEY", "test-access-key"],
-    ["TENDERLY_ACCOUNT", "test-account"],
-    ["TENDERLY_PROJECT", "test-project"],
-  ])
-);
+const configProvider = ConfigProvider.fromEnvRecord({
+  TENDERLY_ACCESS_KEY: "test-access-key",
+  TENDERLY_ACCOUNT: "test-account",
+  TENDERLY_PROJECT: "test-project",
+});
 
 const TEST_FROM = "0x1234567890123456789012345678901234567890" as Address;
 const TEST_TO = "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd" as Address;
@@ -55,7 +53,7 @@ describe("Tenderly simulation", () => {
       stateOverrides: [{ address: TEST_FROM, nonce: 0n }],
       to: TEST_TO,
     }).pipe(
-      Effect.withConfigProvider(configProvider),
+      Effect.provideService(ConfigProvider.ConfigProvider, configProvider),
       Effect.provide(
         makeMockHttpClientLayer({
           body: { transaction: { gas: 0, gas_used: 0, status: true } },
@@ -104,7 +102,10 @@ describe("Tenderly simulation", () => {
         chainId: mainnet.id,
         from: TEST_FROM,
         to: TEST_TO,
-      }).pipe(Effect.withConfigProvider(configProvider), Effect.provide(layer));
+      }).pipe(
+        Effect.provideService(ConfigProvider.ConfigProvider, configProvider),
+        Effect.provide(layer)
+      );
 
       expect(result.success).toBe(true);
       expect(result.returnValue).toBe("0xabcd" as Hex);
@@ -124,16 +125,20 @@ describe("Tenderly simulation", () => {
         from: TEST_FROM,
         to: TEST_TO,
       })
-        .pipe(Effect.withConfigProvider(configProvider), Effect.provide(layer))
+        .pipe(
+          Effect.provideService(ConfigProvider.ConfigProvider, configProvider),
+          Effect.provide(layer)
+        )
         .pipe(Effect.exit);
 
       expect(Exit.isFailure(exit)).toBe(true);
       if (Exit.isFailure(exit)) {
-        expect(exit.cause._tag).toBe("Fail");
-        if (exit.cause._tag === "Fail") {
-          expect(exit.cause.error).toBeInstanceOf(TenderlyRateLimitError);
-          if (exit.cause.error instanceof TenderlyRateLimitError) {
-            expect(exit.cause.error.retryAfter).toBe(120);
+        const error = Cause.findErrorOption(exit.cause);
+        expect(Option.isSome(error)).toBe(true);
+        if (Option.isSome(error)) {
+          expect(error.value).toBeInstanceOf(TenderlyRateLimitError);
+          if (error.value instanceof TenderlyRateLimitError) {
+            expect(error.value.retryAfter).toBe(120);
           }
         }
       }
@@ -152,17 +157,21 @@ describe("Tenderly simulation", () => {
         from: TEST_FROM,
         to: TEST_TO,
       })
-        .pipe(Effect.withConfigProvider(configProvider), Effect.provide(layer))
+        .pipe(
+          Effect.provideService(ConfigProvider.ConfigProvider, configProvider),
+          Effect.provide(layer)
+        )
         .pipe(Effect.exit);
 
       expect(Exit.isFailure(exit)).toBe(true);
       if (Exit.isFailure(exit)) {
-        expect(exit.cause._tag).toBe("Fail");
-        if (exit.cause._tag === "Fail") {
-          expect(exit.cause.error).toBeInstanceOf(TenderlyApiError);
-          if (exit.cause.error instanceof TenderlyApiError) {
-            expect(exit.cause.error.statusCode).toBe(500);
-            expect(exit.cause.error.response).toEqual({ message: "bad" });
+        const error = Cause.findErrorOption(exit.cause);
+        expect(Option.isSome(error)).toBe(true);
+        if (Option.isSome(error)) {
+          expect(error.value).toBeInstanceOf(TenderlyApiError);
+          if (error.value instanceof TenderlyApiError) {
+            expect(error.value.statusCode).toBe(500);
+            expect(error.value.response).toEqual({ message: "bad" });
           }
         }
       }

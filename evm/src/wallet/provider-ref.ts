@@ -8,18 +8,17 @@ export type WalletProviderRefShape = {
   readonly set: (provider: WalletProvider) => Effect.Effect<void>;
 };
 
-export class WalletProviderRef extends Context.Tag("ew3/WalletProviderRef")<
-  WalletProviderRef,
-  WalletProviderRefShape
->() {}
+export class WalletProviderRef extends Context.Service<WalletProviderRef, WalletProviderRefShape>()(
+  "ew3/WalletProviderRef"
+) {}
 
 export const makeWalletProviderRefLive = (
   initial?: WalletProvider
 ): Layer.Layer<WalletProviderRef> =>
-  Layer.scoped(
+  Layer.effect(
     WalletProviderRef,
     Effect.gen(function* () {
-      const ref = yield* SubscriptionRef.make(Option.fromNullable(initial));
+      const ref = yield* SubscriptionRef.make(Option.fromNullishOr(initial));
 
       return WalletProviderRef.of({
         clear: SubscriptionRef.set(ref, Option.none()),

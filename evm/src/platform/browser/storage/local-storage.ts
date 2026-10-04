@@ -31,7 +31,7 @@ export type BrowserStorage = {
 /**
  * Context tag for the BrowserStorage service.
  */
-export const BrowserStorage = Context.GenericTag<BrowserStorage>("ew3/BrowserStorage");
+export const BrowserStorage = Context.Service<BrowserStorage>("ew3/BrowserStorage");
 
 /**
  * Check if localStorage is available in the current environment.

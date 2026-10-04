@@ -10,9 +10,9 @@ export type CacheVisibility = "public" | "private" | "no-store";
  */
 export type CacheControlOptions = {
   readonly visibility: CacheVisibility;
-  readonly maxAge?: Duration.DurationInput;
-  readonly sMaxAge?: Duration.DurationInput;
-  readonly staleWhileRevalidate?: Duration.DurationInput;
+  readonly maxAge?: Duration.Input;
+  readonly sMaxAge?: Duration.Input;
+  readonly staleWhileRevalidate?: Duration.Input;
   readonly mustRevalidate?: boolean;
   readonly proxyRevalidate?: boolean;
   readonly immutable?: boolean;
@@ -28,7 +28,7 @@ export type CacheHeadersOptions = {
   readonly vercelCdnCacheControl?: CacheControlOptions;
 };
 
-const toHeaderSeconds = (input: Duration.DurationInput): number =>
+const toHeaderSeconds = (input: Duration.Input): number =>
   Math.max(0, Math.ceil(Duration.toMillis(input) / 1000));
 
 const serializeCacheControl = (options: CacheControlOptions): string => {

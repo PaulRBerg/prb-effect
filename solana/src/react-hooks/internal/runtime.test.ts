@@ -1,8 +1,106 @@
-import { Cause, Effect, Fiber, Layer, Runtime } from "effect";
+import { Cause, Context, Effect, Exit, Fiber, Layer, Option } from "effect";
 import { describe, expect, it, vi } from "vitest";
-import { buildRuntimeSync } from "./runtime.js";
+import { fromCause } from "./error.js";
+import { buildRuntime, buildRuntimeSync, closeRuntime } from "./runtime.js";
+import { makeScopedRun } from "./scoped-run.js";
 
 describe("react-hooks runtime", () => {
+  it("runPromiseExit returns Success on success effects", async () => {
+    const runtime = buildRuntimeSync(Layer.empty);
+    const exit = await runtime.runPromiseExit(Effect.succeed(123));
+    await closeRuntime(runtime.scope);
+
+    expect(exit._tag).toBe("Success");
+    if (exit._tag === "Success") {
+      expect(exit.value).toBe(123);
+    }
+  });
+
+  it("runPromiseExit returns Failure on failed effects", async () => {
+    const runtime = buildRuntimeSync(Layer.empty);
+    const exit = await runtime.runPromiseExit(Effect.fail("nope"));
+    await closeRuntime(runtime.scope);
+
+    expect(exit._tag).toBe("Failure");
+  });
+
+  it.each([
+    buildRuntime,
+    buildRuntimeSync,
+  ])("exposes native context and preserves failures and defects with %s", async (build) => {
+    const Service = Context.Service<{ readonly value: number }>("runtime-test-service");
+    const runtime = await build(Layer.succeed(Service, { value: 7 }));
+    try {
+      expect(Effect.runSyncWith(runtime.context)(Service)).toEqual({ value: 7 });
+      const error = new Error("expected failure");
+      await expect(runtime.runPromise(Effect.fail(error))).rejects.toBe(error);
+      const failure = await runtime.runPromiseExit(Effect.fail(error));
+      expect(Exit.isFailure(failure)).toBe(true);
+      if (Exit.isFailure(failure)) expect(fromCause(failure.cause)).toBe(error);
+
+      const defect = await runtime.runPromiseExit(Effect.die(error));
+      expect(Exit.isFailure(defect)).toBe(true);
+      if (Exit.isFailure(defect)) {
+        expect(Option.isNone(Cause.findErrorOption(defect.cause))).toBe(true);
+        expect(fromCause(defect.cause)).toBe(defect.cause);
+      }
+    } finally {
+      await closeRuntime(runtime.scope);
+    }
+  });
+
+  it.each([
+    "child",
+    "parent",
+  ] as const)("does not start work when the %s scope closes before fork", async (owner) => {
+    const runtime = buildRuntimeSync(Layer.empty);
+    const pending = makeScopedRun(runtime);
+    if (owner === "parent") await closeRuntime(runtime.scope);
+    const scoped = await pending;
+    if (owner === "child") scoped.close();
+    const work = vi.fn();
+    const fiber = scoped.fork(Effect.sync(work));
+    const exit = await runtime.runPromise(Fiber.await(fiber));
+    expect(Exit.isFailure(exit)).toBe(true);
+    if (Exit.isFailure(exit)) expect(Cause.hasInterrupts(exit.cause)).toBe(true);
+    expect(work).not.toHaveBeenCalled();
+    await closeRuntime(runtime.scope);
+  });
+
+  it("interrupts a hook fiber and waits for its delayed finalizer when its parent closes", async () => {
+    const runtime = buildRuntimeSync(Layer.empty);
+    const scoped = await makeScopedRun(runtime);
+    const started = Promise.withResolvers<void>();
+    const finalizing = Promise.withResolvers<void>();
+    const release = Promise.withResolvers<void>();
+    const fiber = scoped.fork(
+      Effect.gen(function* () {
+        yield* Effect.addFinalizer(() =>
+          Effect.promise(() => {
+            finalizing.resolve();
+            return release.promise;
+          })
+        );
+        started.resolve();
+        yield* Effect.never;
+      })
+    );
+    await started.promise;
+    let closed = false;
+    const closing = closeRuntime(runtime.scope).then(() => {
+      closed = true;
+    });
+    try {
+      await finalizing.promise;
+      expect(closed).toBe(false);
+    } finally {
+      release.resolve();
+      await closing;
+    }
+    const exit = await runtime.runPromise(Fiber.await(fiber));
+    expect(Exit.isFailure(exit)).toBe(true);
+  });
+
   it.each([
     "synchronous",
     "asynchronous",
@@ -10,7 +108,7 @@ describe("react-hooks runtime", () => {
     const releaseGate = Promise.withResolvers<void>();
     let released = false;
     let interrupted = false;
-    const layer = Layer.scopedDiscard(
+    const layer = Layer.effectDiscard(
       Effect.gen(function* () {
         yield* Effect.acquireRelease(Effect.void, () =>
           Effect.gen(function* () {
@@ -18,7 +116,7 @@ describe("react-hooks runtime", () => {
             released = true;
           })
         );
-        yield* Effect.async<void>(() =>
+        yield* Effect.callback<void>(() =>
           Effect.sync(() => {
             interrupted = true;
           })
@@ -32,7 +130,7 @@ describe("react-hooks runtime", () => {
       failure = cause;
     }
     try {
-      expect(String(failure)).toContain("cannot be resolved synchronously");
+      expect(String(failure)).toContain("An asynchronous Effect was executed with Effect.runSync");
       await vi.waitFor(() => {
         expect(interrupted).toBe(true);
       });
@@ -41,13 +139,6 @@ describe("react-hooks runtime", () => {
       await vi.waitFor(() => expect(released).toBe(true));
     } finally {
       releaseGate.resolve();
-      // Release the rejected build even when this regression fails against the old implementation.
-      if (Runtime.isFiberFailure(failure)) {
-        for (const defect of Cause.defects(failure[Runtime.FiberFailureCauseId])) {
-          if (Runtime.isAsyncFiberException(defect))
-            await Effect.runPromise(Fiber.interrupt(defect.fiber));
-        }
-      }
     }
   });
 });

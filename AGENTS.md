@@ -1,12 +1,12 @@
 # prb-effect Development Guidelines
 
-Bun workspace of Effect 3 libraries published to npm as `@prb/effect-*`: `evm` (viem), `evm-safe` (Safe Apps; depends on
+Bun workspace of Effect 4 libraries published to npm as `@prb/effect-*`: `evm` (viem), `evm-safe` (Safe Apps; depends on
 `evm`), `next` (Next.js), `solana`, and `xstate` (xState v5). Declare shared dependency versions in the root
 `package.json` workspace catalogs and reference them with `catalog:` specifiers.
 
 ## Prerequisites and Setup
 
-Install [Node.js](https://nodejs.org) v24+, [Bun](https://bun.sh), [Just](https://github.com/casey/just), and
+Install [Node.js](https://nodejs.org) v24 or v26+, [Bun](https://bun.sh), [Just](https://github.com/casey/just), and
 [Ni](https://github.com/antfu-collective/ni) (`na`, `ni`, `nr`), then run `bun install` at the repository root.
 
 ## Commands
@@ -75,7 +75,7 @@ Rules:
 ### Effect Patterns
 
 - Compose with `Effect.gen`.
-- Model services as `Context.Tag` classes with `Layer` implementations.
+- Model services as `Context.Service` classes with `Layer` implementations.
 - Define expected errors as `Schema.TaggedError` classes and raise them with `Effect.fail`; use `Effect.die` for bugs.
 - Wrap Promises that can reject with `Effect.tryPromise` and map the cause to a tagged error. Reserve `Effect.promise`
   for Promises that cannot reject and `Effect.sync` for synchronous side effects.

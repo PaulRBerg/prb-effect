@@ -1,5 +1,6 @@
 import { describe, expect, it } from "@effect/vitest";
-import { Effect, Exit, Fiber, TestClock } from "effect";
+import { Effect, Exit, Fiber } from "effect";
+import * as TestClock from "effect/testing/TestClock";
 import {
   TransactionNotFoundError,
   TransactionReceiptNotFoundError,
@@ -14,7 +15,7 @@ describe("receipt retry schedule", () => {
     adjust: Parameters<typeof TestClock.adjust>[0] = "10 seconds"
   ) =>
     Effect.gen(function* () {
-      const fiber = yield* Effect.fork(effect);
+      const fiber = yield* Effect.forkChild(effect);
       yield* TestClock.adjust(adjust);
       return yield* Fiber.join(fiber);
     });

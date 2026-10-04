@@ -28,8 +28,8 @@ export { makeTestReceipt, TEST_RECEIPT } from "./_fixtures/receipts.js";
 
 // Test helpers
 export {
-  assertLeft,
-  assertRight,
+  assertFailure,
+  assertSuccess,
   expectTaggedFailure,
   makeChainIdGetter,
   makeWalletChainIdGetter,

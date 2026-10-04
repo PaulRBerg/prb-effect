@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@effect/vitest";
-import { Effect, Exit, Layer, ManagedRuntime } from "effect";
+import { Cause, Context, Effect, Exit, Layer, ManagedRuntime } from "effect";
 import { vi } from "vitest";
 
 // Mock server-only
@@ -11,12 +11,26 @@ const workAsyncStorage = new AsyncLocalStorage();
 const workUnitAsyncStorage = new AsyncLocalStorage();
 
 // Mock unstable_rethrow
-const unstable_rethrow = vi.fn((e) => {
-  throw e;
-});
+const { unstable_rethrow, notFound, redirect, permanentRedirect } = vi.hoisted(() => ({
+  notFound: vi.fn(() => {
+    throw new Error("next-not-found");
+  }),
+  permanentRedirect: vi.fn((_url: string) => {
+    throw new Error("next-permanent-redirect");
+  }),
+  redirect: vi.fn((_url: string) => {
+    throw new Error("next-redirect");
+  }),
+  unstable_rethrow: vi.fn((error: unknown) => {
+    if (error instanceof Error && "digest" in error) throw error;
+  }),
+}));
 
 vi.mock("next/navigation.js", () => ({
   unstable_rethrow,
+  notFound,
+  redirect,
+  permanentRedirect,
 }));
 
 vi.mock("next/dist/server/app-render/work-async-storage.external.js", () => ({
@@ -30,6 +44,7 @@ vi.mock("next/dist/server/app-render/work-unit-async-storage.external.js", () =>
 // Import after mocks
 const { executeWithRuntimeExit, executeWithRuntime } = await import("./executor.js");
 const { ContextWrapperService } = await import("./async-context.js");
+const { NotFoundError, RedirectError } = await import("../navigation/index.js");
 
 describe("executeWithRuntimeExit", () => {
   it("provides ContextWrapperService so effect can use it", async () => {
@@ -81,12 +96,10 @@ describe("executeWithRuntimeExit", () => {
   });
 
   it("works with custom runtime", async () => {
-    class TestService extends Effect.Service<TestService>()("TestService", {
-      effect: Effect.succeed({
-        _tag: "TestService",
-        getValue: () => "custom",
-      }),
-    }) {}
+    class TestService extends Context.Service<
+      TestService,
+      { readonly _tag: string; readonly getValue: () => string }
+    >()("TestService") {}
 
     const layer = Layer.succeed(TestService, {
       _tag: "TestService",
@@ -154,12 +167,10 @@ describe("executeWithRuntime", () => {
   });
 
   it("works with custom runtime", async () => {
-    class TestService extends Effect.Service<TestService>()("TestService", {
-      effect: Effect.succeed({
-        _tag: "TestService",
-        getValue: () => "runtime-value",
-      }),
-    }) {}
+    class TestService extends Context.Service<
+      TestService,
+      { readonly _tag: string; readonly getValue: () => string }
+    >()("TestService") {}
 
     const layer = Layer.succeed(TestService, {
       _tag: "TestService",
@@ -177,5 +188,47 @@ describe("executeWithRuntime", () => {
     expect(result).toBe("runtime-value");
 
     await runtime.dispose();
+  });
+});
+
+describe("navigation and Cause boundaries", () => {
+  it("converts typed not-found errors even in mixed causes", async () => {
+    const cause = Cause.fromReasons<InstanceType<typeof NotFoundError> | Error>([
+      Cause.makeDieReason(new Error("ordinary defect")),
+      Cause.makeFailReason(new Error("other failure")),
+      Cause.makeFailReason(new NotFoundError({})),
+      Cause.makeInterruptReason(),
+    ]);
+    await expect(executeWithRuntime(undefined, Effect.failCause(cause))).rejects.toThrow(
+      "next-not-found"
+    );
+    expect(notFound).toHaveBeenCalled();
+  });
+
+  it.each(["temporary", "permanent"] as const)("converts typed %s redirects", async (type) => {
+    const error = new RedirectError({ type, url: "/destination" });
+    await expect(executeWithRuntime(undefined, Effect.fail(error))).rejects.toThrow(
+      type === "permanent" ? "next-permanent-redirect" : "next-redirect"
+    );
+    expect(type === "permanent" ? permanentRedirect : redirect).toHaveBeenCalledWith(
+      "/destination"
+    );
+  });
+
+  it("rethrows native Next control flow among multiple defects", async () => {
+    const navigation = Object.assign(new Error("native redirect"), {
+      digest: "NEXT_REDIRECT;replace;/destination;307;",
+    });
+    const cause = Cause.fromReasons([
+      Cause.makeDieReason(new Error("other defect")),
+      Cause.makeDieReason(navigation),
+    ]);
+    await expect(executeWithRuntime(undefined, Effect.failCause(cause))).rejects.toBe(navigation);
+  });
+
+  it("keeps interruption-only exits and throws their boundary error", async () => {
+    const exit = await executeWithRuntimeExit(undefined, Effect.interrupt);
+    expect(Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause)).toBe(true);
+    await expect(executeWithRuntime(undefined, Effect.interrupt)).rejects.toBeInstanceOf(Error);
   });
 });

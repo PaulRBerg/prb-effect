@@ -1,9 +1,9 @@
 import { describe, expect, it } from "@effect/vitest";
-import { Chunk, Effect, Layer, Stream } from "effect";
+import { Effect, Layer, Stream } from "effect";
 import type { Address } from "viem";
 import { erc20Abi } from "viem";
 import { EventWatchError } from "#src/core/index.js";
-import type { DecodedEvent } from "#src/events/index.js";
+import type { DecodedEvent, EventStreamShape } from "#src/events/index.js";
 import { EventStream, ReliableEventStream, ReliableEventStreamLive } from "#src/events/index.js";
 import { makeMockPublicClientLayer, TEST_ADDRESS, TEST_CHAIN_ID } from "#src/testing-kit/index.js";
 
@@ -24,7 +24,7 @@ const transferEvent: DecodedEvent<typeof erc20Abi, "Transfer"> = {
 const SingleEventStreamLive = Layer.succeed(EventStream, {
   decodeReceipt: () => Effect.succeed([]),
   watch: () => Effect.succeed(Stream.make(transferEvent)),
-} as EventStream["Type"]);
+} as EventStreamShape);
 
 // EventStream mock whose stream fails with an EventWatchError.
 const FailingEventStreamLive = Layer.succeed(EventStream, {
@@ -38,7 +38,7 @@ const FailingEventStreamLive = Layer.succeed(EventStream, {
         })
       )
     ),
-} as EventStream["Type"]);
+} as EventStreamShape);
 
 describe("ReliableEventStream (resilience)", () => {
   it.live("keeps emitting after a transient getBlockNumber failure", () => {
@@ -75,13 +75,13 @@ describe("ReliableEventStream (resilience)", () => {
       // The first confirmation poll fails and is retried; the event must still
       // be emitted once a later poll succeeds — proving the loop did not die.
       const events = yield* Stream.runCollect(Stream.take(stream, 1)).pipe(
-        Effect.timeoutFail({
+        Effect.timeoutOrElse({
           duration: "5 seconds",
-          onTimeout: () => new Error("event never emitted after transient poll failure"),
+          orElse: () => Effect.fail(new Error("event never emitted after transient poll failure")),
         })
       );
 
-      expect(Chunk.toReadonlyArray(events)).toHaveLength(1);
+      expect(events).toHaveLength(1);
       expect(polls).toBeGreaterThanOrEqual(2);
     }).pipe(Effect.provide(layer));
   });
@@ -113,9 +113,9 @@ describe("ReliableEventStream (resilience)", () => {
       // `flip` exposes the typed error; a hang trips the timeout and a defect
       // would die here — both fail the test.
       const error = yield* Stream.runDrain(stream).pipe(
-        Effect.timeoutFail({
+        Effect.timeoutOrElse({
           duration: "5 seconds",
-          onTimeout: () => new EventWatchError({ chainId: -1, message: "stream hung" }),
+          orElse: () => Effect.fail(new EventWatchError({ chainId: -1, message: "stream hung" })),
         }),
         Effect.flip
       );

@@ -1,4 +1,4 @@
-import { Context, Effect, Layer, Option, Stream } from "effect";
+import { Context, Effect, Layer, Option, Queue, Stream, SubscriptionRef } from "effect";
 import type { Address, Hex, TypedData } from "viem";
 import { parseHexInt } from "#src/internal/index.js";
 import type {
@@ -21,78 +21,102 @@ import {
 export const UNKNOWN_CHAIN_ID = 0;
 
 const accountsStreamFromProvider = (provider: WalletProvider) =>
-  Stream.async<Address[], never>((emit) => {
-    provider
-      .request({ method: "eth_accounts" })
-      .then((result) => {
-        const accounts = (result as Address[]) || [];
-        emit.single(accounts);
-      })
-      .catch(() => {
-        emit.single([]);
-      });
+  Stream.callback<Address[], never>((queue) =>
+    Effect.gen(function* () {
+      let active = true;
+      yield* Effect.acquireRelease(
+        Effect.sync(() => {
+          provider
+            .request({ method: "eth_accounts" })
+            .then((result) => {
+              const accounts = (result as Address[]) || [];
+              if (active) Queue.offerUnsafe(queue, accounts);
+            })
+            .catch(() => {
+              if (active) Queue.offerUnsafe(queue, []);
+            });
 
-    const handleAccountsChanged = (...args: unknown[]) => {
-      const accounts = args[0] as Address[];
-      emit.single(accounts);
-    };
+          const handleAccountsChanged = (...args: unknown[]) => {
+            const accounts = args[0] as Address[];
+            if (active) Queue.offerUnsafe(queue, accounts);
+          };
 
-    if ("on" in provider && typeof provider.on === "function") {
-      (
-        provider as {
-          on: (event: string, handler: (...args: unknown[]) => void) => void;
-        }
-      ).on("accountsChanged", handleAccountsChanged);
-    }
-
-    return Effect.sync(() => {
-      if ("removeListener" in provider && typeof provider.removeListener === "function") {
-        (
-          provider as {
-            removeListener: (event: string, handler: (...args: unknown[]) => void) => void;
+          if ("on" in provider && typeof provider.on === "function") {
+            (
+              provider as {
+                on: (event: string, handler: (...args: unknown[]) => void) => void;
+              }
+            ).on("accountsChanged", handleAccountsChanged);
           }
-        ).removeListener("accountsChanged", handleAccountsChanged);
-      }
-    });
-  });
+
+          return () => {
+            if ("removeListener" in provider && typeof provider.removeListener === "function") {
+              (
+                provider as {
+                  removeListener: (event: string, handler: (...args: unknown[]) => void) => void;
+                }
+              ).removeListener("accountsChanged", handleAccountsChanged);
+            }
+          };
+        }),
+        (unsubscribe) =>
+          Effect.sync(() => {
+            active = false;
+            unsubscribe();
+          })
+      );
+    })
+  );
 
 const chainIdStreamFromProvider = (provider: WalletProvider) =>
-  Stream.async<number, never>((emit) => {
-    provider
-      .request({ method: "eth_chainId" })
-      .then((result) => {
-        const chainIdHex = result as string;
-        const parsed = Option.getOrElse(parseHexInt(chainIdHex), () => UNKNOWN_CHAIN_ID);
-        emit.single(parsed);
-      })
-      .catch(() => {
-        emit.single(UNKNOWN_CHAIN_ID);
-      });
+  Stream.callback<number, never>((queue) =>
+    Effect.gen(function* () {
+      let active = true;
+      yield* Effect.acquireRelease(
+        Effect.sync(() => {
+          provider
+            .request({ method: "eth_chainId" })
+            .then((result) => {
+              const chainIdHex = result as string;
+              const parsed = Option.getOrElse(parseHexInt(chainIdHex), () => UNKNOWN_CHAIN_ID);
+              if (active) Queue.offerUnsafe(queue, parsed);
+            })
+            .catch(() => {
+              if (active) Queue.offerUnsafe(queue, UNKNOWN_CHAIN_ID);
+            });
 
-    const handleChainChanged = (...args: unknown[]) => {
-      const chainIdHex = args[0] as string;
-      const parsed = Option.getOrElse(parseHexInt(chainIdHex), () => UNKNOWN_CHAIN_ID);
-      emit.single(parsed);
-    };
+          const handleChainChanged = (...args: unknown[]) => {
+            const chainIdHex = args[0] as string;
+            const parsed = Option.getOrElse(parseHexInt(chainIdHex), () => UNKNOWN_CHAIN_ID);
+            if (active) Queue.offerUnsafe(queue, parsed);
+          };
 
-    if ("on" in provider && typeof provider.on === "function") {
-      (
-        provider as {
-          on: (event: string, handler: (...args: unknown[]) => void) => void;
-        }
-      ).on("chainChanged", handleChainChanged);
-    }
-
-    return Effect.sync(() => {
-      if ("removeListener" in provider && typeof provider.removeListener === "function") {
-        (
-          provider as {
-            removeListener: (event: string, handler: (...args: unknown[]) => void) => void;
+          if ("on" in provider && typeof provider.on === "function") {
+            (
+              provider as {
+                on: (event: string, handler: (...args: unknown[]) => void) => void;
+              }
+            ).on("chainChanged", handleChainChanged);
           }
-        ).removeListener("chainChanged", handleChainChanged);
-      }
-    });
-  });
+
+          return () => {
+            if ("removeListener" in provider && typeof provider.removeListener === "function") {
+              (
+                provider as {
+                  removeListener: (event: string, handler: (...args: unknown[]) => void) => void;
+                }
+              ).removeListener("chainChanged", handleChainChanged);
+            }
+          };
+        }),
+        (unsubscribe) =>
+          Effect.sync(() => {
+            active = false;
+            unsubscribe();
+          })
+      );
+    })
+  );
 
 /**
  * Service for wallet account management and signing operations
@@ -116,10 +140,9 @@ export type WalletServiceShape = {
   ) => Effect.Effect<Hex, SignTxError | AccountNotConnectedError>;
 };
 
-export class WalletService extends Context.Tag("ew3/WalletService")<
-  WalletService,
-  WalletServiceShape
->() {}
+export class WalletService extends Context.Service<WalletService, WalletServiceShape>()(
+  "ew3/WalletService"
+) {}
 
 /**
  * Create a live implementation of WalletService
@@ -202,23 +225,19 @@ export const WalletServiceFromProviderRefLive = Layer.effect(
       return current.value;
     });
 
-    const accountsStream = providerRef.ref.changes.pipe(
-      Stream.flatMap(
-        (current) =>
-          Option.isNone(current)
-            ? Stream.succeed([] as Address[])
-            : accountsStreamFromProvider(current.value),
-        { switch: true }
+    const accountsStream = SubscriptionRef.changes(providerRef.ref).pipe(
+      Stream.switchMap((current) =>
+        Option.isNone(current)
+          ? Stream.succeed([] as Address[])
+          : accountsStreamFromProvider(current.value)
       )
     );
 
-    const chainIdStream = providerRef.ref.changes.pipe(
-      Stream.flatMap(
-        (current) =>
-          Option.isNone(current)
-            ? Stream.succeed(UNKNOWN_CHAIN_ID)
-            : chainIdStreamFromProvider(current.value),
-        { switch: true }
+    const chainIdStream = SubscriptionRef.changes(providerRef.ref).pipe(
+      Stream.switchMap((current) =>
+        Option.isNone(current)
+          ? Stream.succeed(UNKNOWN_CHAIN_ID)
+          : chainIdStreamFromProvider(current.value)
       )
     );
 

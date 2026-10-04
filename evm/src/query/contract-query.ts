@@ -43,10 +43,9 @@ export type ContractQueryShape = {
   >;
 };
 
-export class ContractQuery extends Context.Tag("ew3/ContractQuery")<
-  ContractQuery,
-  ContractQueryShape
->() {}
+export class ContractQuery extends Context.Service<ContractQuery, ContractQueryShape>()(
+  "ew3/ContractQuery"
+) {}
 
 const stableStringify = (value: unknown): string =>
   JSON.stringify(value, (_, v) => (typeof v === "bigint" ? v.toString() : v));

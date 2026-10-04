@@ -84,7 +84,9 @@ export type EnsResolverShape = {
   ) => Effect.Effect<string, EnsTextNotFoundError | EnsResolutionError | ClientNotFoundError>;
 };
 
-export class EnsResolver extends Context.Tag("ew3/EnsResolver")<EnsResolver, EnsResolverShape>() {}
+export class EnsResolver extends Context.Service<EnsResolver, EnsResolverShape>()(
+  "ew3/EnsResolver"
+) {}
 
 function normalizeName(name: string): Effect.Effect<string, EnsResolutionError> {
   return Effect.try({

@@ -106,7 +106,7 @@ export const SafeWriteExecutionAdapterLive = (config: SafeWriteExecutionAdapterC
         canHandle: (params) =>
           safeApps.getInfo().pipe(
             Effect.map((info) => (params.chainId == null ? true : info.chainId === params.chainId)),
-            Effect.catchAll(() => Effect.succeed(false))
+            Effect.catch(() => Effect.succeed(false))
           ),
         writeAndTrack: <
           TAbi extends Abi,
@@ -128,25 +128,25 @@ export const SafeWriteExecutionAdapterLive = (config: SafeWriteExecutionAdapterC
                   args: params.args as readonly unknown[] | undefined,
                   functionName: params.functionName as string,
                 }),
-            }).pipe(Effect.either);
+            }).pipe(Effect.result);
 
-            if (encodedData._tag === "Left") {
+            if (encodedData._tag === "Failure") {
               const stateRef = yield* SubscriptionRef.make<TxState>(
-                toFailedState("unknown", encodedData.left.message)
+                toFailedState("unknown", encodedData.failure.message)
               );
 
               return {
                 actions: {
-                  cancel: () => Effect.fail(encodedData.left),
-                  speedup: () => Effect.fail(encodedData.left),
+                  cancel: () => Effect.fail(encodedData.failure),
+                  speedup: () => Effect.fail(encodedData.failure),
                 },
                 stateRef,
-                terminal: Effect.fail(encodedData.left),
+                terminal: Effect.fail(encodedData.failure),
               } satisfies WriteAndTrackExecution<TAbi>;
             }
 
             const safeTx = {
-              data: encodedData.right,
+              data: encodedData.success,
               to: params.address,
               value: params.value ?? 0n,
             };
@@ -163,7 +163,7 @@ export const SafeWriteExecutionAdapterLive = (config: SafeWriteExecutionAdapterC
             const stateRef = yield* SubscriptionRef.make<TxState>(initialTxState);
 
             yield* Effect.forkScoped(
-              Stream.runForEach(safeExecution.stateRef.changes, (safeState) =>
+              Stream.runForEach(SubscriptionRef.changes(safeExecution.stateRef), (safeState) =>
                 SubscriptionRef.set(stateRef, mapSafeStateToTxState(safeState))
               )
             );
@@ -180,7 +180,7 @@ export const SafeWriteExecutionAdapterLive = (config: SafeWriteExecutionAdapterC
                       return decodeReceiptLogs(safeTerminal.receipt, params.abi).pipe(
                         // Event decoding is best-effort: never fail the terminal over a log we can't
                         // decode against the ABI. Fall back to `[]` with a debug breadcrumb.
-                        Effect.catchAll((cause) =>
+                        Effect.catch((cause) =>
                           Effect.logDebug("Failed to decode Safe receipt logs").pipe(
                             Effect.annotateLogs({
                               hash: safeTerminal.onchainHash,

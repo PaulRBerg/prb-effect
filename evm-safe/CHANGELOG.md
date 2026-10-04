@@ -21,6 +21,25 @@ The format is based on [Common Changelog](https://common-changelog.org/).
 [4.1.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm-safe@4.1.0
 [5.0.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm-safe@5.0.0
 [5.1.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm-safe@5.1.0
+[6.0.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm-safe@6.0.0
+
+## [6.0.0] - 2026-10-04
+
+### Changed
+
+- **Breaking:** Require `effect@^4.0.0` and `@prb/effect-evm@^5.0.0`; remove the `@effect/platform` peer dependency
+- **Breaking:** Expose native Effect 4 services through `Context.Service`, duration inputs through `Duration.Input`, and
+  expected outcomes through `Effect.result` / `Result` (`Success.success`, `Failure.failure`)
+- Use `Effect.runPromiseWith(context)` / `Effect.runForkWith(context)` for captured service contexts; EVM React runtimes
+  expose `.context` instead of `.runtime`
+- Preserve decimal string encoding for simulation error bigint fields with `Schema.BigIntFromString`
+
+### Fixed
+
+- Complete terminal waiters on background defects and owner scope interruption, including closure before worker startup
+
+See [the v6 migration guide](./README.md#migration-to-v6-effect-4) for native service, runner, error, state stream,
+scoping, and testing examples.
 
 ## [5.1.0] - 2026-10-03
 

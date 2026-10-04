@@ -1,9 +1,16 @@
 import { describe, expect, it } from "@effect/vitest";
 import type { Scope } from "effect";
-import { Chunk, Effect, Layer, Stream } from "effect";
+import { Deferred, Effect, Fiber, Layer, Stream, SubscriptionRef } from "effect";
+import * as TestClock from "effect/testing/TestClock";
 import type { Hash, TransactionReceipt } from "viem";
 import { MIN_TX_GAS } from "#src/constants/index.js";
-import { makeMockPublicClientLayer, TEST_CHAIN_ID, TEST_TX_HASH } from "#src/testing-kit/index.js";
+import { ReceiptTimeoutError } from "#src/core/index.js";
+import {
+  assertFailure,
+  makeMockPublicClientLayer,
+  TEST_CHAIN_ID,
+  TEST_TX_HASH,
+} from "#src/testing-kit/index.js";
 import { TxManager, TxManagerLive, TxReplacement } from "#src/tx/index.js";
 
 const txReplacementLayer = Layer.succeed(
@@ -46,6 +53,61 @@ const provideManager = <A, E>(
   );
 
 describe("TxManager (A6 unit)", () => {
+  it.effect("caps retries by the total deadline and forwards only remaining time", () =>
+    Effect.gen(function* () {
+      const timeouts: number[] = [];
+      const program = Effect.gen(function* () {
+        const manager = yield* TxManager;
+        const fiber = yield* Effect.forkChild(
+          manager.waitForReceipt(TEST_CHAIN_ID, TEST_TX_HASH, 3000).pipe(Effect.result)
+        );
+        yield* TestClock.adjust(3000);
+        return yield* Fiber.join(fiber);
+      });
+      const result = yield* provideManager(program, {
+        waitForTransactionReceipt: (params: { hash: Hash; timeout?: number }) => {
+          timeouts.push(params.timeout ?? 0);
+          return timeouts.length === 1
+            ? Promise.reject(new Error("ECONNRESET"))
+            : new Promise<TransactionReceipt>(() => {
+                /* Receipt stays pending until interrupted. */
+              });
+        },
+      });
+      const error = assertFailure(result);
+      expect(error).toBeInstanceOf(ReceiptTimeoutError);
+      expect(timeouts).toHaveLength(2);
+      expect(timeouts[0]).toBe(3000);
+      expect(timeouts[1]).toBeGreaterThan(0);
+      expect(timeouts[1]).toBeLessThan(3000);
+    })
+  );
+
+  it.effect("unsubscribes the pending block watcher when its owner scope closes", () =>
+    Effect.gen(function* () {
+      const started = yield* Deferred.make<void>();
+      let unwatches = 0;
+      const program = Effect.gen(function* () {
+        const manager = yield* TxManager;
+        yield* manager.track(TEST_CHAIN_ID, TEST_TX_HASH);
+        yield* Deferred.await(started);
+      });
+      yield* provideManager(program, {
+        waitForTransactionReceipt: () =>
+          new Promise<TransactionReceipt>(() => {
+            /* Receipt stays pending until interrupted. */
+          }),
+        watchBlockNumber: () => {
+          Deferred.doneUnsafe(started, Effect.void);
+          return () => {
+            unwatches += 1;
+          };
+        },
+      });
+      expect(unwatches).toBe(1);
+    })
+  );
+
   describe("track receipt retry", () => {
     it.live(
       "recovers from one transient transport error and ends mined (not failed)",
@@ -57,12 +119,12 @@ describe("TxManager (A6 unit)", () => {
             const manager = yield* TxManager;
             const ref = yield* manager.track(TEST_CHAIN_ID, TEST_TX_HASH);
 
-            const terminal = yield* ref.changes.pipe(
+            const terminal = yield* SubscriptionRef.changes(ref).pipe(
               Stream.filter((state) => state.status === "mined" || state.status === "failed"),
               Stream.take(1),
               Stream.runCollect
             );
-            return Chunk.toArray(terminal)[0];
+            return terminal[0];
           });
 
           const result = yield* provideManager(program, {
@@ -96,12 +158,12 @@ describe("TxManager (A6 unit)", () => {
 
           // Collect pending states (emitted from watched blocks) up to and including
           // the eventual mined state.
-          const states = yield* ref.changes.pipe(
+          const states = yield* SubscriptionRef.changes(ref).pipe(
             Stream.filter((state) => state.status === "pending" || state.status === "mined"),
             Stream.takeUntil((state) => state.status === "mined"),
             Stream.runCollect
           );
-          return Chunk.toArray(states);
+          return states;
         });
 
         const states = yield* provideManager(program, {

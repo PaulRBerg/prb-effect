@@ -1,15 +1,16 @@
 // @vitest-environment jsdom
 
-import { Context, Effect, Layer } from "effect";
+import { Context, Effect, Layer, SubscriptionRef } from "effect";
 import * as React from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { renderToString } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { useSubscriptionRef } from "./primitives/use-stream.js";
 import { EffectSolanaProviderSync, useEffectSolanaRuntime } from "./provider.js";
 
 type Resource = { readonly name: string; closed: boolean };
-const Resource = Context.GenericTag<Resource>("provider-test-resource");
+const Resource = Context.Service<Resource>("provider-test-resource");
 const actEnvironment = globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean };
 actEnvironment.IS_REACT_ACT_ENVIRONMENT = true;
 let root: ReturnType<typeof createRoot> | undefined;
@@ -21,7 +22,7 @@ afterEach(async () => {
 });
 
 function resourceLayer(name: string, acquired: Resource[]) {
-  return Layer.scoped(
+  return Layer.effect(
     Resource,
     Effect.acquireRelease(
       Effect.sync(() => {
@@ -45,6 +46,35 @@ async function mount(node: React.ReactNode) {
 }
 
 describe("EffectSolanaProviderSync lifecycle", () => {
+  it("keeps subscription renders stable and follows a replacement ref", async () => {
+    const first = Effect.runSync(SubscriptionRef.make(1));
+    const second = Effect.runSync(SubscriptionRef.make(10));
+    function Probe({ ref }: { readonly ref: SubscriptionRef.SubscriptionRef<number> }) {
+      return String(useSubscriptionRef(ref, 0));
+    }
+    function tree(ref: SubscriptionRef.SubscriptionRef<number>) {
+      return React.createElement(EffectSolanaProviderSync, {
+        children: React.createElement(Probe, { ref }),
+        layer: Layer.empty,
+      });
+    }
+
+    const container = await mount(tree(first));
+    expect(container.textContent).toBe("1");
+    await act(async () => {
+      await Effect.runPromise(SubscriptionRef.set(first, 2));
+    });
+    expect(container.textContent).toBe("2");
+
+    await act(async () => root?.render(tree(second)));
+    expect(container.textContent).toBe("10");
+    await act(async () => {
+      await Effect.runPromise(SubscriptionRef.set(first, 3));
+      await Effect.runPromise(SubscriptionRef.set(second, 11));
+    });
+    expect(container.textContent).toBe("11");
+  });
+
   it("renders fallback on the server without acquiring resources", () => {
     const acquired: Resource[] = [];
     const html = renderToString(
@@ -152,7 +182,7 @@ describe("EffectSolanaProviderSync lifecycle", () => {
     const acquired: Resource[] = [];
     const onUnhandledError = vi.fn();
     const error = new Error("layer failed");
-    const layer = Layer.scopedDiscard(
+    const layer = Layer.effectDiscard(
       Effect.gen(function* () {
         yield* Layer.build(resourceLayer("failed", acquired));
         return yield* Effect.fail(error);

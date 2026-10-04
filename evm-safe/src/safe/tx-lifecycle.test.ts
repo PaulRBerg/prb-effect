@@ -1,5 +1,6 @@
 import { describe, expect, it } from "@effect/vitest";
-import { Effect, Exit, Fiber, Layer, Option, TestClock } from "effect";
+import { Effect, Exit, Layer, Option } from "effect";
+import * as TestClock from "effect/testing/TestClock";
 import type { Hash, Hex, TransactionReceipt } from "viem";
 import { SafeMultisigTxLookupError } from "./errors.js";
 import type { SafeAppsServiceShape } from "./service.js";
@@ -33,7 +34,7 @@ function makeSafeAppsServiceLayer(
 ) {
   const service = SafeAppsService.of({
     enableOffchainSigning: () => Effect.void,
-    getInfo: () => Effect.dieMessage("unused in this test"),
+    getInfo: () => Effect.die(new Error("unused in this test")),
     getOffchainSignature: () => Effect.succeed(Option.some(TEST_SIGNATURE)),
     getTx,
     pollOffchainSignature: () =>
@@ -41,9 +42,9 @@ function makeSafeAppsServiceLayer(
         messageHash: TEST_MESSAGE_HASH,
         signature: TEST_SIGNATURE,
       }),
-    sendTxs: () => Effect.dieMessage("unused in this test"),
-    signTypedData: () => Effect.dieMessage("unused in this test"),
-    waitForTxReceipt: () => Effect.dieMessage("unused in this test"),
+    sendTxs: () => Effect.die(new Error("unused in this test")),
+    signTypedData: () => Effect.die(new Error("unused in this test")),
+    waitForTxReceipt: () => Effect.die(new Error("unused in this test")),
   } as unknown as SafeAppsServiceShape);
 
   return Layer.succeed(SafeAppsService, service);
@@ -62,13 +63,13 @@ describe("waitForSafeMultisigTx", () => {
               status: "SUCCESS",
             })
       );
-      const fiber = yield* Effect.fork(
+      const fiber = yield* Effect.forkChild(
         waitForSafeMultisigTx(TEST_SAFE_TX_HASH, () => Effect.never, {
           maxWait: "1 second",
         }).pipe(Effect.provide(layer))
       );
       yield* TestClock.adjust("1 second");
-      const completed = yield* Fiber.poll(fiber);
+      const completed = yield* Effect.sync(() => Option.fromUndefinedOr(fiber.pollUnsafe()));
       expect(Option.isSome(completed)).toBe(true);
       if (Option.isSome(completed)) {
         expect(Exit.isSuccess(completed.value)).toBe(true);

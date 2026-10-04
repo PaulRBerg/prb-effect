@@ -87,7 +87,7 @@ describe("BalanceService (Live)", () => {
 
         expect(Exit.isFailure(exit)).toBe(true);
         if (Exit.isFailure(exit)) {
-          const error = Cause.failureOption(exit.cause);
+          const error = Cause.findErrorOption(exit.cause);
           expect(error._tag).toBe("Some");
           if (error._tag === "Some") {
             expect(error.value).toBeInstanceOf(TransportError);
@@ -108,7 +108,7 @@ describe("BalanceService (Live)", () => {
 
         expect(Exit.isFailure(exit)).toBe(true);
         if (Exit.isFailure(exit)) {
-          const error = Cause.failureOption(exit.cause);
+          const error = Cause.findErrorOption(exit.cause);
           if (error._tag === "Some") {
             expect(error.value).toBeInstanceOf(ClientNotFoundError);
           }

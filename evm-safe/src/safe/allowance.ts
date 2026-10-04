@@ -108,17 +108,17 @@ export const safeMultisigAllowAndWrite = Effect.fn("safeMultisigAllowAndWrite")(
 
   // Approve first, then main transaction
   const batched = yield* safeMultisigBatchWrite([approveTx, mainTransaction], token.chainId).pipe(
-    Effect.either
+    Effect.result
   );
 
-  if (batched._tag === "Right") {
+  if (batched._tag === "Success") {
     return {
       _tag: "batched",
-      safeTxHash: batched.right,
+      safeTxHash: batched.success,
     } satisfies SafeMultisigAllowAndWriteResult;
   }
 
-  const error = batched.left;
+  const error = batched.failure;
 
   if (!(error instanceof SafeMultiSendUnavailableError) || strategy === "require") {
     return yield* Effect.fail(error);

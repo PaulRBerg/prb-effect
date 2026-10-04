@@ -9,7 +9,7 @@
  *
  * @module
  */
-import { Effect, Option } from "effect";
+import { Effect, References } from "effect";
 import * as Context_ from "effect/Context";
 import * as Layer from "effect/Layer";
 import * as ManagedRuntime from "effect/ManagedRuntime";
@@ -53,8 +53,8 @@ type AnyWithProps = {
 /**
  * Extracts the provided environment from a `Layer`.
  */
-type LayerSuccess<L> = L extends Layer.Layer.Any
-  ? Layer.Layer.Success<L>
+type LayerSuccess<L> = L extends Layer.Any
+  ? Layer.Success<L>
   : L extends RuntimeLayer<infer R>
     ? R
     : never;
@@ -69,7 +69,7 @@ type RuntimeLayer<R> = { readonly _tag: "RuntimeLayer"; readonly _R: R };
  */
 export interface Next<
   in out Tag extends string,
-  out L extends Layer.Layer.Any | RuntimeLayer<unknown> | undefined,
+  out L extends Layer.Any | RuntimeLayer<unknown> | undefined,
   out Middleware extends NextMiddleware.TagClassAny = never,
 > extends Pipeable {
   readonly _tag: Tag;
@@ -105,11 +105,11 @@ export interface Next<
     middleware: M
   ): Next<Tag, L, Middleware | (M extends NextMiddleware.TagClassAny ? M : never)>;
   readonly middlewares: readonly Middleware[];
-  readonly paramsSchema?: Schema.Schema.Any;
-  readonly runtime?: L extends Layer.Layer.Any
-    ? ManagedRuntime.ManagedRuntime<Layer.Layer.Success<L>, Layer.Layer.Error<L>>
+  readonly paramsSchema?: Schema.Constraint;
+  readonly runtime?: L extends Layer.Any
+    ? ManagedRuntime.ManagedRuntime<Layer.Success<L>, Layer.Error<L>>
     : ManagedRuntime.ManagedRuntime<unknown, unknown>;
-  readonly searchParamsSchema?: Schema.Schema.Any;
+  readonly searchParamsSchema?: Schema.Constraint;
   new (_: never): object;
 
   readonly [TypeId]: TypeId;
@@ -134,7 +134,7 @@ const Proto = {
           const tags = middlewares;
           handlerEffect = createMiddlewareChain(
             tags,
-            (tag) => Context_.unsafeGet(context, tag),
+            (tag) => Context_.getUnsafe(context, tag),
             handlerEffect,
             { props: args }
           );
@@ -156,7 +156,7 @@ const Proto = {
   middleware(this: AnyWithProps, middleware: NextMiddleware.TagClassAny) {
     // While compile-time checks were relaxed for generic function compatibility,
     // runtime will fail with a clear error if middleware isn't in the Layer's context.
-    // This occurs via Context_.unsafeGet in the middleware chain execution (line 135).
+    // This occurs via Context_.getUnsafe in the middleware chain execution.
     if (this.runtime) {
       return makeProto({
         _tag: this._tag,
@@ -176,14 +176,14 @@ const Proto = {
 
 const makeProto = <
   const Tag extends string,
-  const L extends Layer.Layer.Any | RuntimeLayer<unknown> | undefined,
+  const L extends Layer.Any | RuntimeLayer<unknown> | undefined,
   Middleware extends NextMiddleware.TagClassAny,
 >(options: {
   readonly _tag: Tag;
   readonly runtime?: ManagedRuntime.ManagedRuntime<unknown, unknown>;
   readonly middlewares: readonly NextMiddleware.TagClassAny[];
-  readonly paramsSchema?: Schema.Schema.Any;
-  readonly searchParamsSchema?: Schema.Schema.Any;
+  readonly paramsSchema?: Schema.Constraint;
+  readonly searchParamsSchema?: Schema.Constraint;
 }): Next<Tag, L, Middleware> => {
   function NextProto() {
     // noop
@@ -212,7 +212,7 @@ export function make<const Tag extends string, const R, const E>(
   layer: Layer.Layer<R, E, never>
 ): Next<Tag, Layer.Layer<R, E, never>> {
   const runtime = ManagedRuntime.make(
-    Layer.mergeAll(layer, Layer.setUnhandledErrorLogLevel(Option.none()))
+    Layer.mergeAll(layer, Layer.succeed(References.UnhandledLogLevel, undefined))
   );
 
   return makeProto({
@@ -246,7 +246,7 @@ export function makeWithRuntime<const Tag extends string, R, E>(
  */
 type ExtractProvides<R extends Any> =
   R extends Next<infer _Tag, infer _Layer, infer _Middleware>
-    ? LayerSuccess<_Layer> | Context_.Tag.Identifier<_Middleware>
+    ? LayerSuccess<_Layer> | Context_.Service.Identifier<_Middleware>
     : never;
 
 /**
@@ -280,7 +280,7 @@ type WrappedReturns<M> = M extends { readonly wrap: true }
 
 /** Extracts the union of error types that middleware can catch. */
 type CatchesFromMiddleware<M> = M extends {
-  readonly catches: Schema.Schema<infer A, infer _I, infer _R>;
+  readonly catches: Schema.Constraint;
 }
-  ? A
+  ? M["catches"]["Type"]
   : never;

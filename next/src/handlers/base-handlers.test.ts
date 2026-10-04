@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@effect/vitest";
-import { Effect, Layer, ManagedRuntime } from "effect";
+import { Context, Layer, ManagedRuntime } from "effect";
 import { vi } from "vitest";
 import type * as MiddlewareTypes from "../middleware/index.js";
 
@@ -23,12 +23,10 @@ describe("createBaseHandlers", () => {
   });
 
   it("with runtime: Layout, Page, Route all use same base", () => {
-    class TestService extends Effect.Service<TestService>()("TestService", {
-      effect: Effect.succeed({
-        _tag: "TestService",
-        getValue: () => "test-value",
-      }),
-    }) {}
+    class TestService extends Context.Service<
+      TestService,
+      { readonly _tag: string; readonly getValue: () => string }
+    >()("TestService") {}
 
     const layer = Layer.succeed(TestService, {
       _tag: "TestService",
@@ -56,12 +54,10 @@ describe("createBaseHandlers", () => {
   });
 
   it("with layer: creates a runtime", async () => {
-    class TestService extends Effect.Service<TestService>()("TestService", {
-      effect: Effect.succeed({
-        _tag: "TestService",
-        getValue: () => "test-value",
-      }),
-    }) {}
+    class TestService extends Context.Service<
+      TestService,
+      { readonly _tag: string; readonly getValue: () => string }
+    >()("TestService") {}
 
     const layer = Layer.succeed(TestService, {
       _tag: "TestService",

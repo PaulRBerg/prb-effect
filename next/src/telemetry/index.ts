@@ -28,10 +28,9 @@ export type Telemetry = {
 /**
  * @category tags
  */
-export class TelemetryService extends Context.Tag("effect-next/Telemetry")<
-  TelemetryService,
-  Telemetry
->() {}
+export class TelemetryService extends Context.Service<TelemetryService, Telemetry>()(
+  "effect-next/Telemetry"
+) {}
 
 const normalizeError = (error: unknown): Error => {
   if (error instanceof Error) {

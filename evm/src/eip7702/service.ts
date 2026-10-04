@@ -186,10 +186,9 @@ export type Eip7702ServiceShape = {
   >;
 };
 
-export class Eip7702Service extends Context.Tag("ew3/Eip7702Service")<
-  Eip7702Service,
-  Eip7702ServiceShape
->() {}
+export class Eip7702Service extends Context.Service<Eip7702Service, Eip7702ServiceShape>()(
+  "ew3/Eip7702Service"
+) {}
 
 const accountAddress = (account: Address | Account): Address =>
   typeof account === "string" ? account : account.address;

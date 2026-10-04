@@ -8,7 +8,9 @@ import type {
 import { createMiddlewareChain } from "./middleware-chain.js";
 
 // Test service for provider middleware
-class TestService extends Context.Tag("TestService")<TestService, { readonly value: string }>() {}
+class TestService extends Context.Service<TestService, { readonly value: string }>()(
+  "TestService"
+) {}
 
 describe("createMiddlewareChain", () => {
   it("executes middleware in order (left-to-right) before base", async () => {
@@ -106,9 +108,9 @@ describe("createMiddlewareChain", () => {
     const chain = createMiddlewareChain([tag1, tag2], resolve, base, {
       props: {},
     });
-    const result = await Effect.runPromise(Effect.either(chain));
+    const result = await Effect.runPromise(Effect.result(chain));
 
-    expect(result._tag).toBe("Left");
+    expect(result._tag).toBe("Failure");
     expect(executionOrder).toEqual(["middleware1", "middleware2"]);
   });
 

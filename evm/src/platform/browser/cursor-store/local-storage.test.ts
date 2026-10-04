@@ -1,5 +1,6 @@
 import { describe, expect, it } from "@effect/vitest";
-import { Effect, Fiber, Layer, TestClock } from "effect";
+import { Effect, Fiber, Layer } from "effect";
+import * as TestClock from "effect/testing/TestClock";
 import type { StreamCursor } from "#src/events/index.js";
 import { CursorStore } from "#src/events/index.js";
 import { LocalStorageCursorStoreLive } from "#src/platform/browser/cursor-store/index.js";
@@ -49,7 +50,7 @@ const runWithTime = <A, E, R>(
   adjust: Parameters<typeof TestClock.adjust>[0] = "300 millis"
 ) =>
   Effect.gen(function* () {
-    const fiber = yield* Effect.fork(effect);
+    const fiber = yield* Effect.forkChild(effect);
     yield* TestClock.adjust(adjust);
     return yield* Fiber.join(fiber);
   });
@@ -73,6 +74,21 @@ describe("LocalStorageCursorStore", () => {
       Effect.provide(LocalStorageCursorStoreLive),
       Effect.provide(makeMockBrowserStorageLayer(makeMockLocalStorage()))
     )
+  );
+
+  it.effect("cancels buffered writes when the storage layer closes", () =>
+    Effect.gen(function* () {
+      const storage = makeMockLocalStorage();
+      yield* Effect.gen(function* () {
+        const store = yield* CursorStore;
+        yield* store.set("closed-layer", testCursor);
+      }).pipe(
+        Effect.provide(Layer.fresh(LocalStorageCursorStoreLive)),
+        Effect.provide(makeMockBrowserStorageLayer(storage))
+      );
+      yield* TestClock.adjust("300 millis");
+      expect(storage.getItem("ew3:v1:cursor:closed-layer")).toBeNull();
+    })
   );
 
   it.effect("set and get round-trip for StreamCursor", () =>
@@ -487,7 +503,7 @@ describe("LocalStorageCursorStore", () => {
         remove: (key: string) => Effect.sync(() => mockStorage.removeItem(key)),
         set: (key: string, value: string) =>
           Effect.sleep("100 millis").pipe(
-            Effect.zipRight(Effect.sync(() => mockStorage.setItem(key, value)))
+            Effect.andThen(Effect.sync(() => mockStorage.setItem(key, value)))
           ),
       })
     );

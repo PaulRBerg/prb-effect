@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@effect/vitest";
-import { Effect, Exit } from "effect";
+import { Context, Effect, Exit, Layer } from "effect";
 import type { Address, Hash } from "viem";
 import { erc20Abi } from "viem";
 import { BalanceService } from "#src/balance/index.js";
@@ -82,6 +82,34 @@ describe("Testing Kit", () => {
   });
 
   describe("makeEffectEvmTestLayer", () => {
+    it.effect("isolates client boundaries when composers share a layer memo map", () =>
+      Effect.gen(function* () {
+        const memoMap = yield* Layer.makeMemoMap;
+        const scope = yield* Effect.scope;
+        const layers = [11n, 22n].map((value) =>
+          makeEffectEvmTestLayer({
+            publicClient: { readContract: async () => value },
+          })
+        );
+        const contexts = yield* Effect.all(
+          layers.map((layer) => Layer.buildWithMemoMap(layer, memoMap, scope)),
+          { concurrency: 2 }
+        );
+        const values = yield* Effect.all(
+          contexts.map((context) =>
+            Context.get(context, ContractReader).read({
+              abi: erc20Abi,
+              address: TEST_ADDRESS,
+              chainId: TEST_CHAIN_ID,
+              functionName: "totalSupply",
+            })
+          ),
+          { concurrency: 2 }
+        );
+        expect(values).toEqual([11n, 22n]);
+      }).pipe(Effect.scoped)
+    );
+
     it.effect("provides service overrides to dependent live services", () => {
       let submitted: unknown;
       const layer = makeEffectEvmTestLayer({

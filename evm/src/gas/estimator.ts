@@ -174,7 +174,7 @@ export const getAllFeeEstimatesImpl = (
         catch: () => "pending-failed" as const,
         try: () => client.getBlock({ blockTag: "pending" }),
       }).pipe(
-        Effect.catchAll(() =>
+        Effect.catch(() =>
           Effect.tryPromise({
             catch: (cause) =>
               new GasPriceUnavailableError({

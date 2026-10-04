@@ -1,5 +1,5 @@
 import { Connection } from "@solana/web3.js";
-import { Context, Effect, Layer } from "effect";
+import { Cache, Context, Effect, Layer } from "effect";
 import { ConnectionNotFoundError } from "#src/core/errors/index.js";
 import type { Cluster, ClusterConfig } from "#src/types/index.js";
 
@@ -35,7 +35,9 @@ export type RpcServiceShape = {
  *
  * @category Services
  */
-export class RpcService extends Context.Tag("esolana/RpcService")<RpcService, RpcServiceShape>() {}
+export class RpcService extends Context.Service<RpcService, RpcServiceShape>()(
+  "esolana/RpcService"
+) {}
 
 /**
  * Create an RpcService layer from cluster configuration.
@@ -48,14 +50,11 @@ export const makeRpcServiceLive = (config: ClusterConfig) =>
     Effect.gen(function* () {
       const rpcClient = new Connection(config.rpcUrl);
 
-      const getCachedSubscriptions = yield* Effect.cachedFunction((wsUrl: string) =>
-        Effect.sync(
-          () =>
-            new Connection(config.rpcUrl, {
-              wsEndpoint: wsUrl,
-            })
-        )
-      );
+      const subscriptions = yield* Cache.make({
+        capacity: Number.POSITIVE_INFINITY,
+        lookup: (wsUrl: string) =>
+          Effect.sync(() => new Connection(config.rpcUrl, { wsEndpoint: wsUrl })),
+      });
 
       return RpcService.of({
         getCluster: () => Effect.succeed(config.cluster),
@@ -72,7 +71,7 @@ export const makeRpcServiceLive = (config: ClusterConfig) =>
               })
             );
           }
-          return getCachedSubscriptions(wsUrl);
+          return Cache.get(subscriptions, wsUrl);
         },
 
         getRpcUrl: () => Effect.succeed(config.rpcUrl),

@@ -141,7 +141,7 @@ function runLifecycle(lifecycle: Effect.Effect<void> | undefined): Effect.Effect
     return Effect.void;
   }
 
-  return lifecycle.pipe(Effect.catchAll(() => Effect.void));
+  return lifecycle.pipe(Effect.catch(() => Effect.void));
 }
 
 export const safeWriteAndTrack = Effect.fn("safeWriteAndTrack")(function* (
@@ -157,7 +157,7 @@ export const safeWriteAndTrack = Effect.fn("safeWriteAndTrack")(function* (
 
   const setState = (state: SafeWriteAndTrackState) =>
     SubscriptionRef.set(stateRef, state).pipe(
-      Effect.zipRight(runLifecycle(params.onStateChange?.(state)))
+      Effect.andThen(runLifecycle(params.onStateChange?.(state)))
     );
 
   // Emit a poll-derived state only when it differs from the current one, so an
@@ -219,7 +219,7 @@ export const safeWriteAndTrack = Effect.fn("safeWriteAndTrack")(function* (
               status: info.status,
             })
           ).pipe(
-            Effect.zipRight(
+            Effect.andThen(
               Effect.suspend(() => params.waitOptions?.onProgress?.(info) ?? Effect.void)
             )
           ),
@@ -267,7 +267,7 @@ export const safeWriteAndTrack = Effect.fn("safeWriteAndTrack")(function* (
 
     return waitResult;
   }).pipe(
-    Effect.catchAll((error: SafeWriteAndTrackError) =>
+    Effect.catch((error: SafeWriteAndTrackError) =>
       Effect.gen(function* () {
         const safeTxHash = yield* Ref.get(safeTxHashRef);
         yield* setState({
@@ -281,20 +281,10 @@ export const safeWriteAndTrack = Effect.fn("safeWriteAndTrack")(function* (
     )
   );
 
-  yield* Effect.forkScoped(
-    program.pipe(
-      Effect.either,
-      Effect.flatMap((either) =>
-        either._tag === "Right"
-          ? Deferred.succeed(resultDeferred, either.right)
-          : Deferred.fail(resultDeferred, either.left)
-      ),
-      // If the scope closes mid-flight the fiber is interrupted before the Deferred resolves; without
-      // this an out-of-scope `Deferred.await(result)` would hang forever. Interrupting the Deferred
-      // makes the awaiter fail with interruption instead. No-op once the Deferred has completed.
-      Effect.ensuring(Deferred.interrupt(resultDeferred))
-    )
-  );
+  // Register before forking so scope closure also completes the result when the
+  // background fiber is interrupted before its deferred startup.
+  yield* Effect.addFinalizer(() => Deferred.interrupt(resultDeferred));
+  yield* Effect.forkScoped(program.pipe(Deferred.into(resultDeferred)));
 
   return {
     result: Deferred.await(resultDeferred),

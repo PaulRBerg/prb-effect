@@ -7,7 +7,7 @@ export type PublicClientServiceShape = {
   get: (chainId: number) => Effect.Effect<PublicClient, ClientNotFoundError>;
 };
 
-export class PublicClientService extends Context.Tag("ew3/PublicClient")<
+export class PublicClientService extends Context.Service<
   PublicClientService,
   PublicClientServiceShape
->() {}
+>()("ew3/PublicClient") {}

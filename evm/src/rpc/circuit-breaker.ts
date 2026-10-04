@@ -32,9 +32,9 @@ export type CircuitBreakerConfig = {
  * ```
  */
 export const CircuitBreakerConfigFromEnv = Config.all({
-  failureThreshold: Config.number("FAILURE_THRESHOLD").pipe(Config.withDefault(5)),
-  resetTimeout: Config.number("RESET_TIMEOUT").pipe(Config.withDefault(30_000)),
-  successThreshold: Config.number("SUCCESS_THRESHOLD").pipe(Config.withDefault(3)),
+  failureThreshold: Config.Number("FAILURE_THRESHOLD").pipe(Config.withDefault(5)),
+  resetTimeout: Config.Number("RESET_TIMEOUT").pipe(Config.withDefault(30_000)),
+  successThreshold: Config.Number("SUCCESS_THRESHOLD").pipe(Config.withDefault(3)),
 }).pipe(Config.nested("EW3_CIRCUIT_BREAKER"));
 
 /**

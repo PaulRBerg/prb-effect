@@ -27,9 +27,11 @@ export type QueryClientShape = {
   ) => Stream.Stream<A, E, R>;
 };
 
-export class QueryClient extends Context.Tag("ew3/QueryClient")<QueryClient, QueryClientShape>() {}
+export class QueryClient extends Context.Service<QueryClient, QueryClientShape>()(
+  "ew3/QueryClient"
+) {}
 
-export const QueryClientLive = Layer.scoped(
+export const QueryClientLive = Layer.effect(
   QueryClient,
   Effect.gen(function* () {
     const cache = yield* RpcCache;
@@ -37,7 +39,7 @@ export const QueryClientLive = Layer.scoped(
     const chainHead = yield* ChainHead;
     const scope = yield* Effect.scope;
 
-    type InvalidatorState = Fiber.RuntimeFiber<void, never> | "starting";
+    type InvalidatorState = Fiber.Fiber<void, never> | "starting";
     const invalidatorsRef = yield* Ref.make(new Map<number, InvalidatorState>());
 
     const ensureInvalidator = (chainId: number): Effect.Effect<void> =>
@@ -68,7 +70,7 @@ export const QueryClientLive = Layer.scoped(
                 return next;
               })
             ),
-            Effect.catchAll(() =>
+            Effect.catch(() =>
               Ref.update(invalidatorsRef, (current) => {
                 const next = new Map(current);
                 next.delete(chainId);
@@ -78,7 +80,7 @@ export const QueryClientLive = Layer.scoped(
           );
 
         yield* started;
-      }).pipe(Effect.catchAll(() => Effect.void));
+      }).pipe(Effect.catch(() => Effect.void));
 
     const query: QueryClientShape["query"] = <A, E, R>(
       key: string,
@@ -99,9 +101,9 @@ export const QueryClientLive = Layer.scoped(
           Effect.tap((value) =>
             Effect.gen(function* () {
               if (options?.blockScoped && options.chainId !== undefined) {
-                const current = yield* chainHead.current(options.chainId).pipe(Effect.either);
-                if (current._tag === "Right") {
-                  yield* cache.set(key, value, current.right, options.ttl);
+                const current = yield* chainHead.current(options.chainId).pipe(Effect.result);
+                if (current._tag === "Success") {
+                  yield* cache.set(key, value, current.success, options.ttl);
                   return;
                 }
               }

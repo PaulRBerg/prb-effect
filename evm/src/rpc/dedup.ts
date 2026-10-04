@@ -7,10 +7,9 @@ export type RequestDedupShape = {
   readonly dedupe: <A, E, R>(key: string, effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>;
 };
 
-export class RequestDedup extends Context.Tag("ew3/RequestDedup")<
-  RequestDedup,
-  RequestDedupShape
->() {}
+export class RequestDedup extends Context.Service<RequestDedup, RequestDedupShape>()(
+  "ew3/RequestDedup"
+) {}
 
 /**
  * Global mutable map - JavaScript Map is synchronous and truly shared
@@ -60,7 +59,7 @@ export const RequestDedupLive: Layer.Layer<RequestDedup> = Layer.succeed(Request
 
         // Run the effect and complete deferred with result
         yield* Effect.uninterruptibleMask((restore) =>
-          Effect.ensuring(Effect.intoDeferred(restore(effect), deferred), cleanup)
+          Effect.ensuring(Deferred.into(restore(effect), deferred), cleanup)
         );
 
         return yield* Deferred.await(deferred);

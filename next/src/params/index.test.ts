@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@effect/vitest";
-import { Effect, Schema } from "effect";
-import { vi } from "vitest";
+import { Context, Effect, Schema, SchemaGetter } from "effect";
+import { expectTypeOf, vi } from "vitest";
 
 // Mock server-only
 vi.mock("server-only", () => ({}));
@@ -9,6 +9,29 @@ vi.mock("server-only", () => ({}));
 const { decodeParamsUnknown, decodeSearchParamsUnknown, decodeParams } = await import("./index.js");
 
 describe("params", () => {
+  it.effect("preserves decoder requirements without requiring encoder services", () => {
+    class Decode extends Context.Service<Decode, number>()("params/Decode") {}
+    class Encode extends Context.Service<Encode, number>()("params/Encode") {}
+    const schema = Schema.Struct({ id: Schema.String }).pipe(
+      Schema.decodeTo(Schema.Struct({ id: Schema.Number }), {
+        decode: SchemaGetter.transformEffect((value) =>
+          Effect.map(Decode, (offset) => ({ id: Number(value.id) + offset }))
+        ),
+        encode: SchemaGetter.transformEffect((value) =>
+          Effect.map(Encode, (offset) => ({ id: String(value.id - offset) }))
+        ),
+      })
+    );
+    const decoded = decodeParams(schema)(Promise.resolve({ id: "10" }));
+    const unknown = decodeParamsUnknown(schema)(Promise.resolve({ id: "10" }));
+    expectTypeOf<Effect.Services<typeof decoded>>().toEqualTypeOf<Decode>();
+    expectTypeOf<Effect.Services<typeof unknown>>().toEqualTypeOf<Decode>();
+    return Effect.gen(function* () {
+      expect(yield* decoded).toEqual({ id: 11 });
+      expect(yield* unknown).toEqual({ id: 11 });
+    }).pipe(Effect.provideService(Decode, 1));
+  });
+
   describe("decodeParamsUnknown", () => {
     const ParamsSchema = Schema.Struct({
       id: Schema.String,
@@ -43,7 +66,7 @@ describe("params", () => {
 
     it("works with coercion schemas", async () => {
       const CoercionSchema = Schema.Struct({
-        id: Schema.NumberFromString,
+        id: Schema.FiniteFromString,
         page: Schema.NumberFromString,
       });
 
@@ -57,7 +80,7 @@ describe("params", () => {
 
     it("fails with invalid coercion input", async () => {
       const CoercionSchema = Schema.Struct({
-        id: Schema.NumberFromString,
+        id: Schema.FiniteFromString,
       });
 
       const params = Promise.resolve({ id: "not-a-number" });
@@ -139,17 +162,11 @@ describe("params", () => {
     });
 
     it("works with transformation schemas", async () => {
-      const TransformSchema = Schema.transform(
-        Schema.Struct({
-          id: Schema.String,
-        }),
-        Schema.Struct({
-          id: Schema.Number,
-        }),
-        {
-          decode: (input) => ({ id: Number.parseInt(input.id, 10) }),
-          encode: (output) => ({ id: String(output.id) }),
-        }
+      const TransformSchema = Schema.Struct({ id: Schema.String }).pipe(
+        Schema.decodeTo(Schema.Struct({ id: Schema.Number }), {
+          decode: SchemaGetter.transform((input) => ({ id: Number.parseInt(input.id, 10) })),
+          encode: SchemaGetter.transform((output) => ({ id: String(output.id) })),
+        })
       );
 
       const params = Promise.resolve({ id: "789" });

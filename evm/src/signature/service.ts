@@ -74,10 +74,9 @@ export type SignatureServiceShape = {
   ) => Effect.Effect<Hex, never>;
 };
 
-export class SignatureService extends Context.Tag("ew3/SignatureService")<
-  SignatureService,
-  SignatureServiceShape
->() {}
+export class SignatureService extends Context.Service<SignatureService, SignatureServiceShape>()(
+  "ew3/SignatureService"
+) {}
 
 export const SignatureServiceLive = Layer.succeed(
   SignatureService,
@@ -178,7 +177,7 @@ export const SignatureServiceLive = Layer.succeed(
                 message: toSignableMessage(params.message),
                 signature: params.signature,
               }),
-          }).pipe(Effect.catchAll(() => Effect.succeed(false)))
+          }).pipe(Effect.catch(() => Effect.succeed(false)))
         : Effect.succeed(false)
       ).pipe(
         Effect.withSpan(SpanNames.SIGNATURE_VERIFY_MESSAGE, {
@@ -202,7 +201,7 @@ export const SignatureServiceLive = Layer.succeed(
                     : String(params.signature),
               }),
             try: () => verifyTypedData(params),
-          }).pipe(Effect.catchAll(() => Effect.succeed(false)))
+          }).pipe(Effect.catch(() => Effect.succeed(false)))
       ).pipe(
         Effect.withSpan(SpanNames.SIGNATURE_VERIFY_TYPED_DATA, {
           attributes: {

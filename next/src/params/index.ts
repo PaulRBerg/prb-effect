@@ -12,9 +12,9 @@ type NextBaseParams = Promise<Record<string, string | string[] | undefined>>;
  * @category params
  */
 export const decodeParamsUnknown =
-  <S extends Schema.Schema.Any, P extends NextBaseParams>(schema: S) =>
+  <S extends Schema.Constraint, P extends NextBaseParams>(schema: S) =>
   (params: P) =>
-    Effect.promise(() => params).pipe(Effect.flatMap(Schema.decodeUnknown(schema)));
+    Effect.promise(() => params).pipe(Effect.flatMap(Schema.decodeUnknownEffect(schema)));
 
 /**
  * Decodes search params using a Schema with unknown input.
@@ -22,9 +22,9 @@ export const decodeParamsUnknown =
  * @category params
  */
 export const decodeSearchParamsUnknown =
-  <S extends Schema.Schema.Any, P extends NextBaseParams>(schema: S) =>
+  <S extends Schema.Constraint, P extends NextBaseParams>(schema: S) =>
   (searchParams: P) =>
-    Effect.promise(() => searchParams).pipe(Effect.flatMap(Schema.decodeUnknown(schema)));
+    Effect.promise(() => searchParams).pipe(Effect.flatMap(Schema.decodeUnknownEffect(schema)));
 
 /**
  * Decodes params using a Schema with typed input.
@@ -32,6 +32,6 @@ export const decodeSearchParamsUnknown =
  * @category params
  */
 export const decodeParams =
-  <T, P>(schema: Schema.Schema<T, P>) =>
-  (params: Promise<P>) =>
-    Effect.promise(() => params).pipe(Effect.flatMap(Schema.decode(schema)));
+  <S extends Schema.Constraint>(schema: S) =>
+  (params: Promise<S["Encoded"]>) =>
+    Effect.promise(() => params).pipe(Effect.flatMap(Schema.decodeEffect(schema)));

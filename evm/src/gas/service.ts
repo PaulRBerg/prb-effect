@@ -58,7 +58,7 @@ export type GasServiceShape = {
   }) => Effect.Effect<boolean, GasPriceUnavailableError | ClientNotFoundError>;
 };
 
-export class GasService extends Context.Tag("ew3/GasService")<GasService, GasServiceShape>() {}
+export class GasService extends Context.Service<GasService, GasServiceShape>()("ew3/GasService") {}
 
 export const GasServiceLive = Layer.effect(
   GasService,

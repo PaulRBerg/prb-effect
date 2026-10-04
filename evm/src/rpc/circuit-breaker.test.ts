@@ -1,5 +1,6 @@
 import { describe, expect, it } from "@effect/vitest";
-import { Clock, ConfigProvider, Effect, Exit, Layer, TestClock } from "effect";
+import { Clock, ConfigProvider, Effect, Exit } from "effect";
+import * as TestClock from "effect/testing/TestClock";
 import {
   CircuitBreakerConfigFromEnv,
   CircuitOpenError,
@@ -354,13 +355,13 @@ describe("CircuitBreaker", () => {
       // coherent half-open transition (no fiber observes a stale "open" and rejects,
       // no double promotion corrupts the success counter).
       const results = yield* Effect.all(
-        Array.from({ length: 8 }, () => breaker.execute(Effect.succeed("ok")).pipe(Effect.either)),
+        Array.from({ length: 8 }, () => breaker.execute(Effect.succeed("ok")).pipe(Effect.result)),
         { concurrency: "unbounded" }
       );
 
       // All probes are admitted (none rejected with CircuitOpenError).
       for (const r of results) {
-        expect(r._tag).toBe("Right");
+        expect(r._tag).toBe("Success");
       }
       // Still half-open since 8 < successThreshold (10).
       expect(yield* breaker.getState).toBe("half-open");
@@ -387,14 +388,13 @@ describe("CircuitBreaker", () => {
         expect(config.resetTimeout).toBe(60_000);
       }).pipe(
         Effect.provide(
-          Layer.setConfigProvider(
-            ConfigProvider.fromMap(
-              new Map([
+          ConfigProvider.layer(
+            ConfigProvider.fromEnvRecord(
+              Object.fromEntries([
                 ["EW3_CIRCUIT_BREAKER_FAILURE_THRESHOLD", "10"],
                 ["EW3_CIRCUIT_BREAKER_SUCCESS_THRESHOLD", "5"],
                 ["EW3_CIRCUIT_BREAKER_RESET_TIMEOUT", "60000"],
-              ]),
-              { pathDelim: "_" }
+              ])
             )
           )
         )
@@ -410,13 +410,12 @@ describe("CircuitBreaker", () => {
         expect(config.resetTimeout).toBe(30_000); // default
       }).pipe(
         Effect.provide(
-          Layer.setConfigProvider(
-            ConfigProvider.fromMap(
-              new Map([
+          ConfigProvider.layer(
+            ConfigProvider.fromEnvRecord(
+              Object.fromEntries([
                 ["EW3_CIRCUIT_BREAKER_FAILURE_THRESHOLD", "7"],
                 // Other values should use defaults
-              ]),
-              { pathDelim: "_" }
+              ])
             )
           )
         )

@@ -28,10 +28,10 @@ export type RetryConfig = BackoffConfig & {
  * ```
  */
 export const RetryConfigFromEnv = Config.all({
-  baseDelay: Config.number("BASE_DELAY").pipe(Config.withDefault(100)),
-  jitter: Config.boolean("JITTER").pipe(Config.withDefault(true)),
-  maxDelay: Config.number("MAX_DELAY").pipe(Config.withDefault(10_000)),
-  maxRetries: Config.number("MAX_RETRIES").pipe(Config.withDefault(3)),
+  baseDelay: Config.Number("BASE_DELAY").pipe(Config.withDefault(100)),
+  jitter: Config.Boolean("JITTER").pipe(Config.withDefault(true)),
+  maxDelay: Config.Number("MAX_DELAY").pipe(Config.withDefault(10_000)),
+  maxRetries: Config.Number("MAX_RETRIES").pipe(Config.withDefault(3)),
 }).pipe(Config.nested("EW3_RETRY"));
 
 /**
@@ -104,7 +104,7 @@ export const makeRetrySchedule = <E>(config?: RetryConfig): Schedule.Schedule<nu
   const { retryableErrors = defaultRetryableErrors, ...backoffConfig } = config ?? {};
 
   return makeBackoffSchedule(backoffConfig).pipe(
-    Schedule.whileInput<E>((error) => isRetryableError(error, retryableErrors))
+    Schedule.while<E, number>(({ input }) => isRetryableError(input, retryableErrors))
   );
 };
 

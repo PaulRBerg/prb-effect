@@ -4,7 +4,7 @@
 >
 > This is experimental, beta software. It is provided "as is" without warranty of any kind, express or implied.
 
-Effect-TS and xState v5 workflow utilities for React applications.
+Effect 4 and xState v5 workflow utilities for React applications.
 
 ## Overview
 
@@ -21,7 +21,7 @@ xState v5's state management capabilities.
 ## Installation
 
 ```bash
-bun add @prb/effect-xstate effect xstate @xstate/react
+bun add @prb/effect-xstate effect@^4.0.0 xstate @xstate/react
 ```
 
 ## Usage
@@ -83,6 +83,13 @@ function MyComponent() {
   );
 }
 ```
+
+## Migration (v4.0.0)
+
+Version 4 requires `effect@^4.0.0`. Migrate service implementations to native Effect 4 APIs before passing them to these
+machines. Effects still run with no remaining service requirements; provide their layers in your service
+implementations. Actor stop, reset, and reentry interrupt pending Effects, and typed failures retain their original
+identity across the XState promise boundary.
 
 ## Migration (v3.0.0)
 

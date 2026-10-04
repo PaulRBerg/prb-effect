@@ -28,9 +28,9 @@ const MIN_POLL_INTERVAL = Duration.seconds(1);
 
 export type SafeMultisigWaitOptions = {
   /** Polling interval (default: 5 seconds). Clamped to a minimum of 1 second. */
-  readonly interval?: Duration.DurationInput;
+  readonly interval?: Duration.Input;
   /** Maximum wait time (default: 90 minutes) */
-  readonly maxWait?: Duration.DurationInput;
+  readonly maxWait?: Duration.Input;
   /**
    * Invoked on each successful poll (before any terminal resolution) with the latest tx info.
    * Lets callers observe non-terminal lifecycle transitions (confirmation counts,
@@ -195,10 +195,10 @@ export const waitForSafeMultisigTx = Effect.fn("waitForSafeMultisigTx")(function
   options: SafeMultisigWaitOptions = {}
 ) {
   const interval = Duration.max(
-    Duration.decode(options.interval ?? DEFAULT_POLL_INTERVAL),
+    Duration.fromInputUnsafe(options.interval ?? DEFAULT_POLL_INTERVAL),
     MIN_POLL_INTERVAL
   );
-  const maxWait = Duration.decode(options.maxWait ?? DEFAULT_MAX_WAIT);
+  const maxWait = Duration.fromInputUnsafe(options.maxWait ?? DEFAULT_MAX_WAIT);
   // Guarantee at least one poll even when `maxWait < interval` (e.g. `maxWait: "3 seconds"` with
   // the 5s default interval). Otherwise an already-executed tx would be reported `queued` without
   // ever calling `getTx`.
@@ -242,7 +242,7 @@ export const waitForSafeMultisigTx = Effect.fn("waitForSafeMultisigTx")(function
         // Surface the per-poll info so callers can observe non-terminal transitions. Hook failures
         // must not interrupt polling, so swallow them.
         if (options.onProgress) {
-          yield* options.onProgress(queued).pipe(Effect.catchAllCause(() => Effect.void));
+          yield* options.onProgress(queued).pipe(Effect.catchCause(() => Effect.void));
         }
 
         const terminalResult = yield* resolveTerminalWaitResult(

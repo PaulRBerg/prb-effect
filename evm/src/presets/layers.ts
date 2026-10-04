@@ -1,5 +1,5 @@
-import { FetchHttpClient } from "@effect/platform";
 import { Effect, Layer, Option } from "effect";
+import { FetchHttpClient } from "effect/http";
 import type { Chain, PublicClient, Transport, WalletClient } from "viem";
 import {
   BaseError,

@@ -1,11 +1,11 @@
 import "server-only";
 
-import { OtlpMetrics, OtlpSerialization, OtlpTracer } from "@effect/opentelemetry";
-import { FetchHttpClient } from "@effect/platform";
-import type * as Headers from "@effect/platform/Headers";
-import type * as HttpClient from "@effect/platform/HttpClient";
 import { Layer } from "effect";
 import type * as Duration from "effect/Duration";
+import type { Headers, HttpClient } from "effect/http";
+import { FetchHttpClient } from "effect/http";
+import type { OtlpExporter } from "effect/observability";
+import { OtlpMetrics, OtlpSerialization, OtlpTracer } from "effect/observability";
 
 /**
  * @category models
@@ -22,8 +22,8 @@ export type OtelResource = {
 export type OtelExporterConfig = {
   readonly url: string;
   readonly headers?: Headers.Input;
-  readonly exportInterval?: Duration.DurationInput;
-  readonly shutdownTimeout?: Duration.DurationInput;
+  readonly exportInterval?: Duration.Input;
+  readonly shutdownTimeout?: Duration.Input;
   readonly maxBatchSize?: number;
 };
 
@@ -39,11 +39,11 @@ export type OtelLayerOptions = {
 };
 
 type RawOtelLayer = Layer.Layer<
-  never,
+  OtlpExporter.Flusher,
   never,
   HttpClient.HttpClient | OtlpSerialization.OtlpSerialization
 >;
-type OtelLayer = Layer.Layer<never, never, HttpClient.HttpClient>;
+type OtelLayer = Layer.Layer<OtlpExporter.Flusher, never, HttpClient.HttpClient>;
 
 /**
  * Creates an OpenTelemetry layer using OTLP exporters.
@@ -51,17 +51,20 @@ type OtelLayer = Layer.Layer<never, never, HttpClient.HttpClient>;
  * @category layers
  */
 export function createOtelLayer(
-  options: OtelLayerOptions & { provideHttpClient: false }
-): OtelLayer;
-export function createOtelLayer(options: OtelLayerOptions): Layer.Layer<never, never, never>;
+  options: OtelLayerOptions & ({ enabled: false } | { traces?: false; metrics?: false })
+): Layer.Layer<never>;
+export function createOtelLayer(
+  options: OtelLayerOptions & { provideHttpClient?: true }
+): Layer.Layer<OtlpExporter.Flusher>;
+export function createOtelLayer(options: OtelLayerOptions): OtelLayer;
 export function createOtelLayer(options: OtelLayerOptions) {
-  if (options.enabled === false) {
+  if (options.enabled === false || !(options.traces || options.metrics)) {
     return Layer.empty;
   }
 
   const resource = options.resource;
 
-  const tracesLayer: RawOtelLayer = options.traces
+  const tracesLayer: RawOtelLayer | Layer.Layer<never> = options.traces
     ? OtlpTracer.layer({
         exportInterval: options.traces.exportInterval,
         headers: options.traces.headers,
@@ -72,7 +75,7 @@ export function createOtelLayer(options: OtelLayerOptions) {
       })
     : Layer.empty;
 
-  const metricsLayer: RawOtelLayer = options.metrics
+  const metricsLayer: RawOtelLayer | Layer.Layer<never> = options.metrics
     ? OtlpMetrics.layer({
         exportInterval: options.metrics.exportInterval,
         headers: options.metrics.headers,

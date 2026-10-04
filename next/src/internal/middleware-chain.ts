@@ -40,13 +40,13 @@ export const createMiddlewareChain = <
       }) as Effect<A, E, R>;
     }
     return tag.provides === undefined
-      ? (Effect_.zipRight(
+      ? (Effect_.andThen(
           (middleware as NextMiddleware.NextMiddleware<unknown, unknown, unknown>)(options),
           tail
         ) as Effect<A, E, R>)
       : (Effect_.provideServiceEffect(
           tail,
-          tag.provides as unknown as Context.Tag<unknown, unknown>,
+          tag.provides as unknown as Context.Service<unknown, unknown>,
           (middleware as NextMiddleware.NextMiddleware<unknown, unknown, unknown>)(options)
         ) as Effect<A, E, R>);
   };

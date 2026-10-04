@@ -186,21 +186,21 @@ export const runPreflight = <
         ...params,
         overrides: baseOverrides,
       })
-      .pipe(Effect.either);
+      .pipe(Effect.result);
 
-    if (estimateResult._tag === "Left") {
-      if (isRecoverablePreflightError(estimateResult.left)) {
+    if (estimateResult._tag === "Failure") {
+      if (isRecoverablePreflightError(estimateResult.failure)) {
         return {
           finalGas: explicitGas,
           overridesWithGas: withGas(baseOverrides, explicitGas),
-          preflightWarning: toPreflightWarning(estimateResult.left),
+          preflightWarning: toPreflightWarning(estimateResult.failure),
         };
       }
 
-      return yield* Effect.fail(estimateResult.left);
+      return yield* Effect.fail(estimateResult.failure);
     }
 
-    const derivedGas = applyGasLimitMultiplier(estimateResult.right, policy.gasLimitMultiplier);
+    const derivedGas = applyGasLimitMultiplier(estimateResult.success, policy.gasLimitMultiplier);
     const finalGas = explicitGas ?? derivedGas;
 
     if (options.onSimulating) {
@@ -212,18 +212,18 @@ export const runPreflight = <
         ...params,
         overrides: { ...baseOverrides, gas: finalGas },
       })
-      .pipe(Effect.either);
+      .pipe(Effect.result);
 
-    if (simulationResult._tag === "Left") {
-      if (isRecoverablePreflightError(simulationResult.left)) {
+    if (simulationResult._tag === "Failure") {
+      if (isRecoverablePreflightError(simulationResult.failure)) {
         return {
           finalGas,
           overridesWithGas: { ...baseOverrides, gas: finalGas },
-          preflightWarning: toPreflightWarning(simulationResult.left),
+          preflightWarning: toPreflightWarning(simulationResult.failure),
         };
       }
 
-      return yield* Effect.fail(simulationResult.left);
+      return yield* Effect.fail(simulationResult.failure);
     }
 
     return {

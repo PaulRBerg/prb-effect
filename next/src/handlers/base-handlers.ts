@@ -40,25 +40,17 @@ const resolveTags = (tags: string | BaseHandlerTags) => {
 };
 
 const applyMiddlewares = <M extends readonly NextMiddleware.TagClassAny[] | undefined>(
-  handler: Next.Next<string, Layer.Layer.Any | RuntimeLayer | undefined, never>,
+  handler: Next.Next<string, Layer.Any | RuntimeLayer | undefined, never>,
   middlewares: M
-): Next.Next<string, Layer.Layer.Any | RuntimeLayer | undefined, MiddlewareUnion<M>> => {
+): Next.Next<string, Layer.Any | RuntimeLayer | undefined, MiddlewareUnion<M>> => {
   if (!middlewares || middlewares.length === 0) {
-    return handler as Next.Next<
-      string,
-      Layer.Layer.Any | RuntimeLayer | undefined,
-      MiddlewareUnion<M>
-    >;
+    return handler as Next.Next<string, Layer.Any | RuntimeLayer | undefined, MiddlewareUnion<M>>;
   }
 
   return middlewares.reduce(
     (acc, middleware) => acc.middleware(middleware),
-    handler as Next.Next<
-      string,
-      Layer.Layer.Any | RuntimeLayer | undefined,
-      NextMiddleware.TagClassAny
-    >
-  ) as Next.Next<string, Layer.Layer.Any | RuntimeLayer | undefined, MiddlewareUnion<M>>;
+    handler as Next.Next<string, Layer.Any | RuntimeLayer | undefined, NextMiddleware.TagClassAny>
+  ) as Next.Next<string, Layer.Any | RuntimeLayer | undefined, MiddlewareUnion<M>>;
 };
 
 /**

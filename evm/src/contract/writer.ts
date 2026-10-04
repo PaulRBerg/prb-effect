@@ -141,10 +141,9 @@ export type ContractWriterShape = {
   >;
 };
 
-export class ContractWriter extends Context.Tag("ew3/ContractWriter")<
-  ContractWriter,
-  ContractWriterShape
->() {}
+export class ContractWriter extends Context.Service<ContractWriter, ContractWriterShape>()(
+  "ew3/ContractWriter"
+) {}
 
 /**
  * Live implementation of ContractWriter service

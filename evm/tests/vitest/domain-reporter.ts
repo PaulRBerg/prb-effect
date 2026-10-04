@@ -1,5 +1,5 @@
 import type { SerializedError, TestModule, TestRunEndReason, TestSpecification } from "vitest/node";
-import { DefaultReporter } from "vitest/reporters";
+import { DefaultReporter } from "vitest/node";
 
 type DomainReporterOptions = {
   isTTY?: boolean;

@@ -1,5 +1,5 @@
-import { HttpClient, HttpClientRequest, HttpClientResponse } from "@effect/platform";
 import { Config, Effect, Schema } from "effect";
+import { HttpClient, HttpClientRequest, HttpClientResponse } from "effect/http";
 import type { Address, Hex } from "viem";
 import {
   SimulationError,
@@ -95,14 +95,14 @@ type TenderlySimulationResponse = {
 };
 
 const getTenderlyConfig = Effect.gen(function* () {
-  const accessKey = yield* Config.string("TENDERLY_ACCESS_KEY").pipe(
-    Effect.catchAll(() => Effect.succeed(undefined))
+  const accessKey = yield* Config.String("TENDERLY_ACCESS_KEY").pipe(
+    Effect.catch(() => Effect.succeed(undefined))
   );
-  const account = yield* Config.string("TENDERLY_ACCOUNT").pipe(
-    Effect.catchAll(() => Effect.succeed(undefined))
+  const account = yield* Config.String("TENDERLY_ACCOUNT").pipe(
+    Effect.catch(() => Effect.succeed(undefined))
   );
-  const project = yield* Config.string("TENDERLY_PROJECT").pipe(
-    Effect.catchAll(() => Effect.succeed(undefined))
+  const project = yield* Config.String("TENDERLY_PROJECT").pipe(
+    Effect.catch(() => Effect.succeed(undefined))
   );
 
   const missing: string[] = [];
@@ -270,7 +270,7 @@ function ensureTenderlyOk(response: HttpClientResponse.HttpClientResponse) {
     }
 
     if (response.status < 200 || response.status >= 300) {
-      const body = yield* response.json.pipe(Effect.catchAll(() => Effect.succeed(undefined)));
+      const body = yield* response.json.pipe(Effect.catch(() => Effect.succeed(undefined)));
       return yield* Effect.fail(
         new TenderlyApiError({
           message: "Tenderly API request failed",

@@ -26,7 +26,7 @@ export type RpcCacheShape = {
   readonly clear: Effect.Effect<void>;
 };
 
-export class RpcCache extends Context.Tag("ew3/RpcCache")<RpcCache, RpcCacheShape>() {}
+export class RpcCache extends Context.Service<RpcCache, RpcCacheShape>()("ew3/RpcCache") {}
 
 /**
  * Create a cache layer with LRU eviction

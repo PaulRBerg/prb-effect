@@ -226,14 +226,14 @@ describe("decodeLogOrFail", () => {
         transactionIndex: 0,
       };
 
-      const result = yield* Effect.either(decodeLogOrFail(log, erc20Abi));
-      expect(result._tag).toBe("Left");
+      const result = yield* Effect.result(decodeLogOrFail(log, erc20Abi));
+      expect(result._tag).toBe("Failure");
 
-      if (result._tag === "Left") {
-        expect(result.left).toBeInstanceOf(EventDecodeError);
-        expect(result.left.message).toContain("Failed to decode log");
-        expect(result.left.message).toContain(TEST_ADDRESS);
-        expect(result.left.message).toContain("12345");
+      if (result._tag === "Failure") {
+        expect(result.failure).toBeInstanceOf(EventDecodeError);
+        expect(result.failure.message).toContain("Failed to decode log");
+        expect(result.failure.message).toContain(TEST_ADDRESS);
+        expect(result.failure.message).toContain("12345");
       }
     })
   );
@@ -274,11 +274,11 @@ describe("decodeLogOrFail", () => {
         },
       ] as const;
 
-      const result = yield* Effect.either(decodeLogOrFail(log, wrongAbi));
-      expect(result._tag).toBe("Left");
+      const result = yield* Effect.result(decodeLogOrFail(log, wrongAbi));
+      expect(result._tag).toBe("Failure");
 
-      if (result._tag === "Left") {
-        expect(result.left).toBeInstanceOf(EventDecodeError);
+      if (result._tag === "Failure") {
+        expect(result.failure).toBeInstanceOf(EventDecodeError);
       }
     })
   );

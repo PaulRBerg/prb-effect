@@ -39,7 +39,7 @@ const INDEX_KEY = "ew3:v1:tx:index";
  */
 const CORRUPT_KEY_PREFIX = "ew3:v1:tx:corrupt:";
 
-const HashSchema = Schema.TemplateLiteral("0x", Schema.String);
+const HashSchema = Schema.TemplateLiteral(["0x", Schema.String]);
 const isPersistedTx = Schema.is(
   Schema.Struct({
     chainId: Schema.Int,
@@ -55,12 +55,12 @@ const isPersistedTx = Schema.is(
           at: Schema.Finite,
           newHash: HashSchema,
           oldHash: HashSchema,
-          reason: Schema.Literal("cancelled", "replaced", "repriced"),
+          reason: Schema.Literals(["cancelled", "replaced", "repriced"]),
         })
       )
     ),
     rootHash: HashSchema,
-    status: Schema.Literal("submitted", "pending", "queued", "mined", "failed", "cancelled"),
+    status: Schema.Literals(["submitted", "pending", "queued", "mined", "failed", "cancelled"]),
     tags: Schema.optional(Schema.mutable(Schema.Array(Schema.String))),
     to: Schema.optional(Schema.String),
     txMeta: Schema.optional(
@@ -291,7 +291,9 @@ export const makeLocalStorageTxStoreLive = (
         SubscriptionRef.set(changesRef, Option.some(change));
 
       return TxStore.of({
-        changes: Stream.filterMap(changesRef.changes, (change) => change),
+        changes: Stream.filter(SubscriptionRef.changes(changesRef), Option.isSome).pipe(
+          Stream.map((change) => change.value)
+        ),
 
         delete: (id: string) =>
           Effect.gen(function* () {
@@ -355,7 +357,7 @@ export const makeLocalStorageTxStoreLive = (
             });
           }),
 
-        watchInFlight: () => inFlightRef.changes,
+        watchInFlight: () => SubscriptionRef.changes(inFlightRef),
       });
     })
   );

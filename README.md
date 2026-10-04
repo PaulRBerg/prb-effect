@@ -2,14 +2,14 @@
 
 [![CI](https://github.com/PaulRBerg/prb-effect/actions/workflows/evm.ci.yml/badge.svg)](https://github.com/PaulRBerg/prb-effect/actions)
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Effect](https://img.shields.io/badge/Effect-v3-7C3AED)](https://effect.website)
+[![Effect](https://img.shields.io/badge/Effect-v4-7C3AED)](https://effect.website)
 [![Biome](https://img.shields.io/badge/Linted_with-Biome-60a5fa?style=flat&logo=biome)](https://biomejs.dev)
 
 > [!WARNING]
 >
 > This is experimental, beta software. It is provided "as is" without warranty of any kind, express or implied.
 
-A Bun-powered monorepo for Effect-TS libraries.
+A Bun-powered monorepo for Effect 4 libraries.
 
 ## 📦 Packages
 
@@ -23,7 +23,7 @@ A Bun-powered monorepo for Effect-TS libraries.
 
 ## Development
 
-For repo commands, conventions, and agent guidance, see [AGENTS.md](./AGENTS.md).
+Use Node.js 24 or 26+ for development. For repo commands, conventions, and agent guidance, see [AGENTS.md](./AGENTS.md).
 
 ## 📄 License
 

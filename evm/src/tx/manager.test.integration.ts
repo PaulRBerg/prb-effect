@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@effect/vitest";
-import { Chunk, Effect, Either, Exit, Layer, Stream } from "effect";
+import { Effect, Exit, Layer, Result, Stream, SubscriptionRef } from "effect";
 import type { TransactionReceipt } from "viem";
 import { MIN_TX_GAS } from "#src/constants/index.js";
 import { makeMockPublicClientLayer, TEST_CHAIN_ID, TEST_TX_HASH } from "#src/testing-kit/index.js";
@@ -105,10 +105,10 @@ describe("TxManager", () => {
         const manager = yield* TxManager;
         const result = yield* manager
           .waitForReceipt(TEST_CHAIN_ID, TEST_TX_HASH)
-          .pipe(Effect.either);
+          .pipe(Effect.result);
 
-        Either.match(result, {
-          onLeft: (error) => {
+        Result.match(result, {
+          onFailure: (error) => {
             expect(error._tag).toBe("TxReplacedError");
             if (error._tag === "TxReplacedError") {
               expect(error.oldHash).toBe(TEST_TX_HASH);
@@ -118,8 +118,8 @@ describe("TxManager", () => {
               expect(error.reason).toBe("replaced");
             }
           },
-          onRight: () => {
-            throw new Error("Expected failure (Left), got success (Right)");
+          onSuccess: () => {
+            throw new Error("Expected Failure, got Success");
           },
         });
       }).pipe(
@@ -166,13 +166,13 @@ describe("TxManager", () => {
         const manager = yield* TxManager;
         const result = yield* manager
           .waitForReceipt(TEST_CHAIN_ID, TEST_TX_HASH)
-          .pipe(Effect.either);
+          .pipe(Effect.result);
 
-        Either.match(result, {
-          onLeft: (error) => {
-            throw new Error(`Expected success (Right), got error (Left): ${error._tag}`);
+        Result.match(result, {
+          onFailure: (error) => {
+            throw new Error(`Expected Success, got Failure: ${error._tag}`);
           },
-          onRight: (receipt) => {
+          onSuccess: (receipt) => {
             expect(receipt.transactionHash).toBe(TEST_TX_HASH);
             expect(receipt.status).toBe("success");
           },
@@ -220,7 +220,7 @@ describe("TxManager", () => {
       Effect.gen(function* () {
         const manager = yield* TxManager;
         const ref = yield* manager.track(TEST_CHAIN_ID, TEST_TX_HASH);
-        const state = yield* ref.get;
+        const state = yield* SubscriptionRef.get(ref);
 
         expect(state.status).toBe("submitted");
         if (state.status === "submitted") {
@@ -250,13 +250,13 @@ describe("TxManager", () => {
         const manager = yield* TxManager;
 
         const ref = yield* manager.track(TEST_CHAIN_ID, TEST_TX_HASH);
-        const changes = yield* ref.changes.pipe(
+        const changes = yield* SubscriptionRef.changes(ref).pipe(
           Stream.filter((state) => state.status === "replaced" || state.status === "mined"),
           Stream.take(2),
           Stream.runCollect
         );
 
-        const events = Chunk.toArray(changes);
+        const events = changes;
         expect(events[0]?.status).toBe("replaced");
         expect(events[1]?.status).toBe("mined");
 

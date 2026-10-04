@@ -25,6 +25,21 @@ The format is based on [Common Changelog](https://common-changelog.org/).
 [2.2.4]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm%402.2.4
 [3.0.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm@3.0.0
 [4.0.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm@4.0.0
+[5.0.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm@5.0.0
+
+## [5.0.0] - 2026-10-04
+
+### Changed
+
+- **Breaking:** Require `effect@^4.0.0` and migrate services, layers, schemas, and HTTP integrations to native Effect 4
+- **Breaking:** Replace the React runtime facade's `.runtime` with `.context`; runner options, fibers, and scopes now
+  use `Effect.RunOptions`, `Fiber.Fiber`, and `Scope.Closeable`
+- **Breaking:** Rename testing-kit `assertLeft` / `assertRight` to `assertFailure` / `assertSuccess` for Effect 4
+  `Result` values
+
+### Removed
+
+- Remove the `@effect/platform` peer dependency; HTTP modules are provided by `effect/http`
 
 ## [4.0.0] - 2026-10-03
 

@@ -36,7 +36,7 @@ export type SafeAppsServiceConfig = SafeAppsSdkConfig & {
    * {@link DEFAULT_GET_INFO_TIMEOUT}. Only `getInfo` is bounded — `sendTxs` / signature calls
    * legitimately block on user interaction in the Safe UI.
    */
-  readonly getInfoTimeout?: Duration.DurationInput;
+  readonly getInfoTimeout?: Duration.Input;
 };
 
 /** Default timeout for the `getInfo` SDK round-trip (see {@link SafeAppsServiceConfig}). */
@@ -88,7 +88,7 @@ const withSdk = <A, E>(
 const OPEN_IN_SAFE_USER_MESSAGE = "Open this flow in Safe to use Safe Apps SDK execution.";
 
 export const SafeAppsServiceLive = (config?: SafeAppsServiceConfig) =>
-  Layer.scoped(
+  Layer.effect(
     SafeAppsService,
     Effect.gen(function* () {
       // Cache Safe info after first fetch
@@ -99,7 +99,9 @@ export const SafeAppsServiceLive = (config?: SafeAppsServiceConfig) =>
 
       const sdkRef = yield* Ref.make<SdkState<SafeAppsSDKInstance>>({ _tag: "pending" });
 
-      const getInfoTimeout = Duration.decode(config?.getInfoTimeout ?? DEFAULT_GET_INFO_TIMEOUT);
+      const getInfoTimeout = Duration.fromInputUnsafe(
+        config?.getInfoTimeout ?? DEFAULT_GET_INFO_TIMEOUT
+      );
 
       /** Get SDK, loading lazily on first call. Fails if not in Safe App context. */
       const getSdk: Effect.Effect<SafeAppsSDKInstance, SdkUnavailableError> = Effect.gen(
@@ -167,18 +169,20 @@ export const SafeAppsServiceLive = (config?: SafeAppsServiceConfig) =>
               // drops the echoed message). Bound the round-trip so `getInfo` fails instead of
               // hanging. `sendTxs` / signature calls are intentionally left unbounded — they block
               // on user interaction in the Safe UI.
-              Effect.timeoutFail({
+              Effect.timeoutOrElse({
                 duration: getInfoTimeout,
-                onTimeout: () =>
-                  new SafeMultisigInfoUnavailableError({
-                    cause: new NotInSafeAppContextError({
-                      code: "NON_RESPONSIVE_SAFE_HOST",
-                      message: "Safe Apps SDK did not receive a response from the parent frame",
-                      recovery: "open-in-safe",
-                      userMessage: OPEN_IN_SAFE_USER_MESSAGE,
-                    }),
-                    message: `Safe getInfo timed out after ${Duration.toMillis(getInfoTimeout)}ms (not embedded in a responsive Safe App host)`,
-                  }),
+                orElse: () =>
+                  Effect.fail(
+                    new SafeMultisigInfoUnavailableError({
+                      cause: new NotInSafeAppContextError({
+                        code: "NON_RESPONSIVE_SAFE_HOST",
+                        message: "Safe Apps SDK did not receive a response from the parent frame",
+                        recovery: "open-in-safe",
+                        userMessage: OPEN_IN_SAFE_USER_MESSAGE,
+                      }),
+                      message: `Safe getInfo timed out after ${Duration.toMillis(getInfoTimeout)}ms (not embedded in a responsive Safe App host)`,
+                    })
+                  ),
               })
             ),
           (e) => new SafeMultisigInfoUnavailableError({ cause: e, message: e.message })

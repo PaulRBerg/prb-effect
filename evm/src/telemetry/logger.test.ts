@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@effect/vitest";
-import { Effect, Logger, LogLevel } from "effect";
+import { Effect, Logger, References } from "effect";
 import {
   logContractRead,
   logContractWrite,
@@ -13,7 +13,7 @@ describe("logger", () => {
   it.effect("emits operation messages, levels, and fields", () => {
     const entries: { level: string; message: unknown }[] = [];
     const logger = Logger.make(({ logLevel, message }) => {
-      entries.push({ level: logLevel._tag, message });
+      entries.push({ level: logLevel, message });
     });
     const read = { address: TEST_ADDRESS, chainId: TEST_CHAIN_ID, functionName: "balanceOf" };
     const write = { ...read, functionName: "transfer" };
@@ -43,6 +43,9 @@ describe("logger", () => {
         { level: "Error", message: ["Operation failed", failure] },
         { level: "Error", message: ["Operation failed", stringFailure] },
       ]);
-    }).pipe(Effect.provide(Logger.add(logger)), Logger.withMinimumLogLevel(LogLevel.All));
+    }).pipe(
+      Effect.provide(Logger.layer([logger])),
+      Effect.provideService(References.MinimumLogLevel, "All")
+    );
   });
 });

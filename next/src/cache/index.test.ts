@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@effect/vitest";
-import { Effect, Layer, ManagedRuntime } from "effect";
+import { Context, Effect, Layer, ManagedRuntime } from "effect";
 import { vi } from "vitest";
 
 /**
@@ -64,12 +64,10 @@ describe("reactCache", () => {
   });
 
   it("works with services", async () => {
-    class TestService extends Effect.Service<TestService>()("TestService", {
-      effect: Effect.succeed({
-        _tag: "TestService",
-        getValue: () => "service-value",
-      }),
-    }) {}
+    class TestService extends Context.Service<
+      TestService,
+      { readonly _tag: string; readonly getValue: () => string }
+    >()("TestService") {}
 
     const layer = Layer.succeed(TestService, {
       _tag: "TestService",
@@ -143,12 +141,10 @@ describe("reactCacheFn", () => {
   });
 
   it("works with services", async () => {
-    class TestService extends Effect.Service<TestService>()("TestService", {
-      effect: Effect.succeed({
-        _tag: "TestService",
-        multiply: (x: number) => x * 10,
-      }),
-    }) {}
+    class TestService extends Context.Service<
+      TestService,
+      { readonly _tag: string; readonly multiply: (x: number) => number }
+    >()("TestService") {}
 
     const layer = Layer.succeed(TestService, {
       _tag: "TestService",
@@ -332,12 +328,10 @@ describe("reactCacheWithKey", () => {
   });
 
   it("works with services", async () => {
-    class TestService extends Effect.Service<TestService>()("TestService", {
-      effect: Effect.succeed({
-        _tag: "TestService",
-        format: (id: string) => `formatted-${id}`,
-      }),
-    }) {}
+    class TestService extends Context.Service<
+      TestService,
+      { readonly _tag: string; readonly format: (id: string) => string }
+    >()("TestService") {}
 
     const layer = Layer.succeed(TestService, {
       _tag: "TestService",

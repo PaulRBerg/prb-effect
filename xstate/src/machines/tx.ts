@@ -106,14 +106,14 @@ type TxMachineConfig<TPayload, TPreprocess, TSignResult, TResult> = {
 const UNKNOWN_TX_ERROR_MESSAGE = "An unknown error occurred";
 
 const GasLimitOverflowSchema = Schema.Struct({
-  blockGasLimit: Schema.BigIntFromSelf,
-  effectiveLimit: Schema.BigIntFromSelf,
-  estimatedGas: Schema.BigIntFromSelf,
-  reason: Schema.Literal("exceeded", "tx-cap"),
+  blockGasLimit: Schema.BigInt,
+  effectiveLimit: Schema.BigInt,
+  estimatedGas: Schema.BigInt,
+  reason: Schema.Literals(["exceeded", "tx-cap"]),
 });
 
 const GasCheckGasLimitSchema = Schema.Struct({
-  gasLimit: Schema.UndefinedOr(Schema.BigIntFromSelf),
+  gasLimit: Schema.UndefinedOr(Schema.BigInt),
 });
 const GasCheckOverflowSchema = Schema.Struct({ overflow: GasLimitOverflowSchema });
 
@@ -136,11 +136,11 @@ function normalizeTxError(error: unknown): {
   };
 }
 
-function decodeOutputSchema<S extends Schema.Schema.AnyNoContext>(
+function decodeOutputSchema<S extends Schema.ConstraintDecoder<unknown>>(
   schema: S,
   output: unknown,
   message: string
-): Schema.Schema.Type<S> {
+): S["Type"] {
   try {
     return Schema.decodeUnknownSync(schema)(output);
   } catch (cause) {

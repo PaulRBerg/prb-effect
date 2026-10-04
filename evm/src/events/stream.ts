@@ -37,7 +37,9 @@ export type EventStreamShape = {
   ) => Effect.Effect<DecodedEvent<TAbi, ContractEventName<TAbi>>[], EventDecodeError>;
 };
 
-export class EventStream extends Context.Tag("ew3/EventStream")<EventStream, EventStreamShape>() {}
+export class EventStream extends Context.Service<EventStream, EventStreamShape>()(
+  "ew3/EventStream"
+) {}
 
 export const EventStreamLive = Layer.effect(
   EventStream,

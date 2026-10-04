@@ -50,10 +50,10 @@ export type SafeMultisigSimulationServiceShape = {
   >;
 };
 
-export class SafeMultisigSimulationService extends Context.Tag("ew3/SafeMultisigSimulation")<
+export class SafeMultisigSimulationService extends Context.Service<
   SafeMultisigSimulationService,
   SafeMultisigSimulationServiceShape
->() {}
+>()("ew3/SafeMultisigSimulation") {}
 
 export const SafeMultisigSimulationServiceLive = Layer.effect(
   SafeMultisigSimulationService,

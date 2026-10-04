@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@effect/vitest";
-import { Effect } from "effect";
+import { Effect, Schema } from "effect";
 import {
   InstructionBuildError,
   InstructionNotFoundError,
@@ -7,6 +7,7 @@ import {
   ProgramReadError,
   ViewNotSupportedError,
 } from "#src/program/index.js";
+import { InsufficientBalanceError } from "./account.js";
 import {
   BlockhashExpiredError,
   SimulationFailedError,
@@ -400,4 +401,22 @@ describe("ViewNotSupportedError", () => {
       expect(caught.method).toBe("withdraw");
     })
   );
+});
+
+describe("InsufficientBalanceError codec", () => {
+  it("round-trips lamports as decimal strings without losing bigint precision", () => {
+    const error = new InsufficientBalanceError({
+      address: "11111111111111111111111111111111",
+      available: 9007199254740993n,
+      message: "Insufficient SOL balance",
+      required: 18446744073709551615n,
+    });
+    const encoded = Schema.encodeSync(InsufficientBalanceError)(error);
+    expect(encoded.available).toBe("9007199254740993");
+    expect(encoded.required).toBe("18446744073709551615");
+    const decoded = Schema.decodeSync(InsufficientBalanceError)(encoded);
+    expect(decoded).toBeInstanceOf(InsufficientBalanceError);
+    expect(decoded.available).toBe(error.available);
+    expect(decoded.required).toBe(error.required);
+  });
 });

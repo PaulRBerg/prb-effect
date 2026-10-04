@@ -80,7 +80,6 @@ export type SafeAppsServiceShape = {
   readonly enableOffchainSigning: () => Effect.Effect<void, SafeMultisigSettingsError>;
 };
 
-export class SafeAppsService extends Context.Tag("ew3/SafeApps")<
-  SafeAppsService,
-  SafeAppsServiceShape
->() {}
+export class SafeAppsService extends Context.Service<SafeAppsService, SafeAppsServiceShape>()(
+  "ew3/SafeApps"
+) {}

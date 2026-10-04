@@ -70,14 +70,14 @@ vi.mock("./write-and-track.js", async () => {
 vi.mock("@prb/effect-evm/tx", async () => {
   const { Context } = await import("effect");
 
-  class MockTxManager extends Context.Tag("ew3/TxManager")<
+  class MockTxManager extends Context.Service<
     MockTxManager,
     {
       readonly getConfirmations: (...args: readonly unknown[]) => Effect.Effect<bigint>;
       readonly track: (...args: readonly unknown[]) => Effect.Effect<unknown>;
       readonly waitForReceipt: (...args: readonly unknown[]) => Effect.Effect<unknown>;
     }
-  >() {}
+  >()("ew3/TxManager") {}
 
   return {
     initialTxState: { status: "idle" } as const,
@@ -170,8 +170,8 @@ function makeSafeAppsServiceLayer(
         safeAddress: TEST_ACCOUNT,
         safeTxHash: TEST_SAFE_TX_HASH,
       }),
-    signTypedData: () => Effect.dieMessage("unused in this test"),
-    waitForTxReceipt: () => Effect.dieMessage("unused in this test"),
+    signTypedData: () => Effect.die(new Error("unused in this test")),
+    waitForTxReceipt: () => Effect.die(new Error("unused in this test")),
   } as unknown as SafeAppsServiceShape);
 
   return Layer.succeed(SafeAppsService, service);
@@ -181,7 +181,7 @@ const txManagerLayer = Layer.succeed(
   TxManager,
   TxManager.of({
     getConfirmations: () => Effect.succeed(0n),
-    track: () => Effect.dieMessage("unused in this test"),
+    track: () => Effect.die(new Error("unused in this test")),
     waitForReceipt: () => Effect.succeed(TEST_RECEIPT),
   } as Parameters<typeof TxManager.of>[0])
 );
@@ -255,7 +255,7 @@ describe("SafeWriteExecutionAdapterLive", () => {
 
       const minedFiber = yield* Stream.runHead(
         Stream.filter(
-          execution.stateRef.changes,
+          SubscriptionRef.changes(execution.stateRef),
           (state): state is Extract<TxState, { status: "mined" }> => state.status === "mined"
         )
       ).pipe(Effect.forkScoped);
@@ -385,7 +385,7 @@ describe("SafeWriteExecutionAdapterLive", () => {
 
       const queuedFiber = yield* Stream.runHead(
         Stream.filter(
-          execution.stateRef.changes,
+          SubscriptionRef.changes(execution.stateRef),
           (state): state is Extract<TxState, { status: "queued" }> => state.status === "queued"
         )
       ).pipe(Effect.forkScoped);
@@ -464,7 +464,7 @@ describe("SafeWriteExecutionAdapterLive", () => {
       expect(forwarded).toMatchObject({ waitOptions: { maxWait: "90 seconds" } });
     }).pipe(
       Effect.provide(
-        makeAdapterRuntimeLayer(() => Effect.dieMessage("unused in this test"), {
+        makeAdapterRuntimeLayer(() => Effect.die(new Error("unused in this test")), {
           waitOptions: { maxWait: "90 seconds" },
         })
       ),
@@ -504,7 +504,7 @@ describe("SafeWriteExecutionAdapterLive", () => {
 
       const cancelledFiber = yield* Stream.runHead(
         Stream.filter(
-          execution.stateRef.changes,
+          SubscriptionRef.changes(execution.stateRef),
           (state): state is Extract<TxState, { status: "cancelled" }> =>
             state.status === "cancelled"
         )
@@ -583,7 +583,7 @@ describe("SafeWriteExecutionAdapterLive", () => {
 
       const failedState = yield* Stream.runHead(
         Stream.filter(
-          execution.stateRef.changes,
+          SubscriptionRef.changes(execution.stateRef),
           (state): state is Extract<TxState, { status: "failed" }> => state.status === "failed"
         )
       );
@@ -620,7 +620,7 @@ describe("SafeWriteExecutionAdapterLive", () => {
       });
 
       const exit = yield* execution.terminal.pipe(Effect.exit);
-      const state = yield* execution.stateRef.get;
+      const state = yield* SubscriptionRef.get(execution.stateRef);
 
       expect(Exit.isFailure(exit)).toBe(true);
       expect(state.status).toBe("failed");

@@ -64,11 +64,62 @@ bun add @prb/effect-evm
 
 **Peer dependencies**
 
-- `effect@^3.21.3`
-- `@effect/platform@^0.96.1`
+- `effect@^4.0.0`
 - `viem@^2.43`
 - Optional: `@wagmi/core@>=2.0.0` (for `@prb/effect-evm/wagmi`)
 - Optional: `react@>=18.2.0`, `react-dom@>=18.2.0` (for `@prb/effect-evm/react-hooks`)
+
+## Migration to v5 (Effect 4)
+
+Version 5 requires `effect@^4.0.0`. Public services retain their domain operations, but their Effect types and runtime
+integration now use native Effect 4 APIs.
+
+| Previous API                                               | Effect 4 API                                                                         |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Service classes based on `Context.Tag`                     | `Context.Service`; generic service keys use `Context.Key<Identifier, Shape>`         |
+| `useEffectEvmRuntime().runtime`                            | `.context`, a `Context.Context<unknown>`                                             |
+| `Runtime.runPromise(runtime)` and other runtime runners    | `Effect.runPromiseWith(context)`, `runPromiseExitWith`, `runForkWith`, `runSyncWith` |
+| Runtime runner option / fiber / scope types                | `Effect.RunOptions`, `Fiber.Fiber<A, E>`, `Scope.Closeable`                          |
+| `Effect.either`, `Either.left` / `Either.right`            | `Effect.result`, `Result.fail` / `Result.succeed`                                    |
+| Testing-kit `assertLeft` / `assertRight`                   | `assertFailure` / `assertSuccess` for `Result.Result<A, E>`                          |
+| `Schema.BigInt` (string encoded) / `Schema.BigIntFromSelf` | `Schema.BigIntFromString` / `Schema.BigInt`                                          |
+| `@effect/platform` HTTP modules                            | Modules exported from `effect/http`                                                  |
+
+### React runtime runners
+
+`useEffectEvmRuntime()` keeps bound `runPromise`, `runPromiseExit`, and `runFork` methods. Runner options now use
+`Effect.RunOptions`; `runFork` returns `Fiber.Fiber<A, E>`, and the provider-owned scope is `Scope.Closeable`. Use
+`.context` when calling Effect runners directly:
+
+```typescript
+import { Effect } from "effect";
+import { useEffectEvmRuntime } from "@prb/effect-evm/react-hooks";
+
+function useExampleRunner() {
+  const runtime = useEffectEvmRuntime();
+  return (signal: AbortSignal) => Effect.runPromiseWith(runtime.context)(Effect.succeed(42), { signal });
+}
+```
+
+### HTTP layers
+
+Custom compositions of `SimulationServiceLive` still need an HTTP client. Import it from Effect 4:
+
+```typescript
+import { Layer } from "effect";
+import { FetchHttpClient } from "effect/http";
+import { SimulationServiceLive } from "@prb/effect-evm";
+
+const SimulationLayer = SimulationServiceLive.pipe(Layer.provide(FetchHttpClient.layer));
+```
+
+The standard EVM presets and `makeEffectEvmTestLayer` already provide this client.
+
+### Schema and persistence
+
+For custom persisted data, use `Schema.BigIntFromString` to decode decimal strings to bigint and encode bigint as
+strings. Use `Schema.BigInt` for native bigint fields, including token IDs and block numbers. Existing browser cursor
+and transaction storage keys and record formats remain compatible.
 
 ## Quick Start
 
@@ -845,6 +896,21 @@ const program = Effect.gen(function* () {
     functionName: "totalSupply",
   });
 }).pipe(Effect.provide(Layer.mergeAll(testLayer, balanceLayer)));
+```
+
+### Result assertions
+
+Use `Effect.result` to capture typed failures as `Result` values. The renamed testing-kit assertions return the failure
+or success payload; `expectTaggedFailure` continues to accept `Exit` values.
+
+```typescript
+import { Effect } from "effect";
+import { assertFailure, assertSuccess } from "@prb/effect-evm/testing-kit";
+
+const failure = await Effect.runPromise(Effect.result(Effect.fail(new Error("boom"))));
+const error = assertFailure(failure);
+const success = await Effect.runPromise(Effect.result(Effect.succeed(42)));
+const value = assertSuccess(success);
 ```
 
 ### Available mock layers

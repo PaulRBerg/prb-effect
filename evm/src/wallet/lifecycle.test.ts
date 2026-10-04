@@ -43,7 +43,7 @@ describe("WalletLifecycle", () => {
 
         expect(Exit.isFailure(exit)).toBe(true);
         if (Exit.isFailure(exit)) {
-          const error = Cause.failureOption(exit.cause);
+          const error = Cause.findErrorOption(exit.cause);
           if (error._tag === "Some") {
             expect(error.value._tag).toBe("WalletConnectionError");
             expect(error.value.message).toBe("No accounts returned from wallet");
@@ -72,7 +72,7 @@ describe("WalletLifecycle", () => {
 
         expect(Exit.isFailure(exit)).toBe(true);
         if (Exit.isFailure(exit)) {
-          const error = Cause.failureOption(exit.cause);
+          const error = Cause.findErrorOption(exit.cause);
           if (error._tag === "Some") {
             expect(error.value._tag).toBe("UserRejectedError");
           }
@@ -206,7 +206,7 @@ describe("WalletLifecycle", () => {
 
         expect(Exit.isFailure(exit)).toBe(true);
         if (Exit.isFailure(exit)) {
-          const error = Cause.failureOption(exit.cause);
+          const error = Cause.findErrorOption(exit.cause);
           if (error._tag === "Some") {
             expect(error.value._tag).toBe("UserRejectedError");
           }
@@ -300,7 +300,7 @@ describe("WalletLifecycle", () => {
 
         expect(Exit.isFailure(exit)).toBe(true);
         if (Exit.isFailure(exit)) {
-          const error = Cause.failureOption(exit.cause);
+          const error = Cause.findErrorOption(exit.cause);
           if (error._tag === "Some") {
             expect(error.value._tag).toBe("UserRejectedError");
           }
@@ -402,7 +402,7 @@ describe("WalletLifecycle", () => {
 
         expect(Exit.isFailure(exit)).toBe(true);
         if (Exit.isFailure(exit)) {
-          const error = Cause.failureOption(exit.cause);
+          const error = Cause.findErrorOption(exit.cause);
           if (error._tag === "Some") {
             expect(error.value._tag).toBe("UserRejectedError");
           }
@@ -439,7 +439,7 @@ describe("WalletLifecycle", () => {
 
         expect(Exit.isFailure(exit)).toBe(true);
         if (Exit.isFailure(exit)) {
-          const error = Cause.failureOption(exit.cause);
+          const error = Cause.findErrorOption(exit.cause);
           if (error._tag === "Some") {
             expect(error.value._tag).toBe("WatchAssetError");
             expect(error.value.message).toBe("Provider error");

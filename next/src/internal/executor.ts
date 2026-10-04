@@ -1,6 +1,6 @@
 /**
  */
-import { Cause, Chunk, Effect, Exit } from "effect";
+import { Cause, Effect, Exit } from "effect";
 import type * as ManagedRuntime from "effect/ManagedRuntime";
 import { workAsyncStorage } from "next/dist/server/app-render/work-async-storage.external.js";
 import { workUnitAsyncStorage } from "next/dist/server/app-render/work-unit-async-storage.external.js";
@@ -79,15 +79,17 @@ export async function executeWithRuntime<A, E, R, ER>(
       );
 
   if (Exit.isFailure(result)) {
-    const defects = Chunk.toArray(Cause.defects(result.cause));
-    if (defects.length === 1) {
+    const defects = result.cause.reasons.filter(Cause.isDieReason).map((reason) => reason.defect);
+    if (defects.length > 0) {
       const { unstable_rethrow } = await import("next/navigation.js");
-      unstable_rethrow(defects[0]);
+      for (const defect of defects) {
+        unstable_rethrow(defect);
+      }
     }
 
     // Handle navigation errors by triggering Next.js
     // Use dynamic import to avoid loading React at module initialization (breaks tests)
-    const failures = Chunk.toArray(Cause.failures(result.cause));
+    const failures = result.cause.reasons.filter(Cause.isFailReason).map((reason) => reason.error);
     const navigationError = failures.find(
       (f) => f instanceof NotFoundError || f instanceof RedirectError
     );

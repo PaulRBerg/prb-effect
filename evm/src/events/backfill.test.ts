@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@effect/vitest";
-import { Chunk, Effect, Layer, Stream } from "effect";
+import { Effect, Layer, Stream } from "effect";
 import { erc20Abi } from "viem";
 import { EventBackfillError } from "#src/core/index.js";
 import { EventBackfill, EventBackfillLive } from "#src/events/index.js";
@@ -70,7 +70,7 @@ describe("EventBackfill (retry + typed errors)", () => {
         toBlock: 10n,
       });
 
-      const events = Chunk.toReadonlyArray(yield* Stream.runCollect(stream));
+      const events = yield* Stream.runCollect(stream);
       expect(events).toHaveLength(1);
       expect(events[0]?.eventName).toBe("Transfer");
       expect(calls).toBeGreaterThanOrEqual(2);

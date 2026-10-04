@@ -1,4 +1,4 @@
-import { Context, Effect, Layer, Stream } from "effect";
+import { Cause, Context, Effect, Layer, Queue, Stream } from "effect";
 import type { Address, Hex } from "viem";
 import { erc20Abi, erc20Abi_bytes32 } from "#src/abi/index.js";
 import type { ContractReaderShape } from "#src/contract/index.js";
@@ -63,10 +63,9 @@ export type BalanceServiceShape = {
   }) => Effect.Effect<boolean, ContractReadError | ClientNotFoundError>;
 };
 
-export class BalanceService extends Context.Tag("ew3/BalanceService")<
-  BalanceService,
-  BalanceServiceShape
->() {}
+export class BalanceService extends Context.Service<BalanceService, BalanceServiceShape>()(
+  "ew3/BalanceService"
+) {}
 
 /**
  * Build multicall requests for token balances including bytes32 fallbacks
@@ -302,29 +301,45 @@ export const BalanceServiceLive = Layer.effect(
         Effect.gen(function* () {
           const client = yield* publicClientService.get(params.chainId);
 
-          return Stream.async<bigint, unknown>((emit) => {
-            const unwatch = client.watchBlockNumber({
-              pollingInterval: params.pollingInterval,
-              onBlockNumber: async (blockNumber) => {
-                try {
-                  const balance = await client.getBalance({
-                    address: params.address,
-                    blockNumber,
+          return Stream.callback<bigint, unknown>((queue) =>
+            Effect.gen(function* () {
+              let active = true;
+              const offer = (value: bigint) => {
+                if (active) Queue.offerUnsafe(queue, value);
+              };
+              const fail = (error: unknown) => {
+                if (active) Queue.failCauseUnsafe(queue, Cause.fail(error));
+              };
+              yield* Effect.acquireRelease(
+                Effect.sync(() => {
+                  const unwatch = client.watchBlockNumber({
+                    pollingInterval: params.pollingInterval,
+                    onBlockNumber: async (blockNumber) => {
+                      try {
+                        const balance = await client.getBalance({
+                          address: params.address,
+                          blockNumber,
+                        });
+                        offer(balance);
+                      } catch (error) {
+                        fail(error);
+                      }
+                    },
+                    onError: (error) => {
+                      fail(error);
+                    },
                   });
-                  emit.single(balance);
-                } catch (error) {
-                  emit.fail(error as unknown);
-                }
-              },
-              onError: (error) => {
-                emit.fail(error as unknown);
-              },
-            });
 
-            return Effect.sync(() => {
-              unwatch();
-            });
-          });
+                  return unwatch;
+                }),
+                (unwatch) =>
+                  Effect.sync(() => {
+                    active = false;
+                    unwatch();
+                  })
+              );
+            })
+          );
         }).pipe(
           Effect.withSpan(SpanNames.BALANCE_WATCH, {
             attributes: {
@@ -339,32 +354,48 @@ export const BalanceServiceLive = Layer.effect(
         Effect.gen(function* () {
           const client = yield* publicClientService.get(params.chainId);
 
-          return Stream.async<bigint, unknown>((emit) => {
-            const unwatch = client.watchBlockNumber({
-              pollingInterval: params.pollingInterval,
-              onBlockNumber: async (blockNumber) => {
-                try {
-                  const result = await client.readContract({
-                    abi: erc20Abi,
-                    address: params.tokenAddress,
-                    args: [params.address],
-                    blockNumber,
-                    functionName: "balanceOf",
+          return Stream.callback<bigint, unknown>((queue) =>
+            Effect.gen(function* () {
+              let active = true;
+              const offer = (value: bigint) => {
+                if (active) Queue.offerUnsafe(queue, value);
+              };
+              const fail = (error: unknown) => {
+                if (active) Queue.failCauseUnsafe(queue, Cause.fail(error));
+              };
+              yield* Effect.acquireRelease(
+                Effect.sync(() => {
+                  const unwatch = client.watchBlockNumber({
+                    pollingInterval: params.pollingInterval,
+                    onBlockNumber: async (blockNumber) => {
+                      try {
+                        const result = await client.readContract({
+                          abi: erc20Abi,
+                          address: params.tokenAddress,
+                          args: [params.address],
+                          blockNumber,
+                          functionName: "balanceOf",
+                        });
+                        offer(result as bigint);
+                      } catch (error) {
+                        fail(error);
+                      }
+                    },
+                    onError: (error) => {
+                      fail(error);
+                    },
                   });
-                  emit.single(result as bigint);
-                } catch (error) {
-                  emit.fail(error as unknown);
-                }
-              },
-              onError: (error) => {
-                emit.fail(error as unknown);
-              },
-            });
 
-            return Effect.sync(() => {
-              unwatch();
-            });
-          });
+                  return unwatch;
+                }),
+                (unwatch) =>
+                  Effect.sync(() => {
+                    active = false;
+                    unwatch();
+                  })
+              );
+            })
+          );
         }).pipe(
           Effect.withSpan(SpanNames.BALANCE_WATCH_TOKEN, {
             attributes: {

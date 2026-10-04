@@ -2,7 +2,8 @@ import { describe, expect, it } from "@effect/vitest";
 import type { Transaction, TransactionError } from "@solana/web3.js";
 import { Keypair, PublicKey, TransactionInstruction } from "@solana/web3.js";
 import { Buffer } from "buffer";
-import { Effect, Fiber, TestClock } from "effect";
+import { Effect, Fiber } from "effect";
+import * as TestClock from "effect/testing/TestClock";
 import { COMPUTE_BUDGET_PROGRAM_ADDRESS, SYSTEM_PROGRAM_ADDRESS } from "#src/constants/index.js";
 import {
   expectTaggedFailure,
@@ -82,7 +83,7 @@ describe("TransactionService (Live)", () => {
             lastValidBlockHeight: 1000,
           },
         })
-        .pipe(Effect.exit, Effect.fork);
+        .pipe(Effect.exit, Effect.forkChild);
       yield* TestClock.adjust("5 seconds");
       const exit = yield* Fiber.join(fiber);
       expectTaggedFailure(exit, "BlockhashExpiredError");

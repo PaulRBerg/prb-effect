@@ -109,10 +109,9 @@ export type Erc721ServiceShape = {
   }) => Effect.Effect<bigint, ContractReadError | ClientNotFoundError>;
 };
 
-export class Erc721Service extends Context.Tag("ew3/Erc721Service")<
-  Erc721Service,
-  Erc721ServiceShape
->() {}
+export class Erc721Service extends Context.Service<Erc721Service, Erc721ServiceShape>()(
+  "ew3/Erc721Service"
+) {}
 
 // Helper to create ContractReadError
 const makeReadError = (address: Address, functionName: string) => (cause: unknown) =>

@@ -1,6 +1,6 @@
 import "server-only";
 
-import { Clock, Duration, Effect, Either, Layer, Schema } from "effect";
+import { Clock, Duration, Effect, Layer, Result, Schema } from "effect";
 import { Tag } from "../index.js";
 
 /**
@@ -55,7 +55,7 @@ export type RateLimitKeyResolver = (
 export type RateLimitOptions = {
   readonly store: RateLimitStore;
   readonly limit: number;
-  readonly window: Duration.DurationInput;
+  readonly window: Duration.Input;
   readonly key?: RateLimitKeyResolver;
   readonly failurePolicy?: RateLimitFailurePolicy;
 };
@@ -91,7 +91,7 @@ export class RateLimitStoreError extends Schema.TaggedError<RateLimitStoreError>
  */
 export class RateLimitMiddleware extends Tag<RateLimitMiddleware>()(
   "effect-next/RateLimitMiddleware",
-  { failure: Schema.Union(RateLimitExceeded, RateLimitStoreError) }
+  { failure: Schema.Union([RateLimitExceeded, RateLimitStoreError]) }
 ) {}
 
 const DEFAULT_IP_HEADERS = [
@@ -219,7 +219,7 @@ const defaultKey = rateLimitKey.combine(
 const toPositiveInteger = (input: number): number =>
   Number.isFinite(input) ? Math.max(1, Math.floor(input)) : 1;
 
-const toWindowSeconds = (input: Duration.DurationInput): number =>
+const toWindowSeconds = (input: Duration.Input): number =>
   toPositiveInteger(Math.ceil(Duration.toMillis(input) / 1000));
 
 /**
@@ -298,17 +298,17 @@ export const makeRateLimitMiddleware = (
               message: `Failed to increment rate-limit key "${key}"`,
             })
         ),
-        Effect.either
+        Effect.result
       );
 
-      if (Either.isLeft(increment)) {
+      if (Result.isFailure(increment)) {
         if (failurePolicy === "fail-open") {
           return;
         }
-        return yield* Effect.fail(increment.left);
+        return yield* Effect.fail(increment.failure);
       }
 
-      const result = increment.right;
+      const result = increment.success;
       if (result.count <= result.limit) {
         return;
       }

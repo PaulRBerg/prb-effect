@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@effect/vitest";
-import { Effect, Layer, ManagedRuntime } from "effect";
+import { Context, Effect, Layer, ManagedRuntime } from "effect";
 import { vi } from "vitest";
 
 /**
@@ -27,12 +27,10 @@ const Middleware = await import("../middleware/index.js");
 
 describe("Next handler constructors", () => {
   it("make() sets _tag, key, empty middlewares, and creates runtime", async () => {
-    class TestService extends Effect.Service<TestService>()("TestService", {
-      effect: Effect.succeed({
-        _tag: "TestService",
-        getValue: () => "test-value",
-      }),
-    }) {}
+    class TestService extends Context.Service<
+      TestService,
+      { readonly _tag: string; readonly getValue: () => string }
+    >()("TestService") {}
 
     const layer = Layer.succeed(TestService, {
       _tag: "TestService",
@@ -53,12 +51,10 @@ describe("Next handler constructors", () => {
   });
 
   it("makeWithRuntime() keeps runtime by reference", () => {
-    class TestService extends Effect.Service<TestService>()("TestService", {
-      effect: Effect.succeed({
-        _tag: "TestService",
-        getValue: () => "test-value",
-      }),
-    }) {}
+    class TestService extends Context.Service<
+      TestService,
+      { readonly _tag: string; readonly getValue: () => string }
+    >()("TestService") {}
 
     const layer = Layer.succeed(TestService, {
       _tag: "TestService",
@@ -150,12 +146,10 @@ describe("Next handler .build()", () => {
   });
 
   it("with runtime: executes handler and returns value", async () => {
-    class TestService extends Effect.Service<TestService>()("TestService", {
-      effect: Effect.succeed({
-        _tag: "TestService",
-        getValue: () => "test-value",
-      }),
-    }) {}
+    class TestService extends Context.Service<
+      TestService,
+      { readonly _tag: string; readonly getValue: () => string }
+    >()("TestService") {}
 
     const layer = Layer.succeed(TestService, {
       _tag: "TestService",

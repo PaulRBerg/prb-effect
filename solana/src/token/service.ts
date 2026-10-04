@@ -105,10 +105,9 @@ export type TokenServiceShape = {
   readonly tokenAccountExists: (ata: Address) => Effect.Effect<boolean, RpcError>;
 };
 
-export class TokenService extends Context.Tag("esolana/TokenService")<
-  TokenService,
-  TokenServiceShape
->() {}
+export class TokenService extends Context.Service<TokenService, TokenServiceShape>()(
+  "esolana/TokenService"
+) {}
 
 const MINT_SIZE = 82;
 const TOKEN_ACCOUNT_SIZE = 165;

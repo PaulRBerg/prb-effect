@@ -174,7 +174,7 @@ describe("catchUserRejection", () => {
     const exit = await Effect.runPromiseExit(catchUserRejection(effect, null));
     expect(Exit.isFailure(exit)).toBe(true);
     if (Exit.isFailure(exit)) {
-      expect(exit.cause._tag).toBe("Fail");
+      expect(Cause.hasFails(exit.cause)).toBe(true);
     }
   });
 

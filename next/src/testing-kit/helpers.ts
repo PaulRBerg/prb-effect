@@ -5,7 +5,7 @@
  */
 
 import type { Layer } from "effect";
-import { Cause, Chunk, Effect, Exit, ManagedRuntime } from "effect";
+import { Cause, Effect, Exit, ManagedRuntime } from "effect";
 
 /**
  * Asserts that an Exit is a success and returns the value.
@@ -25,8 +25,8 @@ export function assertRight<E, A>(exit: Exit.Exit<A, E>): A {
   if (Exit.isSuccess(exit)) {
     return exit.value;
   }
-  const failures = Chunk.toArray(Cause.failures(exit.cause));
-  const defects = Chunk.toArray(Cause.defects(exit.cause));
+  const failures = exit.cause.reasons.filter(Cause.isFailReason).map((reason) => reason.error);
+  const defects = exit.cause.reasons.filter(Cause.isDieReason).map((reason) => reason.defect);
   const message = [
     "Expected Success but got Failure",
     failures.length > 0 && `Failures: ${failures.map((f) => JSON.stringify(f)).join(", ")}`,
@@ -53,11 +53,11 @@ export function assertRight<E, A>(exit: Exit.Exit<A, E>): A {
  */
 export function assertLeft<E, A>(exit: Exit.Exit<A, E>): E {
   if (Exit.isFailure(exit)) {
-    const failures = Chunk.toArray(Cause.failures(exit.cause));
+    const failures = exit.cause.reasons.filter(Cause.isFailReason).map((reason) => reason.error);
     if (failures.length > 0) {
       return failures[0];
     }
-    const defects = Chunk.toArray(Cause.defects(exit.cause));
+    const defects = exit.cause.reasons.filter(Cause.isDieReason).map((reason) => reason.defect);
     throw new Error(
       `Expected Left with failures but got defects: ${defects.map((d) => String(d)).join(", ")}`
     );
@@ -90,9 +90,9 @@ export function expectTaggedFailure<E extends { _tag: string }>(
     throw new Error(`Expected failure with tag "${tag}" but got success`);
   }
 
-  const failures = Chunk.toArray(Cause.failures(exit.cause));
+  const failures = exit.cause.reasons.filter(Cause.isFailReason).map((reason) => reason.error);
   if (failures.length === 0) {
-    const defects = Chunk.toArray(Cause.defects(exit.cause));
+    const defects = exit.cause.reasons.filter(Cause.isDieReason).map((reason) => reason.defect);
     throw new Error(
       `Expected failure with tag "${tag}" but got defects: ${defects.map((d) => String(d)).join(", ")}`
     );
@@ -128,7 +128,7 @@ export function expectDefect<E, A>(
     throw new Error("Expected failure with defect but got success");
   }
 
-  const defects = Chunk.toArray(Cause.defects(exit.cause));
+  const defects = exit.cause.reasons.filter(Cause.isDieReason).map((reason) => reason.defect);
   if (defects.length === 0) {
     throw new Error("Expected defect but got failure without defects");
   }

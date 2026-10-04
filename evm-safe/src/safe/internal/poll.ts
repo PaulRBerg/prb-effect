@@ -29,7 +29,7 @@ export const pollUntil = <T, E1, E2, R>(
 
     yield* pollLoop.pipe(
       Effect.timeout(Duration.millis(options.timeout)),
-      Effect.catchTag("TimeoutException", () => Effect.fail(onTimeout(options.timeout)))
+      Effect.catchTag("TimeoutError", () => Effect.fail(onTimeout(options.timeout)))
     );
 
     // After timeout handling, result should be set if we didn't fail

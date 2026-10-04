@@ -8,7 +8,7 @@ import {
   VersionedTransaction,
 } from "@solana/web3.js";
 import BN from "bn.js";
-import { Cause, Effect, Exit, Layer, Logger } from "effect";
+import { Cause, Context, Effect, Exit, Layer, Logger, Option } from "effect";
 import { WalletNotConnectedError } from "#src/core/errors/index.js";
 import {
   makeMockRpc as makeBaseMockRpc,
@@ -145,9 +145,9 @@ function expectFailError<E>(exit: Exit.Exit<unknown, E>): E {
     throw new Error("Expected failure exit");
   }
 
-  const failure = Cause.failureOption(exit.cause);
+  const failure = Cause.findErrorOption(exit.cause);
   if (failure._tag === "None") {
-    throw new Error(`Expected fail cause, got "${exit.cause._tag}"`);
+    throw new Error(`Expected fail cause, got "${Cause.pretty(exit.cause)}"`);
   }
 
   return failure.value;
@@ -159,12 +159,12 @@ function expectDieError(exit: Exit.Exit<unknown, unknown>): unknown {
     throw new Error("Expected failure exit");
   }
 
-  const defect = Cause.dieOption(exit.cause);
-  if (defect._tag === "None") {
-    throw new Error(`Expected die cause, got "${exit.cause._tag}"`);
+  const defect = exit.cause.reasons.find(Cause.isDieReason);
+  if (defect === undefined) {
+    throw new Error(`Expected die cause, got "${Cause.pretty(exit.cause)}"`);
   }
 
-  return defect.value;
+  return defect.defect;
 }
 
 describe("ProgramReader", () => {
@@ -389,14 +389,12 @@ describe("ProgramReader", () => {
 
     it.effect("returns WalletNotConnectedError when signer disconnects after createProgram", () => {
       let connected = true;
+      const disconnected = new WalletNotConnectedError({ message: "Wallet not connected" });
       const rpcLayer = makeMockRpcServiceLayer({
         getRpc: () => Effect.succeed(makeMockRpc({ viewReturn: 42n })),
       });
       const signerLayer = makeMockSignerServiceLayer({
-        getAddress: () =>
-          connected
-            ? Effect.succeed(TEST_ADDRESS)
-            : Effect.fail(new WalletNotConnectedError({ message: "Wallet not connected" })),
+        getAddress: () => (connected ? Effect.succeed(TEST_ADDRESS) : Effect.fail(disconnected)),
       });
       const layer = Layer.provide(ProgramReaderLive, Layer.mergeAll(rpcLayer, signerLayer));
 
@@ -414,7 +412,7 @@ describe("ProgramReader", () => {
         );
 
         const error = expectFailError(exit);
-        expect(error).toBeInstanceOf(WalletNotConnectedError);
+        expect(error).toBe(disconnected);
       }).pipe(Effect.provide(layer));
     });
 
@@ -493,15 +491,14 @@ describe("ProgramReader", () => {
 
     it.effect("preserves unexpected signer defects in simulate path as defects", () => {
       let addressCalls = 0;
+      const expectedDefect = new Error("unexpected signer defect");
       const rpcLayer = makeMockRpcServiceLayer({
         getRpc: () => Effect.succeed(makeMockRpc({ viewReturn: 42n })),
       });
       const signerLayer = makeMockSignerServiceLayer({
         getAddress: () => {
           addressCalls += 1;
-          return addressCalls === 1
-            ? Effect.succeed(TEST_ADDRESS)
-            : Effect.die(new Error("unexpected signer defect"));
+          return addressCalls === 1 ? Effect.succeed(TEST_ADDRESS) : Effect.die(expectedDefect);
         },
       });
       const layer = Layer.provide(ProgramReaderLive, Layer.mergeAll(rpcLayer, signerLayer));
@@ -519,7 +516,7 @@ describe("ProgramReader", () => {
         );
 
         const defect = expectDieError(exit);
-        expect(defect).toBeInstanceOf(Error);
+        expect(defect).toBe(expectedDefect);
         expect((defect as Error).message).toContain("unexpected signer defect");
       }).pipe(Effect.provide(layer));
     });
@@ -765,10 +762,7 @@ describe("ProgramReader", () => {
         expect(logMessages.some((message) => message.includes("without IDL return metadata"))).toBe(
           true
         );
-      }).pipe(
-        Effect.provide(makeTestLayer()),
-        Effect.provide(Logger.replace(Logger.defaultLogger, testLogger))
-      );
+      }).pipe(Effect.provide(makeTestLayer()), Effect.provide(Logger.layer([testLogger])));
     });
 
     it.effect("supports method name normalization between IDL and methods", () =>
@@ -848,10 +842,7 @@ describe("ProgramReader", () => {
             message.includes('ProgramReader could not match method "viewValue"')
           )
         ).toBe(true);
-      }).pipe(
-        Effect.provide(makeTestLayer()),
-        Effect.provide(Logger.replace(Logger.defaultLogger, testLogger))
-      );
+      }).pipe(Effect.provide(makeTestLayer()), Effect.provide(Logger.layer([testLogger])));
     });
 
     it.effect("logs warning and fails when unmatched method builder lacks .view()", () => {
@@ -898,10 +889,7 @@ describe("ProgramReader", () => {
             message.includes('ProgramReader could not match method "noViewMethod"')
           )
         ).toBe(true);
-      }).pipe(
-        Effect.provide(makeTestLayer()),
-        Effect.provide(Logger.replace(Logger.defaultLogger, testLogger))
-      );
+      }).pipe(Effect.provide(makeTestLayer()), Effect.provide(Logger.layer([testLogger])));
     });
 
     it.effect(
@@ -955,10 +943,7 @@ describe("ProgramReader", () => {
               message.includes("ProgramReader found ambiguous normalized IDL matches")
             )
           ).toBe(true);
-        }).pipe(
-          Effect.provide(makeTestLayer()),
-          Effect.provide(Logger.replace(Logger.defaultLogger, testLogger))
-        );
+        }).pipe(Effect.provide(makeTestLayer()), Effect.provide(Logger.layer([testLogger])));
       }
     );
 
@@ -997,5 +982,45 @@ describe("ProgramReader", () => {
         expect(observedCommitments).toEqual(expectedCommitments);
       }).pipe(Effect.provide(layer));
     });
+  });
+});
+
+describe("Anchor callback context", () => {
+  it.effect("inherits the layer's services and tracing span outside Effect", () => {
+    const Marker = Context.Service<string>("anchor-callback-context-fixture");
+    const observed: { readonly marker: string | undefined; readonly span: string | undefined }[] =
+      [];
+    const rpcLayer = makeMockRpcServiceLayer({
+      getRpc: () => Effect.succeed(makeMockRpc({ viewReturn: 42n })),
+    });
+    const signerLayer = makeMockSignerServiceLayer({
+      getAddress: () =>
+        Effect.gen(function* () {
+          const context = yield* Effect.context();
+          const span = yield* Effect.option(Effect.currentSpan);
+          observed.push({
+            marker: Option.getOrUndefined(Context.getOption(context, Marker)),
+            span: Option.isSome(span) ? span.value.name : undefined,
+          });
+          return TEST_ADDRESS;
+        }),
+    });
+    const layer = Layer.provide(ProgramReaderLive, Layer.mergeAll(rpcLayer, signerLayer));
+    return Effect.gen(function* () {
+      const reader = yield* ProgramReader;
+      const program = yield* reader.createProgram({ idl: VIEW_IDL });
+      const result = yield* reader.viewWithProgram(program, {
+        accounts: { stream: TEST_ADDRESS },
+        args: [],
+        method: "viewValue",
+      });
+      expect(result).toBeDefined();
+      expect(observed).toHaveLength(2);
+      expect(observed[1]).toEqual({ marker: "inherited", span: "anchor-layer-owner" });
+    }).pipe(
+      Effect.provide(layer),
+      Effect.withSpan("anchor-layer-owner"),
+      Effect.provideService(Marker, "inherited")
+    );
   });
 });

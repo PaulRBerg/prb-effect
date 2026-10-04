@@ -5,7 +5,7 @@
  */
 
 import type { Context } from "effect";
-import { Cause, Either, Exit, Layer, Option } from "effect";
+import { Cause, Exit, Layer, Option, Result } from "effect";
 import { expect } from "vitest";
 
 /**
@@ -26,7 +26,7 @@ export const expectTaggedFailure = <E extends { _tag: string }>(
 ): void => {
   expect(Exit.isFailure(exit)).toBe(true);
   if (Exit.isFailure(exit)) {
-    const error = Cause.failureOption(exit.cause);
+    const error = Cause.findErrorOption(exit.cause);
     expect(Option.isSome(error)).toBe(true);
     if (Option.isSome(error)) {
       expect((error.value as { _tag: string })._tag).toBe(expectedTag);
@@ -35,47 +35,47 @@ export const expectTaggedFailure = <E extends { _tag: string }>(
 };
 
 /**
- * Type-safe assertion for Either.Left - returns the left value for further assertions
+ * Type-safe assertion for Result.Failure - returns the failure value for further assertions
  *
- * @param either - The Either to assert on
- * @returns The left value for further assertions
- * @throws Error if Either is Right
+ * @param result - The Result to assert on
+ * @returns The failure value for further assertions
+ * @throws Error if Result is Success
  *
  * @example
  * ```typescript
- * const result = Either.left(new RpcError({ ... }));
- * const error = assertLeft(result);
+ * const result = Result.fail(new RpcError({ ... }));
+ * const error = assertFailure(result);
  * expect(error._tag).toBe("RpcError");
  * ```
  */
-export const assertLeft = <L, R>(either: Either.Either<R, L>): L => {
-  expect(Either.isLeft(either)).toBe(true);
-  if (!Either.isLeft(either)) {
-    throw new Error("Expected Left");
+export const assertFailure = <L, R>(result: Result.Result<R, L>): L => {
+  expect(Result.isFailure(result)).toBe(true);
+  if (!Result.isFailure(result)) {
+    throw new Error("Expected Failure");
   }
-  return either.left;
+  return result.failure;
 };
 
 /**
- * Type-safe assertion for Either.Right - returns the right value for further assertions
+ * Type-safe assertion for Result.Success - returns the success value for further assertions
  *
- * @param either - The Either to assert on
- * @returns The right value for further assertions
- * @throws Error if Either is Left
+ * @param result - The Result to assert on
+ * @returns The success value for further assertions
+ * @throws Error if Result is Failure
  *
  * @example
  * ```typescript
- * const result = Either.right(1000000000n);
- * const value = assertRight(result);
+ * const result = Result.succeed(1000000000n);
+ * const value = assertSuccess(result);
  * expect(value).toBe(1000000000n);
  * ```
  */
-export const assertRight = <L, R>(either: Either.Either<R, L>): R => {
-  expect(Either.isRight(either)).toBe(true);
-  if (!Either.isRight(either)) {
-    throw new Error("Expected Right");
+export const assertSuccess = <L, R>(result: Result.Result<R, L>): R => {
+  expect(Result.isSuccess(result)).toBe(true);
+  if (!Result.isSuccess(result)) {
+    throw new Error("Expected Success");
   }
-  return either.right;
+  return result.success;
 };
 
 /**
@@ -85,7 +85,7 @@ export const assertRight = <L, R>(either: Either.Either<R, L>): R => {
  * 2. Mapping merged config to service shape
  * 3. Creating a Layer.succeed
  *
- * @param ServiceTag - The Effect Context.Tag for the service
+ * @param ServiceTag - The Effect Context.Service for the service
  * @param defaults - Default configuration object
  * @param config - Partial configuration to override defaults
  * @param mapToShape - Function that maps merged config to the service shape
@@ -110,12 +110,12 @@ export const assertRight = <L, R>(either: Either.Either<R, L>): R => {
  * ```
  */
 export const makeMockServiceLayer = <I, S, C extends Record<string, unknown>>(
-  ServiceTag: Context.Tag<I, S>,
+  ServiceTag: Context.Key<I, S>,
   defaults: C,
   config: Partial<C>,
   mapToShape: (merged: C) => S
 ): Layer.Layer<I> => {
   const merged = { ...defaults, ...config } as C;
   const serviceShape = mapToShape(merged);
-  return Layer.succeed(ServiceTag, ServiceTag.of(serviceShape));
+  return Layer.succeed(ServiceTag, serviceShape);
 };

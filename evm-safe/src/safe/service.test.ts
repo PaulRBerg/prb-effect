@@ -7,7 +7,8 @@ import {
   TEST_TX_HASH,
 } from "@prb/effect-evm/testing-kit";
 import { TxManager } from "@prb/effect-evm/tx";
-import { Effect, Fiber, Layer, Option, TestClock } from "effect";
+import { Effect, Fiber, Layer, Option } from "effect";
+import * as TestClock from "effect/testing/TestClock";
 import { afterEach, beforeEach, vi } from "vitest";
 import type { SafeAppsSDKInstance } from "./adapter.js";
 import type { EIP712TypedData } from "./types.js";
@@ -52,7 +53,7 @@ function makeSdk() {
 }
 
 let sdk = makeSdk();
-const waitForReceipt = vi.fn<TxManager["Type"]["waitForReceipt"]>(() =>
+const waitForReceipt = vi.fn<TxManager["Service"]["waitForReceipt"]>(() =>
   Effect.succeed(TEST_RECEIPT)
 );
 
@@ -60,8 +61,8 @@ function serviceLayer() {
   return SafeAppsServiceLive().pipe(
     Layer.provide(
       Layer.succeed(TxManager, {
-        getConfirmations: () => Effect.dieMessage("unused"),
-        track: () => Effect.dieMessage("unused"),
+        getConfirmations: () => Effect.die(new Error("unused")),
+        track: () => Effect.die(new Error("unused")),
         waitForReceipt,
       })
     )
@@ -236,7 +237,7 @@ describe("SafeAppsServiceLive SDK operations", () => {
     Effect.gen(function* () {
       sdk.safe.getOffChainSignature.mockResolvedValueOnce("0x");
       const service = yield* SafeAppsService;
-      const fiber = yield* Effect.fork(
+      const fiber = yield* Effect.forkChild(
         service.pollOffchainSignature(MESSAGE_HASH, { pollInterval: 10, timeout: 100 })
       );
       yield* TestClock.adjust("10 millis");

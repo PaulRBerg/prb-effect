@@ -125,7 +125,7 @@ export const makeNonceManager = (): Effect.Effect<
           return [];
         }
 
-        const sorted = Arr.sort(pending, Order.bigint);
+        const sorted = Arr.sort(pending, Order.BigInt);
         const gaps: bigint[] = [];
         let expected = confirmed;
 

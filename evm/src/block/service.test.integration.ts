@@ -1,5 +1,6 @@
 import { describe, expect, it } from "@effect/vitest";
-import { Cause, Effect, Exit, Fiber, TestClock } from "effect";
+import { Cause, Effect, Exit, Fiber } from "effect";
+import * as TestClock from "effect/testing/TestClock";
 import type { Block, Hash } from "viem";
 import { mainnet } from "viem/chains";
 import { BlockNotFoundError, BlockService, BlockTimeoutError } from "#src/block/index.js";
@@ -67,7 +68,7 @@ describe("BlockService (Live)", () => {
 
         expect(Exit.isFailure(exit)).toBe(true);
         if (Exit.isFailure(exit)) {
-          const error = Cause.failureOption(exit.cause);
+          const error = Cause.findErrorOption(exit.cause);
           if (error._tag === "Some") {
             expect(error.value).toBeInstanceOf(ClientNotFoundError);
           }
@@ -88,7 +89,7 @@ describe("BlockService (Live)", () => {
 
         expect(Exit.isFailure(exit)).toBe(true);
         if (Exit.isFailure(exit)) {
-          const error = Cause.failureOption(exit.cause);
+          const error = Cause.findErrorOption(exit.cause);
           expect(error._tag).toBe("Some");
           if (error._tag === "Some") {
             expect(error.value).toBeInstanceOf(TransportError);
@@ -160,7 +161,7 @@ describe("BlockService (Live)", () => {
 
       return Effect.gen(function* () {
         const service = yield* BlockService;
-        const fiber = yield* Effect.fork(
+        const fiber = yield* Effect.forkChild(
           service.waitForBlock({
             blockNumber: 10n,
             chainId: mainnet.id,
@@ -173,7 +174,7 @@ describe("BlockService (Live)", () => {
         const exit = yield* Fiber.await(fiber);
         expect(Exit.isFailure(exit)).toBe(true);
         if (Exit.isFailure(exit)) {
-          const error = Cause.failureOption(exit.cause);
+          const error = Cause.findErrorOption(exit.cause);
           expect(error._tag).toBe("Some");
           if (error._tag === "Some") {
             expect(error.value).toBeInstanceOf(BlockTimeoutError);
@@ -192,7 +193,7 @@ describe("BlockService (Live)", () => {
 
       return Effect.gen(function* () {
         const service = yield* BlockService;
-        const fiber = yield* Effect.fork(
+        const fiber = yield* Effect.forkChild(
           service.waitForBlock({
             blockNumber: 10n,
             chainId: mainnet.id,
@@ -202,7 +203,7 @@ describe("BlockService (Live)", () => {
 
         yield* Fiber.interrupt(fiber);
         const exit = yield* Fiber.await(fiber);
-        expect(Exit.isInterrupted(exit)).toBe(true);
+        expect(Exit.hasInterrupts(exit)).toBe(true);
       }).pipe(Effect.provide(layer));
     });
 
@@ -222,7 +223,7 @@ describe("BlockService (Live)", () => {
 
         expect(Exit.isFailure(exit)).toBe(true);
         if (Exit.isFailure(exit)) {
-          const error = Cause.failureOption(exit.cause);
+          const error = Cause.findErrorOption(exit.cause);
           expect(error._tag).toBe("Some");
           if (error._tag === "Some") {
             expect(error.value).toBeInstanceOf(BlockNotFoundError);

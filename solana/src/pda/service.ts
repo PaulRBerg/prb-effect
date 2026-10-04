@@ -38,7 +38,9 @@ export type PdaServiceShape = {
   ) => Effect.Effect<ProgramDerivedAddressBump, PdaDerivationError>;
 };
 
-export class PdaService extends Context.Tag("esolana/PdaService")<PdaService, PdaServiceShape>() {}
+export class PdaService extends Context.Service<PdaService, PdaServiceShape>()(
+  "esolana/PdaService"
+) {}
 
 /**
  * Convert seed to bytes accepted by web3.js PDA derivation.

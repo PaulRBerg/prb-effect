@@ -1,33 +1,31 @@
-import type * as Effect from "effect/Effect";
-import * as ExecutionStrategy from "effect/ExecutionStrategy";
+import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
 import type * as Fiber from "effect/Fiber";
 import { constVoid as noop } from "effect/Function";
-import * as Scope_ from "effect/Scope";
+import * as Scope from "effect/Scope";
 import type { EffectEvmRuntime } from "./runtime.js";
 
 export type ScopedRun = {
   readonly close: () => void;
-  readonly fork: <A, E, R>(effect: Effect.Effect<A, E, R>) => Fiber.RuntimeFiber<A, E>;
-  readonly scope: Scope_.Scope.Closeable;
+  readonly fork: <A, E, R>(effect: Effect.Effect<A, E, R>) => Fiber.Fiber<A, E>;
+  readonly scope: Scope.Closeable;
 };
 
-export const makeScopedRun = async (runtime: EffectEvmRuntime): Promise<ScopedRun> => {
-  const scope = await runtime.runPromise(Scope_.fork(runtime.scope, ExecutionStrategy.sequential));
+export async function makeScopedRun(runtime: EffectEvmRuntime): Promise<ScopedRun> {
+  const scope = await runtime.runPromise(Scope.fork(runtime.scope, "sequential"));
   let closed = false;
 
-  const close = () => {
-    if (closed) {
-      return;
-    }
+  function close() {
+    if (closed) return;
     closed = true;
-    runtime.runPromise(Scope_.close(scope, Exit.succeed(undefined))).catch(noop);
-  };
+    void runtime.runPromise(Scope.close(scope, Exit.void)).catch(noop);
+  }
 
-  const fork = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
-    runtime.runFork(Scope_.extend(scope)(effect as unknown as Effect.Effect<A, E, unknown>), {
-      scope,
-    });
+  function fork<A, E, R>(effect: Effect.Effect<A, E, R>) {
+    // Deferred forkIn attaches the fiber before starting it, including when the
+    // parent closed between scope creation and this asynchronous continuation.
+    return Effect.runSyncWith(runtime.context)(Effect.forkIn(Scope.provide(effect, scope), scope));
+  }
 
   return { close, fork, scope };
-};
+}

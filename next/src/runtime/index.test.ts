@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "@effect/vitest";
-import { Effect, Layer } from "effect";
+import { Context, Effect, Layer } from "effect";
 import { vi } from "vitest";
 
 // Mock server-only
@@ -9,12 +9,10 @@ vi.mock("server-only", () => ({}));
 const { createStatefulRuntime, createStatefulContext } = await import("./index.js");
 
 // Simple test service for basic tests
-class SimpleService extends Effect.Service<SimpleService>()("SimpleService", {
-  effect: Effect.succeed({
-    _tag: "SimpleService",
-    value: "test-value",
-  }),
-}) {}
+class SimpleService extends Context.Service<
+  SimpleService,
+  { readonly _tag: string; readonly value: string }
+>()("SimpleService") {}
 
 const simpleLayer = Layer.succeed(SimpleService, {
   _tag: "SimpleService",
@@ -95,12 +93,10 @@ describe("createStatefulRuntime", () => {
   });
 
   it("works with custom layers", async () => {
-    class TestService extends Effect.Service<TestService>()("TestService", {
-      effect: Effect.succeed({
-        _tag: "TestService",
-        getValue: () => "custom-service-value",
-      }),
-    }) {}
+    class TestService extends Context.Service<
+      TestService,
+      { readonly _tag: string; readonly getValue: () => string }
+    >()("TestService") {}
 
     const layer = Layer.succeed(TestService, {
       _tag: "TestService",
@@ -133,25 +129,23 @@ describe("createStatefulContext", () => {
     vi.restoreAllMocks();
   });
 
-  it("returns runtime.runtimeEffect", async () => {
+  it("returns runtime.contextEffect", async () => {
     const runtime = createStatefulRuntime(simpleLayer, {
       id: "context-test-1",
     });
     const context = createStatefulContext(runtime);
 
     // Check reference equality
-    expect(context).toBe(runtime.runtimeEffect);
+    expect(context).toBe(runtime.contextEffect);
 
     await runtime.dispose();
   });
 
   it("context can be used to access runtime services", async () => {
-    class TestService extends Effect.Service<TestService>()("TestService", {
-      effect: Effect.succeed({
-        _tag: "TestService",
-        getData: () => "context-data",
-      }),
-    }) {}
+    class TestService extends Context.Service<
+      TestService,
+      { readonly _tag: string; readonly getData: () => string }
+    >()("TestService") {}
 
     const layer = Layer.succeed(TestService, {
       _tag: "TestService",
@@ -163,7 +157,7 @@ describe("createStatefulContext", () => {
 
     const effect = Effect.gen(function* () {
       const ctx = yield* context;
-      const service = yield* Effect.provide(TestService, ctx);
+      const service = Context.get(ctx, TestService);
       return service.getData();
     });
 

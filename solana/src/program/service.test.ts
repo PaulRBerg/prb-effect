@@ -1,6 +1,6 @@
 import type { Idl } from "@coral-xyz/anchor";
 import { describe, expect, it } from "@effect/vitest";
-import { Effect, Exit, Layer } from "effect";
+import { Cause, Effect, Exit, Layer } from "effect";
 import {
   expectTaggedFailure,
   makeMockRpc,
@@ -81,8 +81,11 @@ describe("ProgramWriter", () => {
         const exit = yield* Effect.exit(writer.createProgram({ idl: invalidIdl }));
 
         expect(Exit.isFailure(exit)).toBe(true);
-        if (Exit.isFailure(exit) && exit.cause._tag === "Fail") {
-          expect(exit.cause.error).toBeInstanceOf(ProgramCreationError);
+        if (Exit.isFailure(exit)) {
+          const failure = Cause.findErrorOption(exit.cause);
+          expect(failure._tag).toBe("Some");
+          if (failure._tag === "None") throw new Error("Expected typed failure");
+          expect(failure.value).toBeInstanceOf(ProgramCreationError);
         }
       }).pipe(
         Effect.provide(
@@ -124,10 +127,13 @@ describe("ProgramWriter", () => {
         );
 
         expect(Exit.isFailure(exit)).toBe(true);
-        if (Exit.isFailure(exit) && exit.cause._tag === "Fail") {
-          expect(exit.cause.error).toBeInstanceOf(InstructionNotFoundError);
-          expect((exit.cause.error as InstructionNotFoundError).method).toBe("nonExistentMethod");
-          expect((exit.cause.error as InstructionNotFoundError).idlName).toBe("testProgram");
+        if (Exit.isFailure(exit)) {
+          const failure = Cause.findErrorOption(exit.cause);
+          expect(failure._tag).toBe("Some");
+          if (failure._tag === "None") throw new Error("Expected typed failure");
+          expect(failure.value).toBeInstanceOf(InstructionNotFoundError);
+          expect((failure.value as InstructionNotFoundError).method).toBe("nonExistentMethod");
+          expect((failure.value as InstructionNotFoundError).idlName).toBe("testProgram");
         }
       }).pipe(
         Effect.provide(
@@ -153,8 +159,11 @@ describe("ProgramWriter", () => {
         );
 
         expect(Exit.isFailure(exit)).toBe(true);
-        if (Exit.isFailure(exit) && exit.cause._tag === "Fail") {
-          expect(exit.cause.error).toBeInstanceOf(InstructionNotFoundError);
+        if (Exit.isFailure(exit)) {
+          const failure = Cause.findErrorOption(exit.cause);
+          expect(failure._tag).toBe("Some");
+          if (failure._tag === "None") throw new Error("Expected typed failure");
+          expect(failure.value).toBeInstanceOf(InstructionNotFoundError);
         }
       }).pipe(
         Effect.provide(

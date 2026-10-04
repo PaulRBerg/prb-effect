@@ -12,7 +12,7 @@ export class BlockNotFoundError extends Schema.TaggedError<BlockNotFoundError>()
 export class BlockTimeoutError extends Schema.TaggedError<BlockTimeoutError>()(
   "BlockTimeoutError",
   {
-    blockNumber: Schema.BigIntFromSelf,
+    blockNumber: Schema.BigInt,
     chainId: Schema.Number,
     message: Schema.String,
     timeout: Schema.Number,

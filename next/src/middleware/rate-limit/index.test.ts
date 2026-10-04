@@ -44,18 +44,18 @@ describe("rate-limit middleware", () => {
         const request = new Request("https://example.com/api/items");
         yield* middleware({ props: [request] });
         yield* middleware({ props: [request] });
-      }).pipe(Effect.provide(layer), Effect.either);
+      }).pipe(Effect.provide(layer), Effect.result);
 
       const result = yield* program;
 
-      expect(result._tag).toBe("Left");
-      if (result._tag === "Left") {
-        expect(result.left).toBeInstanceOf(RateLimitExceeded);
-        expect(result.left._tag).toBe("RateLimitExceeded");
-        if (result.left._tag === "RateLimitExceeded") {
-          expect(result.left.limit).toBe(1);
-          expect(result.left.remaining).toBe(0);
-          expect(result.left.resetAt).toBeGreaterThan(0);
+      expect(result._tag).toBe("Failure");
+      if (result._tag === "Failure") {
+        expect(result.failure).toBeInstanceOf(RateLimitExceeded);
+        expect(result.failure._tag).toBe("RateLimitExceeded");
+        if (result.failure._tag === "RateLimitExceeded") {
+          expect(result.failure.limit).toBe(1);
+          expect(result.failure.remaining).toBe(0);
+          expect(result.failure.resetAt).toBeGreaterThan(0);
         }
       }
     })
@@ -74,15 +74,15 @@ describe("rate-limit middleware", () => {
         const request = new Request("https://example.com/api/items");
         yield* middleware({ props: [request] });
         yield* middleware({ props: [request] });
-      }).pipe(Effect.provide(layer), Effect.either);
+      }).pipe(Effect.provide(layer), Effect.result);
 
       const result = yield* program;
 
-      expect(result._tag).toBe("Left");
-      if (result._tag === "Left") {
-        expect(result.left).toBeInstanceOf(RateLimitExceeded);
-        if (result.left._tag === "RateLimitExceeded") {
-          expect(result.left.limit).toBe(1);
+      expect(result._tag).toBe("Failure");
+      if (result._tag === "Failure") {
+        expect(result.failure).toBeInstanceOf(RateLimitExceeded);
+        if (result.failure._tag === "RateLimitExceeded") {
+          expect(result.failure.limit).toBe(1);
         }
       }
     })
@@ -156,13 +156,13 @@ describe("rate-limit middleware", () => {
       const program = Effect.gen(function* () {
         const middleware = yield* RateLimitMiddleware;
         yield* middleware({ props: [new Request("https://example.com/api")] });
-      }).pipe(Effect.provide(layer), Effect.either);
+      }).pipe(Effect.provide(layer), Effect.result);
 
       const result = yield* program;
 
-      expect(result._tag).toBe("Left");
-      if (result._tag === "Left") {
-        expect(result.left).toBeInstanceOf(RateLimitStoreError);
+      expect(result._tag).toBe("Failure");
+      if (result._tag === "Failure") {
+        expect(result.failure).toBeInstanceOf(RateLimitStoreError);
       }
     })
   );

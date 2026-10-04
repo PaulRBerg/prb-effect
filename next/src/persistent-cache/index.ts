@@ -1,6 +1,6 @@
 import "server-only";
 
-import { Clock, Deferred, Duration, Effect, Either, Exit, Schema } from "effect";
+import { Clock, Deferred, Duration, Effect, Exit, Result, Schema } from "effect";
 
 /**
  * Stored cache payload plus freshness metadata.
@@ -77,20 +77,20 @@ export class CacheRefreshError extends Schema.TaggedError<CacheRefreshError>()(
 /**
  * @category models
  */
-export type CachedEffectOptions<A, StoreR = never> = {
+export type CachedEffectOptions<A, StoreR = never, RD = never, RE = never> = {
   readonly key: string;
   readonly store: PersistentCacheStore<StoreR>;
-  readonly ttl: Duration.DurationInput;
-  readonly staleWhileRevalidate?: Duration.DurationInput;
-  readonly schema?: Schema.Schema<A, never, never> | Schema.Schema.All;
+  readonly ttl: Duration.Input;
+  readonly staleWhileRevalidate?: Duration.Input;
+  readonly schema?: Schema.ConstraintCodec<A, unknown, RD, RE>;
   readonly failurePolicy?: CacheFailurePolicy;
 };
 
 /**
  * @category models
  */
-export type CachedEffectWithKeyOptions<A, StoreR = never> = Omit<
-  CachedEffectOptions<A, StoreR>,
+export type CachedEffectWithKeyOptions<A, StoreR = never, RD = never, RE = never> = Omit<
+  CachedEffectOptions<A, StoreR, RD, RE>,
   "key"
 >;
 
@@ -134,7 +134,7 @@ const inFlightByStore = new WeakMap<
   Map<string, Deferred.Deferred<unknown, CacheHelperError>>
 >();
 
-const toMillis = (input: Duration.DurationInput): number =>
+const toMillis = (input: Duration.Input): number =>
   Math.max(0, Math.ceil(Duration.toMillis(input)));
 
 const makeReadError = (key: string, cause: unknown) =>
@@ -161,17 +161,15 @@ const getInFlightMap = <StoreR>(
   return created;
 };
 
-const decodeValue = <A>(
+const decodeValue = <A, RD, RE>(
   key: string,
   value: unknown,
-  schema: Schema.Schema<A, never, never> | Schema.Schema.All | undefined
-): Effect.Effect<A, CacheDecodeError> => {
+  schema: Schema.ConstraintCodec<A, unknown, RD, RE> | undefined
+): Effect.Effect<A, CacheDecodeError, RD> => {
   if (schema === undefined) {
     return Effect.succeed(value as A);
   }
-  const schemaWithoutContext = schema as Schema.Schema<unknown, unknown, never>;
-  return Schema.decodeUnknown(schemaWithoutContext)(value).pipe(
-    Effect.map((decoded) => decoded as A),
+  return Schema.decodeUnknownEffect(schema)(value).pipe(
     Effect.mapError((cause) => makeDecodeError(key, cause))
   );
 };
@@ -189,39 +187,39 @@ const deleteEntry = <StoreR>(
 ): Effect.Effect<void, CacheWriteError, StoreR> =>
   store.delete(key).pipe(Effect.mapError((cause) => makeWriteError(key, cause)));
 
-const deleteAfterDecodeFailure = <A, StoreR>(
-  options: CachedEffectOptions<A, StoreR>,
+const deleteAfterDecodeFailure = <A, StoreR, RD, RE>(
+  options: CachedEffectOptions<A, StoreR, RD, RE>,
   policy: CacheFailurePolicy,
   decodeError: CacheDecodeError
-): Effect.Effect<CacheResult<A>, CacheWriteError | CacheDecodeError, StoreR> =>
+): Effect.Effect<CacheResult<A>, CacheWriteError | CacheDecodeError, StoreR | RD | RE> =>
   Effect.gen(function* () {
-    const deleteResult = yield* deleteEntry(options.store, options.key).pipe(Effect.either);
+    const deleteResult = yield* deleteEntry(options.store, options.key).pipe(Effect.result);
     if (policy === "fail-open") {
       return { _tag: "miss" };
     }
-    if (Either.isLeft(deleteResult)) {
-      return yield* Effect.fail(deleteResult.left);
+    if (Result.isFailure(deleteResult)) {
+      return yield* Effect.fail(deleteResult.failure);
     }
     return yield* Effect.fail(decodeError);
   });
 
-const deleteExpiredEntry = <A, StoreR>(
-  options: CachedEffectOptions<A, StoreR>,
+const deleteExpiredEntry = <A, StoreR, RD, RE>(
+  options: CachedEffectOptions<A, StoreR, RD, RE>,
   policy: CacheFailurePolicy
-): Effect.Effect<CacheResult<A>, CacheWriteError, StoreR> =>
+): Effect.Effect<CacheResult<A>, CacheWriteError, StoreR | RD | RE> =>
   Effect.gen(function* () {
-    const deleteResult = yield* deleteEntry(options.store, options.key).pipe(Effect.either);
-    if (policy === "fail-closed" && Either.isLeft(deleteResult)) {
-      return yield* Effect.fail(deleteResult.left);
+    const deleteResult = yield* deleteEntry(options.store, options.key).pipe(Effect.result);
+    if (policy === "fail-closed" && Result.isFailure(deleteResult)) {
+      return yield* Effect.fail(deleteResult.failure);
     }
     return { _tag: "miss" };
   });
 
-const classifyEntry = <A, StoreR>(
-  options: CachedEffectOptions<A, StoreR>,
+const classifyEntry = <A, StoreR, RD, RE>(
+  options: CachedEffectOptions<A, StoreR, RD, RE>,
   policy: CacheFailurePolicy,
   entry: PersistentCacheEntry
-): Effect.Effect<CacheResult<A>, CacheWriteError | CacheDecodeError, StoreR> =>
+): Effect.Effect<CacheResult<A>, CacheWriteError | CacheDecodeError, StoreR | RD | RE> =>
   Effect.gen(function* () {
     const now = yield* Clock.currentTimeMillis;
     const isFresh = now <= entry.expiresAt;
@@ -231,37 +229,41 @@ const classifyEntry = <A, StoreR>(
       return yield* deleteExpiredEntry(options, policy);
     }
 
-    const decoded = yield* decodeValue<A>(options.key, entry.value, options.schema).pipe(
-      Effect.either
+    const decoded = yield* decodeValue(options.key, entry.value, options.schema).pipe(
+      Effect.result
     );
-    if (Either.isLeft(decoded)) {
-      return yield* deleteAfterDecodeFailure(options, policy, decoded.left);
+    if (Result.isFailure(decoded)) {
+      return yield* deleteAfterDecodeFailure(options, policy, decoded.failure);
     }
 
     if (isFresh) {
-      return { _tag: "fresh", value: decoded.right };
+      return { _tag: "fresh", value: decoded.success };
     }
-    return { _tag: "stale", value: decoded.right };
+    return { _tag: "stale", value: decoded.success };
   });
 
-const readCachedValue = <A, StoreR>(
-  options: CachedEffectOptions<A, StoreR>,
+const readCachedValue = <A, StoreR, RD, RE>(
+  options: CachedEffectOptions<A, StoreR, RD, RE>,
   policy: CacheFailurePolicy
-): Effect.Effect<CacheResult<A>, CacheReadError | CacheWriteError | CacheDecodeError, StoreR> =>
+): Effect.Effect<
+  CacheResult<A>,
+  CacheReadError | CacheWriteError | CacheDecodeError,
+  StoreR | RD | RE
+> =>
   Effect.gen(function* () {
     const readResult = yield* options.store.get(options.key).pipe(
       Effect.mapError((cause) => makeReadError(options.key, cause)),
-      Effect.either
+      Effect.result
     );
 
-    if (Either.isLeft(readResult)) {
+    if (Result.isFailure(readResult)) {
       if (policy === "fail-open") {
         return { _tag: "miss" };
       }
-      return yield* Effect.fail(readResult.left);
+      return yield* Effect.fail(readResult.failure);
     }
 
-    const entry = readResult.right;
+    const entry = readResult.success;
     if (entry === null) {
       return { _tag: "miss" };
     }
@@ -269,22 +271,22 @@ const readCachedValue = <A, StoreR>(
     return yield* classifyEntry(options, policy, entry);
   });
 
-const refreshValue = <A, R, StoreR>(
+const refreshValue = <A, R, StoreR, RD, RE>(
   effect: Effect.Effect<A, unknown, R>,
-  options: CachedEffectOptions<A, StoreR>,
+  options: CachedEffectOptions<A, StoreR, RD, RE>,
   policy: CacheFailurePolicy
-): Effect.Effect<A, CacheDecodeError | CacheRefreshError | CacheWriteError, R | StoreR> =>
+): Effect.Effect<A, CacheDecodeError | CacheRefreshError | CacheWriteError, R | StoreR | RD | RE> =>
   Effect.gen(function* () {
     const exit = yield* Effect.exit(effect);
     if (Exit.isFailure(exit)) {
       return yield* Effect.fail(makeRefreshError(options.key, exit.cause));
     }
 
-    const schema = options.schema as Schema.Schema<A, unknown, never> | undefined;
-    const decoded = yield* decodeValue<A>(
+    const schema = options.schema;
+    const decoded = yield* decodeValue(
       options.key,
       exit.value,
-      schema === undefined ? undefined : Schema.typeSchema(schema)
+      schema === undefined ? undefined : Schema.toType(schema)
     );
     const now = yield* Clock.currentTimeMillis;
     const ttlMs = toMillis(options.ttl);
@@ -301,22 +303,22 @@ const refreshValue = <A, R, StoreR>(
       const value =
         schema === undefined
           ? decoded
-          : yield* Schema.encode(schema)(decoded).pipe(
+          : yield* Schema.encodeEffect(schema)(decoded).pipe(
               Effect.mapError((cause) => makeWriteError(options.key, cause))
             );
       yield* writeEntry(options.store, options.key, { ...entry, value });
-    }).pipe(Effect.either);
-    if (Either.isLeft(writeResult) && policy === "fail-closed") {
-      return yield* Effect.fail(writeResult.left);
+    }).pipe(Effect.result);
+    if (Result.isFailure(writeResult) && policy === "fail-closed") {
+      return yield* Effect.fail(writeResult.failure);
     }
     return decoded;
   });
 
-const coalesceRefresh = <A, R, StoreR>(
+const coalesceRefresh = <A, R, StoreR, RD, RE>(
   effect: Effect.Effect<A, unknown, R>,
-  options: CachedEffectOptions<A, StoreR>,
+  options: CachedEffectOptions<A, StoreR, RD, RE>,
   policy: CacheFailurePolicy
-): Effect.Effect<A, CacheDecodeError | CacheRefreshError | CacheWriteError, R | StoreR> =>
+): Effect.Effect<A, CacheDecodeError | CacheRefreshError | CacheWriteError, R | StoreR | RD | RE> =>
   Effect.suspend(() => {
     const inFlight = getInFlightMap(options.store);
     const existing = inFlight.get(options.key) as
@@ -355,7 +357,7 @@ const coalesceRefresh = <A, R, StoreR>(
 
       yield* Effect.uninterruptibleMask((restore) =>
         Effect.ensuring(
-          Effect.intoDeferred(restore(refreshValue(effect, options, policy)), deferred),
+          Deferred.into(restore(refreshValue(effect, options, policy)), deferred),
           cleanup
         )
       );
@@ -373,10 +375,10 @@ const coalesceRefresh = <A, R, StoreR>(
  *
  * @category utils
  */
-export function cachedEffect<A, E, R, StoreR = never>(
+export function cachedEffect<A, E, R, StoreR = never, RD = never, RE = never>(
   effect: Effect.Effect<A, E, R>,
-  options: CachedEffectOptions<A, StoreR>
-): Effect.Effect<A, CacheHelperError, R | StoreR> {
+  options: CachedEffectOptions<A, StoreR, RD, RE>
+): Effect.Effect<A, CacheHelperError, R | StoreR | RD | RE> {
   const policy = options.failurePolicy ?? "fail-open";
 
   return Effect.gen(function* () {
@@ -388,8 +390,8 @@ export function cachedEffect<A, E, R, StoreR = never>(
 
     if (cached._tag === "stale") {
       yield* coalesceRefresh(effect, options, policy).pipe(
-        Effect.catchAll(() => Effect.void),
-        Effect.forkDaemon
+        Effect.catch(() => Effect.void),
+        Effect.forkDetach({ startImmediately: true })
       );
       return cached.value;
     }
@@ -404,12 +406,12 @@ export function cachedEffect<A, E, R, StoreR = never>(
  * @category utils
  */
 export const cachedEffectWithKey =
-  <Args extends readonly unknown[], A, E, R, StoreR = never>(
+  <Args extends readonly unknown[], A, E, R, StoreR = never, RD = never, RE = never>(
     effect: (...args: Args) => Effect.Effect<A, E, R>,
     key: (...args: Args) => string,
-    options: CachedEffectWithKeyOptions<A, StoreR>
+    options: CachedEffectWithKeyOptions<A, StoreR, RD, RE>
   ) =>
-  (...args: Args): Effect.Effect<A, CacheHelperError, R | StoreR> =>
+  (...args: Args): Effect.Effect<A, CacheHelperError, R | StoreR | RD | RE> =>
     cachedEffect(effect(...args), {
       ...options,
       key: key(...args),

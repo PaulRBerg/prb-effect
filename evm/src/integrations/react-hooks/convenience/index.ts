@@ -5,6 +5,7 @@ import * as Fiber from "effect/Fiber";
 import { constVoid as noop } from "effect/Function";
 import * as Scope from "effect/Scope";
 import * as Stream from "effect/Stream";
+import * as SubscriptionRef from "effect/SubscriptionRef";
 import * as React from "react";
 import type * as Abi_ from "viem";
 import type {
@@ -175,10 +176,10 @@ export const useWriteAndTrack = <
       setStateRef(started.stateRef);
       setActions({
         cancel: () => {
-          runtime.runPromise(Scope.extend(scoped.scope)(started.actions.cancel())).catch(noop);
+          runtime.runPromise(Scope.provide(scoped.scope)(started.actions.cancel())).catch(noop);
         },
         speedup: () => {
-          runtime.runPromise(Scope.extend(scoped.scope)(started.actions.speedup())).catch(noop);
+          runtime.runPromise(Scope.provide(scoped.scope)(started.actions.speedup())).catch(noop);
         },
       });
 
@@ -213,7 +214,7 @@ export const useWriteAndTrack = <
   }, [params, runtime]);
 
   const stateStream = React.useMemo(
-    () => (stateRef ? stateRef.changes : Stream.succeed(initialTxState)),
+    () => (stateRef ? SubscriptionRef.changes(stateRef) : Stream.succeed(initialTxState)),
     [stateRef]
   );
   const streamState = useStream(stateStream, { initial: initialTxState });

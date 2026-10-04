@@ -1,5 +1,5 @@
-import { HttpClient } from "@effect/platform";
 import { Context, Effect, Layer } from "effect";
+import { HttpClient } from "effect/http";
 import type { Abi, Address, Hex } from "viem";
 import { formatEther } from "viem";
 import { formatPercent } from "#src/internal/index.js";
@@ -195,10 +195,9 @@ export type SimulationServiceShape = {
   readonly getReadableSummary: (result: SimulationResult, abi?: Abi) => Effect.Effect<string>;
 };
 
-export class SimulationService extends Context.Tag("ew3/SimulationService")<
-  SimulationService,
-  SimulationServiceShape
->() {}
+export class SimulationService extends Context.Service<SimulationService, SimulationServiceShape>()(
+  "ew3/SimulationService"
+) {}
 
 export const SimulationServiceLive = Layer.effect(
   SimulationService,

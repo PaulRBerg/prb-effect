@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { Effect, Layer, ManagedRuntime, Stream } from "effect";
+import { Cause, Effect, Layer, ManagedRuntime, Stream } from "effect";
 import * as React from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -44,6 +44,47 @@ async function flush() {
 }
 
 describe("effect hooks", () => {
+  it("surfaces the first typed memo failure in a mixed Cause", async () => {
+    const runtime = await makeRuntime();
+    const errorLog = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    cleanup.push(() => {
+      errorLog.mockRestore();
+    });
+    const cause = Cause.fromReasons([
+      Cause.makeDieReason(new Error("defect")),
+      Cause.makeFailReason("first typed failure"),
+      Cause.makeInterruptReason(),
+      Cause.makeFailReason("second typed failure"),
+    ]);
+    function Probe() {
+      useEffectMemo(() => Effect.failCause(cause), [], runtime);
+      return React.createElement("span", null, "pending");
+    }
+    class Boundary extends React.Component<{ children?: React.ReactNode }, { error?: unknown }> {
+      state: { error?: unknown } = {};
+      static getDerivedStateFromError(error: unknown) {
+        return { error };
+      }
+      render() {
+        return this.state.error === undefined ? this.props.children : String(this.state.error);
+      }
+    }
+    const { container } = render(React.createElement(Boundary, null, React.createElement(Probe)));
+    await flush();
+    expect(container.textContent).toBe("first typed failure");
+  });
+
+  it("ignores interruption-only memo exits", async () => {
+    const runtime = await makeRuntime();
+    function Probe() {
+      const value = useEffectMemo(() => Effect.interrupt, [], runtime);
+      return React.createElement("span", null, value ?? "pending");
+    }
+    const { container } = render(React.createElement(Probe));
+    await flush();
+    expect(container.textContent).toBe("pending");
+  });
+
   it("completes useEffectOnce after StrictMode restarts its effect", async () => {
     const runtime = await makeRuntime();
     const effect = Effect.sleep("1 millis").pipe(Effect.as("ready"));

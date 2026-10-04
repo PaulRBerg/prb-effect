@@ -30,10 +30,9 @@ export type SignerServiceShape = {
   readonly isConnected: () => Effect.Effect<boolean>;
 };
 
-export class SignerService extends Context.Tag("esolana/SignerService")<
-  SignerService,
-  SignerServiceShape
->() {}
+export class SignerService extends Context.Service<SignerService, SignerServiceShape>()(
+  "esolana/SignerService"
+) {}
 
 /**
  * Wallet adapter interface - consumers implement this to integrate their wallet.

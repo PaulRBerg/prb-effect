@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@effect/vitest";
-import { Chunk, Effect, Layer, Stream } from "effect";
+import { Effect, Layer, Stream } from "effect";
 import type { GetLogsParameters } from "viem";
 import { erc20Abi } from "viem";
 import { EventBackfill, EventBackfillLive } from "#src/events/index.js";
@@ -21,7 +21,7 @@ describe("EventBackfill", () => {
         });
 
         const events = yield* Stream.runCollect(eventStream);
-        const eventArray = Chunk.toReadonlyArray(events);
+        const eventArray = events;
 
         // Should have fetched 2 events (one per batch)
         expect(eventArray).toHaveLength(2);
@@ -70,7 +70,7 @@ describe("EventBackfill", () => {
         });
 
         const events = yield* Stream.runCollect(eventStream);
-        const eventArray = Chunk.toReadonlyArray(events);
+        const eventArray = events;
 
         expect(eventArray).toHaveLength(1);
       }).pipe(

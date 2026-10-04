@@ -64,7 +64,8 @@ function makeScope(runtime: EffectEvmRuntime) {
   const scoped: ScopedRun = {
     close,
     scope,
-    fork: (effect) => runtime.runFork(Scope.extend(effect, scope), { scope }),
+    fork: (effect) =>
+      Effect.runSyncWith(runtime.context)(Effect.forkIn(Scope.provide(effect, scope), scope)),
   };
   return { closed: closed.promise, close, scoped };
 }
@@ -107,7 +108,7 @@ describe("contract hook ownership", () => {
     const finalized = vi.fn();
     let resume: ((effect: Effect.Effect<never>) => void) | undefined;
     writeAndTrack.mockReturnValue(
-      Effect.async<never>((callback) => {
+      Effect.callback<never>((callback) => {
         resume = callback;
         started.resolve();
         return Effect.sync(finalized);

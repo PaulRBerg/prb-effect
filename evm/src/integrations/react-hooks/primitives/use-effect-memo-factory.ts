@@ -25,7 +25,7 @@ export const useEffectMemoFactory = <A, E, R>(
   const [value, setValue] = React.useState<A | undefined>(options.initial);
   const inFlightRef = React.useRef<{
     key: string | null;
-    fiber: Fiber.RuntimeFiber<Exit.Exit<A, E>, never> | null;
+    fiber: Fiber.Fiber<Exit.Exit<A, E>, never> | null;
     close: (() => void) | null;
     abort: AbortController | null;
   }>({ abort: null, close: null, fiber: null, key: null });
@@ -84,9 +84,9 @@ export const useEffectMemoFactory = <A, E, R>(
                   }
                 })
               ),
-              Effect.tapErrorCause((cause) =>
+              Effect.tapCause((cause) =>
                 Effect.sync(() => {
-                  if (!Cause.isEmpty(cause)) {
+                  if (cause.reasons.length > 0) {
                     console.error("[useEffectMemoFactory] Fiber error:", Cause.pretty(cause));
                   }
                 })

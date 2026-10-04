@@ -1,6 +1,7 @@
 import { describe, expect, it } from "@effect/vitest";
-import { Deferred, Effect, Fiber, Schema, TestClock } from "effect";
-import { vi } from "vitest";
+import { Cause, Context, Deferred, Effect, Exit, Fiber, Schema, SchemaGetter } from "effect";
+import { TestClock } from "effect/testing";
+import { expectTypeOf, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
@@ -13,6 +14,34 @@ const {
 } = await import("./index.js");
 
 describe("persistent cache", () => {
+  it.effect("keeps separate codec decoding and encoding service requirements", () => {
+    class DecodeOffset extends Context.Service<DecodeOffset, number>()("cache/DecodeOffset") {}
+    class EncodeOffset extends Context.Service<EncodeOffset, number>()("cache/EncodeOffset") {}
+    const schema = Schema.String.pipe(
+      Schema.decodeTo(Schema.Number, {
+        decode: SchemaGetter.transformEffect((value) =>
+          Effect.map(DecodeOffset, (offset) => Number(value) + offset)
+        ),
+        encode: SchemaGetter.transformEffect((value) =>
+          Effect.map(EncodeOffset, (offset) => String(value - offset))
+        ),
+      })
+    );
+    const store = makeInMemoryPersistentCacheStore();
+    const cached = cachedEffect(Effect.succeed(11), {
+      key: "services",
+      schema,
+      store,
+      ttl: "1 minute",
+    });
+    expectTypeOf<Effect.Services<typeof cached>>().toEqualTypeOf<DecodeOffset | EncodeOffset>();
+    return Effect.gen(function* () {
+      expect(yield* cached).toBe(11);
+      expect((yield* store.get("services"))?.value).toBe("10");
+      expect(yield* cached).toBe(11);
+    }).pipe(Effect.provideService(DecodeOffset, 1), Effect.provideService(EncodeOffset, 1));
+  });
+
   it.effect("returns cache hits without rerunning the refresh effect", () =>
     Effect.gen(function* () {
       const store = makeInMemoryPersistentCacheStore();
@@ -82,8 +111,8 @@ describe("persistent cache", () => {
       const first = yield* cached;
       yield* TestClock.adjust("60 millis");
 
-      const fiber1 = yield* Effect.fork(cached);
-      const fiber2 = yield* Effect.fork(cached);
+      const fiber1 = yield* Effect.forkChild(cached);
+      const fiber2 = yield* Effect.forkChild(cached);
 
       yield* Deferred.await(started);
       const stale1 = yield* Fiber.join(fiber1);
@@ -103,6 +132,40 @@ describe("persistent cache", () => {
     })
   );
 
+  it.effect("interrupts a refresh, runs finalizers, and releases its coalescing slot", () =>
+    Effect.gen(function* () {
+      const store = makeInMemoryPersistentCacheStore();
+      const started = yield* Deferred.make<void>();
+      let finalized = false;
+      const cached = cachedEffect(
+        Effect.andThen(Deferred.succeed(started, undefined), Effect.never).pipe(
+          Effect.ensuring(
+            Effect.sync(() => {
+              finalized = true;
+            })
+          )
+        ),
+        { key: "interrupted", store, ttl: "1 minute" }
+      );
+      const leader = yield* Effect.forkChild(cached);
+      yield* Deferred.await(started);
+      const waiter = yield* Effect.forkChild(cached, { startImmediately: true });
+      yield* Fiber.interrupt(leader);
+      const interrupted = yield* Fiber.await(leader);
+      const waited = yield* Fiber.await(waiter);
+      expect(Exit.isFailure(interrupted) && Cause.hasInterruptsOnly(interrupted.cause)).toBe(true);
+      expect(Exit.isFailure(waited) && Cause.hasInterruptsOnly(waited.cause)).toBe(true);
+      expect(finalized).toBe(true);
+      expect(yield* store.get("interrupted")).toBeNull();
+      const retried = yield* cachedEffect(Effect.succeed("retry"), {
+        key: "interrupted",
+        store,
+        ttl: "1 minute",
+      });
+      expect(retried).toBe("retry");
+    })
+  );
+
   it.effect("coalesces concurrent misses", () =>
     Effect.gen(function* () {
       const store = makeInMemoryPersistentCacheStore();
@@ -119,9 +182,9 @@ describe("persistent cache", () => {
         { key: "miss", store, ttl: "1 minute" }
       );
 
-      const fiber1 = yield* Effect.fork(cached);
-      const fiber2 = yield* Effect.fork(cached);
-      const fiber3 = yield* Effect.fork(cached);
+      const fiber1 = yield* Effect.forkChild(cached);
+      const fiber2 = yield* Effect.forkChild(cached);
+      const fiber3 = yield* Effect.forkChild(cached);
 
       yield* Deferred.await(started);
       expect(calls).toBe(1);
@@ -279,21 +342,21 @@ describe("persistent cache", () => {
         key: "read",
         store: readFailingStore,
         ttl: "1 minute",
-      }).pipe(Effect.either);
+      }).pipe(Effect.result);
       const writeExit = yield* cachedEffect(Effect.succeed("write-closed"), {
         failurePolicy: "fail-closed",
         key: "write",
         store: writeFailingStore,
         ttl: "1 minute",
-      }).pipe(Effect.either);
+      }).pipe(Effect.result);
 
-      expect(readExit._tag).toBe("Left");
-      expect(writeExit._tag).toBe("Left");
-      if (readExit._tag === "Left") {
-        expect(readExit.left).toBeInstanceOf(CacheReadError);
+      expect(readExit._tag).toBe("Failure");
+      expect(writeExit._tag).toBe("Failure");
+      if (readExit._tag === "Failure") {
+        expect(readExit.failure).toBeInstanceOf(CacheReadError);
       }
-      if (writeExit._tag === "Left") {
-        expect(writeExit.left).toBeInstanceOf(CacheWriteError);
+      if (writeExit._tag === "Failure") {
+        expect(writeExit.failure).toBeInstanceOf(CacheWriteError);
       }
     })
   );

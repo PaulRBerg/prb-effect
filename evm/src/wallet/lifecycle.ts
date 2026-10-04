@@ -40,10 +40,9 @@ export type WalletLifecycleShape = {
   ) => Effect.Effect<boolean, WatchAssetError | UserRejectedError>;
 };
 
-export class WalletLifecycle extends Context.Tag("ew3/WalletLifecycle")<
-  WalletLifecycle,
-  WalletLifecycleShape
->() {}
+export class WalletLifecycle extends Context.Service<WalletLifecycle, WalletLifecycleShape>()(
+  "ew3/WalletLifecycle"
+) {}
 
 /**
  * Create a live implementation of WalletLifecycle

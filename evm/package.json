@@ -6,7 +6,7 @@
   "sideEffects": false,
   "type": "module",
   "types": "./dist/index.d.ts",
-  "version": "4.0.0",
+  "version": "5.0.0",
   "scripts": {
     "build": "just build",
     "prepack": "bun install --frozen-lockfile && just build"
@@ -26,7 +26,6 @@
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:dev",
-    "@effect/platform": "catalog:effect",
     "@effect/vitest": "catalog:dev",
     "@prb/devkit": "catalog:dev",
     "@types/node": "catalog:dev",
@@ -74,7 +73,6 @@
     "web3"
   ],
   "peerDependencies": {
-    "@effect/platform": "catalog:peers",
     "@wagmi/core": "catalog:peers",
     "effect": "catalog:peers",
     "react": "catalog:peers",

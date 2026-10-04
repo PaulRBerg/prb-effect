@@ -82,7 +82,7 @@ export type ContextWrapper = ReturnType<typeof createContextWrapper>;
  *
  * @category tags
  */
-export class ContextWrapperService extends Context_.Tag("ContextWrapperService")<
+export class ContextWrapperService extends Context_.Service<
   ContextWrapperService,
   ContextWrapper
->() {}
+>()("ContextWrapperService") {}

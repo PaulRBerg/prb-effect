@@ -15,7 +15,7 @@ export type ChainHeadShape = {
   ) => Effect.Effect<Stream.Stream<bigint, never>, ClientNotFoundError>;
 };
 
-export class ChainHead extends Context.Tag("ew3/ChainHead")<ChainHead, ChainHeadShape>() {}
+export class ChainHead extends Context.Service<ChainHead, ChainHeadShape>()("ew3/ChainHead") {}
 
 export const ChainHeadLive = Layer.effect(
   ChainHead,

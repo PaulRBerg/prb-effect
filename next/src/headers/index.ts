@@ -32,7 +32,7 @@ import { ContextWrapperService } from "../internal/async-context.js";
  */
 export const Cookies = Effect.fn("Cookies")(function* () {
   const context = yield* Effect.context<never>();
-  const wrapWithContext = Context_.unsafeGet(context, ContextWrapperService);
+  const wrapWithContext = Context_.getUnsafe(context, ContextWrapperService);
   const wrappedFn = wrapWithContext(cookies);
   return yield* Effect.promise(() => wrappedFn());
 });
@@ -62,7 +62,7 @@ export const Cookies = Effect.fn("Cookies")(function* () {
  */
 export const Headers = Effect.fn("Headers")(function* () {
   const context = yield* Effect.context<never>();
-  const wrapWithContext = Context_.unsafeGet(context, ContextWrapperService);
+  const wrapWithContext = Context_.getUnsafe(context, ContextWrapperService);
   const wrappedFn = wrapWithContext(headers);
   return yield* Effect.promise(() => wrappedFn());
 });
@@ -89,7 +89,7 @@ export const Headers = Effect.fn("Headers")(function* () {
  */
 export const DraftMode = Effect.fn("DraftMode")(function* () {
   const context = yield* Effect.context<never>();
-  const wrapWithContext = Context_.unsafeGet(context, ContextWrapperService);
+  const wrapWithContext = Context_.getUnsafe(context, ContextWrapperService);
   const wrappedFn = wrapWithContext(draftMode);
   return yield* Effect.promise(() => wrappedFn());
 });

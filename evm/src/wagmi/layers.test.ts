@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@effect/vitest";
 import { connect, createConfig as createCoreConfig } from "@wagmi/core";
-import { Effect } from "effect";
+import { Cause, Effect, Option } from "effect";
 import { http } from "viem";
 import { mainnet, sepolia } from "viem/chains";
 import { createConfig as createReactConfig, http as wagmiHttp } from "wagmi";
@@ -52,10 +52,9 @@ describe("Wagmi preset layers", () => {
 
         expect(exit._tag).toBe("Failure");
         if (exit._tag === "Failure") {
-          expect(exit.cause._tag).toBe("Fail");
-          if (exit.cause._tag === "Fail") {
-            expect(exit.cause.error._tag).toBe("WalletNotConnectedError");
-          }
+          const error = Cause.findErrorOption(exit.cause);
+          expect(Option.isSome(error)).toBe(true);
+          if (Option.isSome(error)) expect(error.value._tag).toBe("WalletNotConnectedError");
         }
       }).pipe(
         Effect.provide(

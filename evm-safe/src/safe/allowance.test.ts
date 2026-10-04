@@ -31,17 +31,17 @@ function makeSafeAppsServiceLayer(
 ) {
   const service = SafeAppsService.of({
     enableOffchainSigning: () => Effect.void,
-    getInfo: () => Effect.dieMessage("unused in this test"),
+    getInfo: () => Effect.die(new Error("unused in this test")),
     getOffchainSignature: () => Effect.succeed(Option.some(TEST_SIGNATURE)),
-    getTx: () => Effect.dieMessage("unused in this test"),
+    getTx: () => Effect.die(new Error("unused in this test")),
     pollOffchainSignature: () =>
       Effect.succeed({
         messageHash: TEST_MESSAGE_HASH,
         signature: TEST_SIGNATURE,
       }),
     sendTxs,
-    signTypedData: () => Effect.dieMessage("unused in this test"),
-    waitForTxReceipt: () => Effect.dieMessage("unused in this test"),
+    signTypedData: () => Effect.die(new Error("unused in this test")),
+    waitForTxReceipt: () => Effect.die(new Error("unused in this test")),
   } as unknown as SafeAppsServiceShape);
 
   return Layer.succeed(SafeAppsService, service);

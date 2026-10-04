@@ -1,7 +1,7 @@
 # @prb/effect-evm
 
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](../LICENSE)
-[![Effect](https://img.shields.io/badge/Effect-v3-7C3AED)](https://effect.website)
+[![Effect](https://img.shields.io/badge/Effect-v4-7C3AED)](https://effect.website)
 [![viem](https://img.shields.io/badge/viem-v2-1E1E1E)](https://viem.sh)
 
 > [!WARNING]
@@ -20,11 +20,22 @@ bun add @prb/effect-evm
 
 **Peer dependencies**
 
-- `effect@^3.21.3`
-- `@effect/platform@^0.96.1`
+- `effect@^4.0.0`
 - `viem@^2.43`
 - Optional: `@wagmi/core@>=2.0.0` (for `@prb/effect-evm/wagmi`)
 - Optional: `react@>=18.2.0`, `react-dom@>=18.2.0` (for `@prb/effect-evm/react-hooks`)
+
+## Migration to v5
+
+Version 5 requires native Effect 4. Update custom service/layer implementations and any Effect runtime integration
+alongside the package upgrade:
+
+- `useEffectEvmRuntime()` exposes `.context` instead of `.runtime`; its bound runner methods remain available.
+- Testing-kit `assertLeft` / `assertRight` become `assertFailure` / `assertSuccess` and accept `Result.Result` values.
+- HTTP services use `effect/http`; `@effect/platform` is no longer a peer dependency.
+
+See [the Effect 4 migration reference](./DOCS.md#migration-to-v5-effect-4) for runner, service, schema, and testing
+examples.
 
 ## 🚀 Usage
 

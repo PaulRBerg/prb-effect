@@ -3,6 +3,7 @@
 import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
 import * as Stream from "effect/Stream";
+import * as SubscriptionRef from "effect/SubscriptionRef";
 import * as React from "react";
 import { fromCause, fromUnknown } from "../internal/error.js";
 import { isDev } from "../internal/is-dev.js";
@@ -225,7 +226,8 @@ export const useSubscriptionRef = <A>(
   ref: import("effect/SubscriptionRef").SubscriptionRef<A>,
   initial: A
 ): A => {
-  const state = useStream(ref.changes, { initial });
+  const stream = React.useMemo(() => SubscriptionRef.changes(ref), [ref]);
+  const state = useStream(stream, { initial });
   return state.status === "starting" ? initial : (state.value ?? initial);
 };
 

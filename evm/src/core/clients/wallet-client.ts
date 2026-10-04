@@ -9,7 +9,7 @@ export type WalletClientServiceShape = {
   ) => Effect.Effect<WalletClient, WalletNotConnectedError | WrongNetworkError>;
 };
 
-export class WalletClientService extends Context.Tag("ew3/WalletClient")<
+export class WalletClientService extends Context.Service<
   WalletClientService,
   WalletClientServiceShape
->() {}
+>()("ew3/WalletClient") {}

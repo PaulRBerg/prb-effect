@@ -27,7 +27,12 @@ export {
 } from "./_fixtures/addresses.js";
 
 // Test helpers
-export { assertLeft, assertRight, expectTaggedFailure, makeMockServiceLayer } from "./helpers.js";
+export {
+  assertFailure,
+  assertSuccess,
+  expectTaggedFailure,
+  makeMockServiceLayer,
+} from "./helpers.js";
 export type { MockBalanceServiceConfig } from "./mock-balance-service.js";
 export { makeMockBalanceServiceLayer } from "./mock-balance-service.js";
 export type { MockPdaServiceConfig } from "./mock-pda-service.js";

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@effect/vitest";
-import { Effect, Exit } from "effect";
+import { Cause, Effect, Exit } from "effect";
 import {
   catchUserRejection,
   catchUserRejectionWith,
@@ -260,7 +260,7 @@ describe("catchUserRejection", () => {
       const exit = yield* Effect.exit(catchUserRejection(effect, null));
       expect(Exit.isFailure(exit)).toBe(true);
       if (Exit.isFailure(exit)) {
-        expect(exit.cause._tag).toBe("Fail");
+        expect(Cause.findErrorOption(exit.cause)._tag).toBe("Some");
       }
     })
   );

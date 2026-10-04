@@ -3,10 +3,6 @@
 [![npm version](https://img.shields.io/npm/v/@prb/effect-solana.svg)](https://www.npmjs.com/package/@prb/effect-solana)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-> [!WARNING]
->
-> This is experimental, beta software. It is provided "as is" without warranty of any kind, express or implied.
-
 Effect-TS integration for the Solana blockchain ecosystem. Type-safe, composable abstractions built on
 [@solana/web3.js](https://github.com/solana-labs/solana-web3.js).
 
@@ -24,14 +20,54 @@ bun add @prb/effect-solana effect
 
 Required:
 
-- `effect` ^3.x
-- `@effect/platform` ^0.96.1
+- `effect` ^4.0.0
 - `@solana/web3.js` ^1.98.4
 
 Optional:
 
 - `@coral-xyz/anchor` ^0.32.1 (for Anchor IDL support)
-- `react`, `react-dom` (for React hooks)
+- `react`, `react-dom` >=18.2.0 (for React hooks)
+
+## Migrating to 1.0.0
+
+Version 1.0.0 uses native Effect 4 APIs. Service keys are `Context.Service` classes, while the exported service names
+and Solana operations remain the same. Schema annotations use `Schema.Codec<A, I, DecodingServices, EncodingServices>`
+when encoding matters; bigint error fields retain their decimal-string wire format with `Schema.BigIntFromString`.
+
+```typescript
+import { Context, Effect, Result } from "effect";
+import { assertFailure, assertSuccess } from "@prb/effect-solana/testing-kit";
+
+class AppConfig extends Context.Service<AppConfig, { readonly rpcUrl: string }>()("AppConfig") {}
+
+const result = Effect.result(fetchBalance); // Result.Success | Result.Failure
+const value = assertSuccess(Result.succeed(1000000000n));
+const error = assertFailure(Result.fail(new Error("RPC unavailable")));
+```
+
+The testing helpers `assertFailure` and `assertSuccess` replace `assertLeft` and `assertRight`, and accept native
+`Result` values. Use `Effect.result` instead of `Effect.either` and `Cause.findErrorOption` to inspect the first typed
+failure in a flattened Cause. `Duration.Input` replaces `Duration.DurationInput` in transaction confirmation options.
+
+`EffectSolanaRuntime.context` replaces `.runtime` and contains a native `Context.Context<unknown>`. Its runners accept
+`Effect.RunOptions` and return native `Fiber.Fiber` / `Exit` values. Effects can also run directly with the captured
+context:
+
+```typescript
+import { Effect } from "effect";
+
+const runtime = useEffectSolanaRuntime();
+const exit = await Effect.runPromiseExitWith(runtime.context)(program);
+```
+
+Hook executions attach their fibers to a child scope before starting. Closing the hook or provider scope interrupts
+owned work and waits for resource finalizers; closed scopes cannot start stale work. Synchronous providers acquire
+layers only after commit, preserving SSR fallback and suspended renders. Subscription refs use
+`SubscriptionRef.changes(ref)`.
+
+RPC subscription connections remain memoized per WebSocket URL without expiry. Anchor callbacks capture the layer's full
+context for external signer execution, retain inherited tracing/services, and resolve the current signer when
+simulating.
 
 ## 🚀 Quick Start
 

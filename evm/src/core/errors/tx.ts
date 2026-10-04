@@ -22,7 +22,7 @@ export class TxReplacedError extends Schema.TaggedError<TxReplacedError>()("TxRe
   message: Schema.String,
   newHash: Schema.String,
   oldHash: Schema.String,
-  reason: Schema.Literal("cancelled", "replaced", "repriced"),
+  reason: Schema.Literals(["cancelled", "replaced", "repriced"]),
 }) {}
 
 export class ReceiptTimeoutError extends Schema.TaggedError<ReceiptTimeoutError>()(

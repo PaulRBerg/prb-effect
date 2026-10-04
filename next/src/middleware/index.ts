@@ -115,7 +115,7 @@ export declare namespace TagClass {
    * @category models
    */
   export type FailureSchema<Options> = Options extends {
-    readonly failure: Schema.Schema.All;
+    readonly failure: Schema.Constraint;
   }
     ? Options["failure"]
     : typeof Schema.Never;
@@ -123,16 +123,14 @@ export declare namespace TagClass {
   /**
    * @category models
    */
-  export type Failure<Options> = Options extends {
-    readonly failure: Schema.Schema<infer _A, infer _I, infer _R>;
-  }
-    ? _A
-    : never;
+  export type Failure<Options> = FailureSchema<Options>["Type"];
 
   /**
    * @category models
    */
-  export type FailureContext<Options> = Schema.Schema.Context<FailureSchema<Options>>;
+  export type FailureContext<Options> =
+    | FailureSchema<Options>["DecodingServices"]
+    | FailureSchema<Options>["EncodingServices"];
 
   /**
    * @category models
@@ -149,7 +147,7 @@ export declare namespace TagClass {
    */
   export type CatchesSchema<Options> =
     Wrap<Options> extends true
-      ? Options extends { readonly catches: Schema.Schema.All }
+      ? Options extends { readonly catches: Schema.Constraint }
         ? Options["catches"]
         : typeof Schema.Never
       : typeof Schema.Never;
@@ -157,15 +155,14 @@ export declare namespace TagClass {
   /**
    * @category models
    */
-  export type CatchesValue<Options> =
-    CatchesSchema<Options> extends Schema.Schema<infer A, infer _I, infer _R> ? A : never;
+  export type CatchesValue<Options> = CatchesSchema<Options>["Type"];
 
   /**
    * @category models
    */
   export type ReturnsSchema<Options> =
     Wrap<Options> extends true
-      ? Options extends { readonly returns: Schema.Schema.All }
+      ? Options extends { readonly returns: Schema.Constraint }
         ? Options["returns"]
         : typeof Schema.Never
       : typeof Schema.Never;
@@ -173,7 +170,7 @@ export declare namespace TagClass {
   /**
    * @category models
    */
-  export interface Base<Self, Name extends string, Options, S> extends Context.Tag<Self, S> {
+  export interface Base<Self, Name extends string, Options, S> extends Context.Service<Self, S> {
     readonly catches: CatchesSchema<Options>;
     readonly failure: FailureSchema<Options>;
     readonly provides: Options extends { readonly provides: infer P }
@@ -183,7 +180,7 @@ export declare namespace TagClass {
       : undefined;
     readonly returns: ReturnsSchema<Options>;
     readonly wrap: Wrap<Options>;
-    new (_: never): Context.TagClassShape<Name, Service<Options>>;
+    new (_: never): Context.ServiceClass.Shape<Name, Service<Options>>;
     readonly [TypeId]: TypeId;
   }
 }
@@ -192,17 +189,17 @@ export declare namespace TagClass {
  * @category models
  */
 export interface TagClassAny
-  extends Context.Tag<
+  extends Context.Service<
     unknown,
     | unknown
     | NextMiddleware<unknown, unknown, unknown>
     | NextMiddlewareWrap<unknown, unknown, unknown>
   > {
-  readonly catches: Schema.Schema.All;
-  readonly failure: Schema.Schema.All;
+  readonly catches: Schema.Constraint;
+  readonly failure: Schema.Constraint;
   readonly key: string;
   readonly provides?: { readonly Identifier: unknown } | undefined;
-  readonly returns: Schema.Schema.All;
+  readonly returns: Schema.Constraint;
   readonly wrap: boolean;
   readonly [TypeId]: TypeId;
 }
@@ -211,15 +208,15 @@ export interface TagClassAny
  * @category models
  */
 export interface TagClassAnyWithProps
-  extends Context.Tag<
+  extends Context.Service<
     unknown,
     NextMiddleware<unknown, unknown, unknown> | NextMiddlewareWrap<unknown, unknown, unknown>
   > {
-  readonly catches: Schema.Schema.All;
-  readonly failure: Schema.Schema.All;
+  readonly catches: Schema.Constraint;
+  readonly failure: Schema.Constraint;
   readonly key: string;
   readonly provides?: { readonly Identifier: unknown } | undefined;
-  readonly returns: Schema.Schema.All;
+  readonly returns: Schema.Constraint;
   readonly wrap: boolean;
   readonly [TypeId]: TypeId;
 }
@@ -235,17 +232,17 @@ export const Tag =
     const Options extends
       | {
           readonly wrap: true;
-          readonly failure?: Schema.Schema.All;
+          readonly failure?: Schema.Constraint;
           readonly provides?: {
             readonly Identifier: unknown;
             readonly Service: unknown;
           };
-          readonly catches?: Schema.Schema.All;
-          readonly returns?: Schema.Schema.All;
+          readonly catches?: Schema.Constraint;
+          readonly returns?: Schema.Constraint;
         }
       | {
           readonly wrap?: false;
-          readonly failure?: Schema.Schema.All;
+          readonly failure?: Schema.Constraint;
           readonly provides?: {
             readonly Identifier: unknown;
             readonly Service: unknown;
@@ -260,13 +257,13 @@ export const Tag =
     Name extends string,
     Options extends {
       readonly wrap?: boolean;
-      readonly failure?: Schema.Schema.All;
+      readonly failure?: Schema.Constraint;
       readonly provides?: {
         readonly Identifier: unknown;
         readonly Service: unknown;
       };
-      readonly catches?: Schema.Schema.All;
-      readonly returns?: Schema.Schema.All;
+      readonly catches?: Schema.Constraint;
+      readonly returns?: Schema.Constraint;
     },
   >(
     id: Name,
@@ -279,15 +276,8 @@ export const Tag =
     const creationError = new Err();
     Err.stackTraceLimit = limit;
 
-    function TagClassProto() {
-      // noop
-    }
+    const TagClassProto = Context.Service<Self, unknown>()(id);
     const TagClass_ = TagClassProto as unknown as Mutable<TagClassAny>;
-    Object.setPrototypeOf(
-      TagClassProto,
-      Object.getPrototypeOf(Context.GenericTag<Self, unknown>(id))
-    );
-    TagClassProto.key = id;
     Object.defineProperty(TagClassProto, "stack", {
       get() {
         return creationError.stack;

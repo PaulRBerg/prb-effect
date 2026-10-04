@@ -1,5 +1,5 @@
 import "server-only";
-import type { Layer, Runtime } from "effect";
+import type { Context, Layer } from "effect";
 import { Effect, ManagedRuntime } from "effect";
 
 /**
@@ -50,6 +50,6 @@ export function createStatefulRuntime<R, E>(
  */
 export function createStatefulContext<R, E>(
   runtime: ManagedRuntime.ManagedRuntime<R, E>
-): Effect.Effect<Runtime.Runtime<R>, E, never> {
-  return runtime.runtimeEffect;
+): Effect.Effect<Context.Context<R>, E, never> {
+  return runtime.contextEffect;
 }

@@ -21,7 +21,7 @@ import type {
   Transaction,
   VersionedTransaction,
 } from "@solana/web3.js";
-import { Cause, Context, Effect, Exit, Layer, Option, Runtime } from "effect";
+import { Cause, Context, Effect, Exit, Layer, Option } from "effect";
 import { WalletNotConnectedError } from "#src/core/errors/index.js";
 import { RpcService } from "#src/rpc/index.js";
 import { SignerService } from "#src/signer/index.js";
@@ -367,10 +367,9 @@ export type ProgramReaderShape = {
  *
  * @category Services
  */
-export class ProgramReader extends Context.Tag("esolana/ProgramReader")<
-  ProgramReader,
-  ProgramReaderShape
->() {}
+export class ProgramReader extends Context.Service<ProgramReader, ProgramReaderShape>()(
+  "esolana/ProgramReader"
+) {}
 
 // =============================================================================
 // Service Implementation
@@ -389,7 +388,7 @@ export const ProgramReaderLive = Layer.effect(
   Effect.gen(function* () {
     const rpcService = yield* RpcService;
     const signerService = yield* SignerService;
-    const runtime = yield* Effect.runtime();
+    const context = yield* Effect.context();
 
     const service: ProgramReaderShape = {
       createProgram: (params) =>
@@ -399,14 +398,14 @@ export const ProgramReaderLive = Layer.effect(
           const rpc = yield* rpcService.getRpc();
           const initialWalletAddress = yield* signerService.getAddress();
           const resolveSimulationFeePayer = async (): Promise<PublicKey> => {
-            // Anchor invokes provider.simulate outside Effect. Use the captured runtime
+            // Anchor invokes provider.simulate outside Effect. Use the captured context
             // so logger/tracer configuration remains consistent with this layer.
-            const exit = await Runtime.runPromiseExit(runtime, signerService.getAddress());
+            const exit = await Effect.runPromiseExitWith(context)(signerService.getAddress());
             if (Exit.isSuccess(exit)) {
               return toPublicKey(exit.value);
             }
 
-            const failure = Cause.failureOption(exit.cause);
+            const failure = Cause.findErrorOption(exit.cause);
             if (Option.isSome(failure)) {
               throw failure.value;
             }

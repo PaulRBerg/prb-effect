@@ -97,7 +97,7 @@ export const makeTxTracker = Effect.gen(function* () {
   const ref = yield* SubscriptionRef.make<TxState>(initialTxState);
 
   return {
-    changes: ref.changes,
+    changes: SubscriptionRef.changes(ref),
     get: SubscriptionRef.get(ref),
     ref,
     set: (state: TxState) => SubscriptionRef.set(ref, state),

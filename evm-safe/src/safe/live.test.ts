@@ -28,10 +28,10 @@ vi.mock("@prb/effect-evm/core/errors", () => {
 vi.mock("@prb/effect-evm/tx", async () => {
   const { Context } = await import("effect");
 
-  class MockTxManager extends Context.Tag("ew3/TxManager")<
+  class MockTxManager extends Context.Service<
     MockTxManager,
     { readonly waitForReceipt: (...args: readonly unknown[]) => Effect.Effect<unknown> }
-  >() {}
+  >()("ew3/TxManager") {}
 
   return { TxManager: MockTxManager };
 });
@@ -46,7 +46,9 @@ vi.mock("./adapter.js", async () => {
   const { Effect: E } = await import("effect");
   return {
     loadSafeSdk: (config?: SafeAppsSdkConfig) =>
-      loadOverride.impl ? loadOverride.impl(config) : E.dieMessage("loadSafeSdk not configured"),
+      loadOverride.impl
+        ? loadOverride.impl(config)
+        : E.die(new Error("loadSafeSdk not configured")),
   };
 });
 
@@ -59,7 +61,7 @@ const TEST_CHAIN_ID = 1;
 
 const txManagerLayer = Layer.succeed(
   TxManager,
-  TxManager.of({ waitForReceipt: () => Effect.dieMessage("unused") } as unknown as Parameters<
+  TxManager.of({ waitForReceipt: () => Effect.die(new Error("unused")) } as unknown as Parameters<
     typeof TxManager.of
   >[0])
 );
@@ -111,8 +113,8 @@ describe("SafeAppsServiceLive getSdk", () => {
       const service = yield* SafeAppsService;
 
       // First call fails to load the SDK.
-      const first = yield* service.getInfo().pipe(Effect.either);
-      expect(first._tag).toBe("Left");
+      const first = yield* service.getInfo().pipe(Effect.result);
+      expect(first._tag).toBe("Failure");
 
       // Second call succeeds — proving the failure was not cached.
       const second = yield* service.getInfo();
@@ -124,22 +126,23 @@ describe("SafeAppsServiceLive getSdk", () => {
   it.effect("fails fast with NotInSafeAppContextError in a top-level window", () =>
     Effect.gen(function* () {
       asTopLevel();
-      loadOverride.impl = () => Effect.dieMessage("loadSafeSdk must not be called for top-level");
+      loadOverride.impl = () =>
+        Effect.die(new Error("loadSafeSdk must not be called for top-level"));
 
       const service = yield* SafeAppsService;
-      const exit = yield* service.getInfo().pipe(Effect.either);
+      const exit = yield* service.getInfo().pipe(Effect.result);
 
-      expect(exit._tag).toBe("Left");
-      if (exit._tag === "Left") {
+      expect(exit._tag).toBe("Failure");
+      if (exit._tag === "Failure") {
         // getInfo maps the underlying NotInSafeAppContextError into SafeMultisigInfoUnavailableError.
-        expect(exit.left._tag).toBe("SafeMultisigInfoUnavailableError");
-        expect(exit.left.cause).toMatchObject({
+        expect(exit.failure._tag).toBe("SafeMultisigInfoUnavailableError");
+        expect(exit.failure.cause).toMatchObject({
           _tag: "NotInSafeAppContextError",
           code: "TOP_LEVEL_WINDOW",
           recovery: "open-in-safe",
           userMessage: "Open this flow in Safe to use Safe Apps SDK execution.",
         });
-        expect(exit.left.message).toContain("embedded in a Safe App host");
+        expect(exit.failure.message).toContain("embedded in a Safe App host");
       }
     }).pipe(Effect.provide(Layer.provide(SafeAppsServiceLive(), txManagerLayer)), Effect.scoped)
   );
@@ -157,18 +160,18 @@ describe("SafeAppsServiceLive getSdk", () => {
       loadOverride.impl = () => Effect.succeed(makeFakeSdk(neverResolves));
 
       const service = yield* SafeAppsService;
-      const exit = yield* service.getInfo().pipe(Effect.either);
+      const exit = yield* service.getInfo().pipe(Effect.result);
 
-      expect(exit._tag).toBe("Left");
-      if (exit._tag === "Left") {
-        expect(exit.left.cause).toMatchObject({
+      expect(exit._tag).toBe("Failure");
+      if (exit._tag === "Failure") {
+        expect(exit.failure.cause).toMatchObject({
           _tag: "NotInSafeAppContextError",
           code: "NON_RESPONSIVE_SAFE_HOST",
           recovery: "open-in-safe",
           userMessage: "Open this flow in Safe to use Safe Apps SDK execution.",
         });
-        expect(exit.left._tag).toBe("SafeMultisigInfoUnavailableError");
-        expect(exit.left.message).toContain("timed out");
+        expect(exit.failure._tag).toBe("SafeMultisigInfoUnavailableError");
+        expect(exit.failure.message).toContain("timed out");
       }
     }).pipe(
       Effect.provide(

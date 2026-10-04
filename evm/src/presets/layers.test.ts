@@ -180,15 +180,15 @@ describe("Preset Layers", () => {
         const first = yield* Effect.tryPromise({
           catch: (e) => e,
           try: () => request({ method: "eth_chainId" }),
-        }).pipe(Effect.either);
-        expect(first._tag).toBe("Left");
+        }).pipe(Effect.result);
+        expect(first._tag).toBe("Failure");
 
         const second = yield* Effect.tryPromise({
           catch: (e) => e,
           try: () => request({ method: "eth_chainId" }),
-        }).pipe(Effect.either);
-        expect(second._tag).toBe("Left");
-        const error = second._tag === "Left" ? second.left : undefined;
+        }).pipe(Effect.result);
+        expect(second._tag).toBe("Failure");
+        const error = second._tag === "Failure" ? second.failure : undefined;
         const message = error instanceof Error ? error.message : String(error);
         expect(message).toContain("circuit breaker");
         expect(calls).toBe(1);

@@ -7,7 +7,7 @@
   "sideEffects": false,
   "type": "module",
   "types": "./dist/index.d.ts",
-  "version": "1.2.1",
+  "version": "2.0.0",
   "scripts": {
     "build": "just build",
     "prepack": "bun install --frozen-lockfile && just build"
@@ -26,8 +26,6 @@
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:dev",
-    "@effect/opentelemetry": "^0.63.0",
-    "@effect/platform": "catalog:effect",
     "@effect/vitest": "catalog:dev",
     "@prb/devkit": "catalog:dev",
     "@types/node": "catalog:dev",
@@ -71,20 +69,12 @@
     "typescript"
   ],
   "peerDependencies": {
-    "@effect/opentelemetry": "^0.63.0",
-    "@effect/platform": "catalog:peers",
     "effect": "catalog:peers",
     "next": "catalog:peers",
     "react": "catalog:peers",
     "react-dom": "catalog:peers"
   },
   "peerDependenciesMeta": {
-    "@effect/opentelemetry": {
-      "optional": true
-    },
-    "@effect/platform": {
-      "optional": true
-    },
     "react": {
       "optional": true
     },

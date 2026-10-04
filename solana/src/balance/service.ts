@@ -38,10 +38,9 @@ export type BalanceServiceShape = {
  *
  * @category Services
  */
-export class BalanceService extends Context.Tag("esolana/BalanceService")<
-  BalanceService,
-  BalanceServiceShape
->() {}
+export class BalanceService extends Context.Service<BalanceService, BalanceServiceShape>()(
+  "esolana/BalanceService"
+) {}
 
 /**
  * Live implementation of the Balance service.
@@ -106,7 +105,7 @@ export const BalanceServiceLive = Layer.effect(
           const rpcUrl = yield* rpcService.getRpcUrl();
           const interval = params.pollingInterval ?? 5000;
 
-          return Stream.repeatEffectWithSchedule(
+          return Stream.fromEffectSchedule(
             Effect.tryPromise({
               catch: (cause) =>
                 new RpcError({

@@ -33,7 +33,6 @@ export type ContractPipelineShape = {
   ) => Effect.Effect<WriteAndTrackTerminal<TAbi>, WriteAndTrackError>;
 };
 
-export class ContractPipeline extends Context.Tag("ew3/ContractPipeline")<
-  ContractPipeline,
-  ContractPipelineShape
->() {}
+export class ContractPipeline extends Context.Service<ContractPipeline, ContractPipelineShape>()(
+  "ew3/ContractPipeline"
+) {}

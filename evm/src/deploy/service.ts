@@ -112,10 +112,9 @@ export type DeployServiceShape = {
   }) => Effect.Effect<boolean, BytecodeMismatchError | DeploymentError | ClientNotFoundError>;
 };
 
-export class DeployService extends Context.Tag("ew3/DeployService")<
-  DeployService,
-  DeployServiceShape
->() {}
+export class DeployService extends Context.Service<DeployService, DeployServiceShape>()(
+  "ew3/DeployService"
+) {}
 
 export const DeployServiceLive = Layer.effect(
   DeployService,

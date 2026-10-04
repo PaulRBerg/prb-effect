@@ -36,17 +36,19 @@ const keyFor = (chainId: number, options?: MulticallBatchOptions | undefined): s
 type RequestGroup = {
   chainId: number;
   options?: MulticallBatchOptions | undefined;
-  requests: readonly MulticallRequest[];
+  requests: readonly Request.Entry<MulticallRequest>[];
 };
 
 /**
  * Group requests by chainId and block options.
  */
-const groupRequests = (requests: readonly MulticallRequest[]): Map<string, RequestGroup> => {
+const groupRequests = (
+  requests: readonly Request.Entry<MulticallRequest>[]
+): Map<string, RequestGroup> => {
   const grouped = new Map<string, RequestGroup>();
 
   for (const req of requests) {
-    const key = keyFor(req.chainId, req.options);
+    const key = keyFor(req.request.chainId, req.request.options);
     const existing = grouped.get(key);
     if (existing) {
       grouped.set(key, {
@@ -55,8 +57,8 @@ const groupRequests = (requests: readonly MulticallRequest[]): Map<string, Reque
       });
     } else {
       grouped.set(key, {
-        chainId: req.chainId,
-        options: req.options,
+        chainId: req.request.chainId,
+        options: req.request.options,
         requests: [req],
       });
     }
@@ -68,7 +70,7 @@ const groupRequests = (requests: readonly MulticallRequest[]): Map<string, Reque
 /**
  * Complete all requests in a group with a failure.
  */
-const failGroup = (requests: readonly MulticallRequest[], error: Error) =>
+const failGroup = (requests: readonly Request.Entry<MulticallRequest>[], error: Error) =>
   Effect.forEach(requests, (req) => Request.completeEffect(req, Effect.fail(error)), {
     discard: true,
   });
@@ -77,7 +79,7 @@ const failGroup = (requests: readonly MulticallRequest[], error: Error) =>
  * Complete all requests in a group with their corresponding results.
  */
 const completeGroup = (
-  requests: readonly MulticallRequest[],
+  requests: readonly Request.Entry<MulticallRequest>[],
   results: readonly {
     status: "success" | "failure";
     result?: unknown;
@@ -111,7 +113,7 @@ const executeGroup = (contractReader: ContractReaderShape, group: RequestGroup) 
           Request.completeEffect(
             request,
             contractReader.read({
-              ...request.call,
+              ...request.request.call,
               account: group.options?.account,
               chainId: group.chainId,
               ...(group.options?.blockNumber === undefined
@@ -127,16 +129,17 @@ const executeGroup = (contractReader: ContractReaderShape, group: RequestGroup) 
     const result = yield* contractReader
       .multicall(
         group.chainId,
-        group.requests.map((r) => r.call),
+        group.requests.map((r) => r.request.call),
         group.options
       )
-      .pipe(Effect.either);
+      .pipe(Effect.result);
 
-    if (result._tag === "Left") {
-      const error = result.left instanceof Error ? result.left : new Error(String(result.left));
+    if (result._tag === "Failure") {
+      const error =
+        result.failure instanceof Error ? result.failure : new Error(String(result.failure));
       yield* failGroup(group.requests, error);
     } else {
-      yield* completeGroup(group.requests, result.right);
+      yield* completeGroup(group.requests, result.success);
     }
   });
 
@@ -145,8 +148,8 @@ const executeGroup = (contractReader: ContractReaderShape, group: RequestGroup) 
  */
 const makeMulticallResolver = (
   contractReader: ContractReaderShape
-): RequestResolver.RequestResolver<MulticallRequest, never> =>
-  RequestResolver.makeBatched((requests: readonly MulticallRequest[]) =>
+): RequestResolver.RequestResolver<MulticallRequest> =>
+  RequestResolver.make((requests: readonly Request.Entry<MulticallRequest>[]) =>
     Effect.gen(function* () {
       const grouped = groupRequests(requests);
 
@@ -166,10 +169,9 @@ export type MulticallBatcherShape = {
   ) => Effect.Effect<A, Error>;
 };
 
-export class MulticallBatcher extends Context.Tag("ew3/MulticallBatcher")<
-  MulticallBatcher,
-  MulticallBatcherShape
->() {}
+export class MulticallBatcher extends Context.Service<MulticallBatcher, MulticallBatcherShape>()(
+  "ew3/MulticallBatcher"
+) {}
 
 /**
  * Live implementation of MulticallBatcher using Effect's Request/RequestResolver.

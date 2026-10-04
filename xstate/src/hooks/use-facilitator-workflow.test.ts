@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@effect/vitest";
 import { vi } from "vitest";
 
-const useActorMock = vi.fn();
+const { useActorMock } = vi.hoisted(() => ({ useActorMock: vi.fn() }));
 vi.mock("@xstate/react", () => ({ useActor: useActorMock }));
 
 const { useFacilitatorWorkflow } = await import("./useFacilitatorWorkflow.js");

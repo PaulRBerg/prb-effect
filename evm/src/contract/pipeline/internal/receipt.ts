@@ -28,13 +28,13 @@ export const waitForReceiptFollowingReplacements = (
     while (true) {
       const exit = yield* txManager
         .waitForReceipt(params.chainId, waitHash, params.policy)
-        .pipe(Effect.either);
+        .pipe(Effect.result);
 
-      if (exit._tag === "Right") {
-        return exit.right;
+      if (exit._tag === "Success") {
+        return exit.success;
       }
 
-      const error = exit.left;
+      const error = exit.failure;
       if (error._tag === "TxReplacedError") {
         const oldHash = error.oldHash as Hash;
         const newHash = error.newHash as Hash;

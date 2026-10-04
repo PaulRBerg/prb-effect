@@ -1,5 +1,6 @@
 import { describe, expect, it } from "@effect/vitest";
-import { Effect, TestClock } from "effect";
+import { Effect } from "effect";
+import * as TestClock from "effect/testing/TestClock";
 import { makeRpcCacheLive, RpcCache } from "#src/rpc/index.js";
 
 describe("RpcCache", () => {

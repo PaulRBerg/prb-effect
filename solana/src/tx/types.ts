@@ -30,7 +30,7 @@ export type ConfirmOpts = {
    * Delay between confirmation polls.
    * @default "2 seconds"
    */
-  readonly pollInterval?: Duration.DurationInput;
+  readonly pollInterval?: Duration.Input;
 
   /**
    * Whether to search transaction history outside the recent status cache.
@@ -45,7 +45,7 @@ export type ConfirmOpts = {
   readonly lifetime?: {
     readonly blockhash: string;
     readonly lastValidBlockHeight: bigint | number;
-    readonly expiredStatusGracePeriod?: Duration.DurationInput;
+    readonly expiredStatusGracePeriod?: Duration.Input;
   };
 };
 

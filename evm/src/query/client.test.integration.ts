@@ -5,6 +5,60 @@ import { makeRpcCacheLive, RequestDedupLive, RpcCache } from "#src/rpc/index.js"
 import { TEST_CHAIN_ID } from "#src/testing-kit/index.js";
 
 describe("QueryClient", () => {
+  it.effect("owns one invalidator per chain until the query layer closes", () =>
+    Effect.gen(function* () {
+      const started = yield* Deferred.make<void>();
+      let watches = 0;
+      let active = 0;
+      const layer = Layer.provide(
+        QueryClientLive,
+        Layer.mergeAll(
+          Layer.succeed(
+            ChainHead,
+            ChainHead.of({
+              current: () => Effect.succeed(1n),
+              watch: () => {
+                watches += 1;
+                return Effect.succeed(
+                  Stream.callback<bigint>(() =>
+                    Effect.gen(function* () {
+                      active += 1;
+                      yield* Effect.addFinalizer(() =>
+                        Effect.sync(() => {
+                          active -= 1;
+                        })
+                      );
+                      yield* Deferred.succeed(started, undefined);
+                    })
+                  )
+                );
+              },
+            })
+          ),
+          makeRpcCacheLive(),
+          RequestDedupLive
+        )
+      );
+
+      yield* Effect.gen(function* () {
+        const queryClient = yield* QueryClient;
+        yield* queryClient.query("owned-invalidator-1", Effect.succeed(1), {
+          blockScoped: true,
+          chainId: TEST_CHAIN_ID,
+        });
+        yield* Deferred.await(started);
+        yield* queryClient.query("owned-invalidator-2", Effect.succeed(2), {
+          blockScoped: true,
+          chainId: TEST_CHAIN_ID,
+        });
+        expect(watches).toBe(1);
+        expect(active).toBe(1);
+      }).pipe(Effect.provide(layer));
+
+      expect(active).toBe(0);
+    })
+  );
+
   it.effect("caches repeated queries", () =>
     Effect.gen(function* () {
       const queryClient = yield* QueryClient;
@@ -55,8 +109,8 @@ describe("QueryClient", () => {
         return "shared";
       });
 
-      const fiber1 = yield* Effect.fork(queryClient.query("key", effect, { ttl: 60_000 }));
-      const fiber2 = yield* Effect.fork(queryClient.query("key", effect, { ttl: 60_000 }));
+      const fiber1 = yield* Effect.forkChild(queryClient.query("key", effect, { ttl: 60_000 }));
+      const fiber2 = yield* Effect.forkChild(queryClient.query("key", effect, { ttl: 60_000 }));
 
       yield* Deferred.await(started);
       yield* Deferred.succeed(gate, undefined);
@@ -103,7 +157,9 @@ describe("QueryClient", () => {
               current: () => SubscriptionRef.get(headRef),
               watch: () =>
                 Effect.succeed(
-                  headRef.changes.pipe(Stream.onStart(Deferred.succeed(watchStarted, undefined)))
+                  SubscriptionRef.changes(headRef).pipe(
+                    Stream.onStart(Deferred.succeed(watchStarted, undefined))
+                  )
                 ),
             })
           ),
@@ -154,7 +210,7 @@ describe("QueryClient", () => {
 
         yield* Deferred.await(watchStarted);
 
-        // Set the new block - this will trigger invalidation via headRef.changes
+        // Set the new block - this will trigger invalidation through the changes stream
         yield* SubscriptionRef.set(headRef, 2n);
 
         yield* Deferred.await(invalidated);

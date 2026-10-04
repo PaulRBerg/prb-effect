@@ -16,10 +16,10 @@ import type {
 } from "#src/erc20/allowance/index.js";
 import { TxManager } from "#src/tx/index.js";
 
-export class Erc20AllowanceService extends Context.Tag("ew3/Erc20AllowanceService")<
+export class Erc20AllowanceService extends Context.Service<
   Erc20AllowanceService,
   Erc20AllowanceServiceShape
->() {}
+>()("ew3/Erc20AllowanceService") {}
 
 export const Erc20AllowanceServiceLive = Layer.effect(
   Erc20AllowanceService,
@@ -121,14 +121,14 @@ export const Erc20AllowanceServiceLive = Layer.effect(
         chainId: params.chainId,
         spender: params.spender,
         tokenAddress: params.tokenAddress,
-      }).pipe(Effect.either);
+      }).pipe(Effect.result);
 
       const directResult = yield* direct;
-      if (directResult._tag === "Right") {
+      if (directResult._tag === "Success") {
         return {
           approveAmount,
           currentAllowance,
-          hashes: [directResult.right],
+          hashes: [directResult.success],
           mode: "direct",
           status: "approved",
         } as const;
@@ -138,7 +138,7 @@ export const Erc20AllowanceServiceLive = Layer.effect(
       // revert (ApprovalError). Wallet-level failures — user rejection,
       // insufficient funds, resource exhaustion, missing client — must pass
       // through untouched; retrying would re-prompt the user for more signatures.
-      const failure = directResult.left;
+      const failure = directResult.failure;
       if (failure._tag !== "ApprovalError" || !zeroFirst || currentAllowance === 0n) {
         return yield* Effect.fail(failure);
       }

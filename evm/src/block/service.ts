@@ -54,10 +54,9 @@ export type BlockServiceShape = {
   }) => Effect.Effect<bigint, ClientNotFoundError | BlockNotFoundError>;
 };
 
-export class BlockService extends Context.Tag("ew3/BlockService")<
-  BlockService,
-  BlockServiceShape
->() {}
+export class BlockService extends Context.Service<BlockService, BlockServiceShape>()(
+  "ew3/BlockService"
+) {}
 
 export const BlockServiceLive = Layer.effect(
   BlockService,
@@ -259,15 +258,17 @@ export const BlockServiceLive = Layer.effect(
           });
 
           return yield* poll.pipe(
-            Effect.timeoutFail({
+            Effect.timeoutOrElse({
               duration: timeout,
-              onTimeout: () =>
-                new BlockTimeoutError({
-                  blockNumber: params.blockNumber,
-                  chainId: params.chainId,
-                  message: `Timeout waiting for block ${params.blockNumber}`,
-                  timeout,
-                }),
+              orElse: () =>
+                Effect.fail(
+                  new BlockTimeoutError({
+                    blockNumber: params.blockNumber,
+                    chainId: params.chainId,
+                    message: `Timeout waiting for block ${params.blockNumber}`,
+                    timeout,
+                  })
+                ),
             })
           );
         }).pipe(

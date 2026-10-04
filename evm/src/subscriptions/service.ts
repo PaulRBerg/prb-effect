@@ -42,7 +42,7 @@ const makeSubscriptionRetrySchedule = (config?: SubscriptionRetryConfig) =>
     maxRetries: Number.POSITIVE_INFINITY, // subscriptions retry forever
   });
 
-const neverStream = <A>(): Stream.Stream<A, never> => Stream.async(() => Effect.never);
+const neverStream = <A>(): Stream.Stream<A, never> => Stream.never;
 
 export type SubscriptionServiceShape = {
   readonly watchBlocks: (params: {
@@ -93,10 +93,10 @@ export type SubscriptionServiceShape = {
   readonly hasWebSocket: (chainId: number) => Effect.Effect<boolean, ClientNotFoundError>;
 };
 
-export class SubscriptionService extends Context.Tag("ew3/SubscriptionService")<
+export class SubscriptionService extends Context.Service<
   SubscriptionService,
   SubscriptionServiceShape
->() {}
+>()("ew3/SubscriptionService") {}
 
 export const SubscriptionServiceLive = Layer.effect(
   SubscriptionService,
@@ -126,7 +126,7 @@ export const SubscriptionServiceLive = Layer.effect(
               SubscriptionRef.set(stateRef, { error, status: "retrying" })
             ),
             Stream.retry(schedule),
-            Stream.catchAll(() => neverStream<Block>())
+            Stream.catch(() => neverStream<Block>())
           );
 
           return { stateRef, stream };
@@ -148,7 +148,7 @@ export const SubscriptionServiceLive = Layer.effect(
               SubscriptionRef.set(stateRef, { error, status: "retrying" })
             ),
             Stream.retry(schedule),
-            Stream.catchAll(() => neverStream<Log>())
+            Stream.catch(() => neverStream<Log>())
           );
 
           return { stateRef, stream };
@@ -170,7 +170,7 @@ export const SubscriptionServiceLive = Layer.effect(
               SubscriptionRef.set(stateRef, { error, status: "retrying" })
             ),
             Stream.retry(schedule),
-            Stream.catchAll(() => neverStream<Hash>())
+            Stream.catch(() => neverStream<Hash>())
           );
 
           return { stateRef, stream };

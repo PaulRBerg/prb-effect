@@ -63,10 +63,9 @@ export type ContractReaderShape = {
   >;
 };
 
-export class ContractReader extends Context.Tag("ew3/ContractReader")<
-  ContractReader,
-  ContractReaderShape
->() {}
+export class ContractReader extends Context.Service<ContractReader, ContractReaderShape>()(
+  "ew3/ContractReader"
+) {}
 
 /**
  * Live implementation of ContractReader service

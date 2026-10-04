@@ -10,6 +10,7 @@ const CI = Boolean(process.env.CI);
 
 export default defineConfig({
   test: {
+    clearMocks: false,
     environment: "node",
     globals: true,
     hideSkippedTests: true,

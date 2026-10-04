@@ -130,13 +130,13 @@ describe("BrowserStorage", () => {
       const storage = yield* BrowserStorage;
 
       // Attempt to set should fail with quota error
-      const result = yield* storage.set("test-key", "test-value").pipe(Effect.either);
+      const result = yield* storage.set("test-key", "test-value").pipe(Effect.result);
 
-      expect(result._tag).toBe("Left");
-      if (result._tag === "Left") {
-        expect(result.left).toBeInstanceOf(StorageQuotaExceededError);
-        if (result.left._tag === "StorageQuotaExceededError") {
-          expect(result.left.key).toBe("test-key");
+      expect(result._tag).toBe("Failure");
+      if (result._tag === "Failure") {
+        expect(result.failure).toBeInstanceOf(StorageQuotaExceededError);
+        if (result.failure._tag === "StorageQuotaExceededError") {
+          expect(result.failure.key).toBe("test-key");
         }
       }
     }).pipe(Effect.provide(makeBrowserStorageLayer(mockStorage)));
@@ -155,11 +155,11 @@ describe("BrowserStorage", () => {
       const storage = yield* BrowserStorage;
 
       // Attempt to get should fail with unavailable error
-      const result = yield* storage.get("test-key").pipe(Effect.either);
+      const result = yield* storage.get("test-key").pipe(Effect.result);
 
-      expect(result._tag).toBe("Left");
-      if (result._tag === "Left") {
-        expect(result.left).toBeInstanceOf(StorageUnavailableError);
+      expect(result._tag).toBe("Failure");
+      if (result._tag === "Failure") {
+        expect(result.failure).toBeInstanceOf(StorageUnavailableError);
       }
     }).pipe(Effect.provide(makeBrowserStorageLayer(mockStorage)));
   });
@@ -175,13 +175,13 @@ describe("BrowserStorage", () => {
       const storage = yield* BrowserStorage;
 
       // Attempt to get should fail with decode error
-      const result = yield* storage.get("test-key").pipe(Effect.either);
+      const result = yield* storage.get("test-key").pipe(Effect.result);
 
-      expect(result._tag).toBe("Left");
-      if (result._tag === "Left") {
-        expect(result.left).toBeInstanceOf(StorageDecodeError);
-        if (result.left._tag === "StorageDecodeError") {
-          expect(result.left.key).toBe("test-key");
+      expect(result._tag).toBe("Failure");
+      if (result._tag === "Failure") {
+        expect(result.failure).toBeInstanceOf(StorageDecodeError);
+        if (result.failure._tag === "StorageDecodeError") {
+          expect(result.failure.key).toBe("test-key");
         }
       }
     }).pipe(Effect.provide(makeBrowserStorageLayer(mockStorage)));

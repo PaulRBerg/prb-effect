@@ -48,7 +48,7 @@ export type TxStoreShape = {
 /**
  * Context tag for the TxStore service.
  */
-export class TxStore extends Context.Tag("ew3/TxStore")<TxStore, TxStoreShape>() {}
+export class TxStore extends Context.Service<TxStore, TxStoreShape>()("ew3/TxStore") {}
 
 /**
  * In-memory implementation of TxStore using a Ref-based Map.
@@ -65,7 +65,9 @@ export const InMemoryTxStoreLive = Layer.effect(
       Array.from(map.values()).filter(isInFlightPersistedTx);
 
     return TxStore.of({
-      changes: Stream.filterMap(changesRef.changes, (change) => change),
+      changes: Stream.filter(SubscriptionRef.changes(changesRef), Option.isSome).pipe(
+        Stream.map((change) => change.value)
+      ),
 
       delete: (id: string) =>
         Effect.gen(function* () {
@@ -126,7 +128,7 @@ export const InMemoryTxStoreLive = Layer.effect(
           );
         }),
 
-      watchInFlight: () => inFlightRef.changes,
+      watchInFlight: () => SubscriptionRef.changes(inFlightRef),
     });
   })
 );

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@effect/vitest";
-import { Deferred, Effect, Either, Fiber, Layer } from "effect";
+import { Deferred, Effect, Fiber, Layer, Result } from "effect";
 import type { TransactionReceipt } from "viem";
 import { ContractReaderLive, ContractWriter } from "#src/contract/index.js";
 import {
@@ -44,7 +44,7 @@ function makeDeps(receipt: ReturnType<TxManagerShape["waitForReceipt"]>) {
       Layer.provide(makeMockPublicClientLayer({ readContract: async () => 1n }))
     ),
     Layer.succeed(ContractWriter, {
-      estimateGas: () => Effect.dieMessage("unused"),
+      estimateGas: () => Effect.die(new Error("unused")),
       simulate: (params) => {
         // The generic writer erases the concrete ERC-20 argument tuple at this test seam.
         const amount = (params.args as readonly unknown[] | undefined)?.[1];
@@ -69,8 +69,8 @@ function makeDeps(receipt: ReturnType<TxManagerShape["waitForReceipt"]>) {
         }),
     }),
     Layer.succeed(TxManager, {
-      getConfirmations: () => Effect.dieMessage("unused"),
-      track: () => Effect.dieMessage("unused"),
+      getConfirmations: () => Effect.die(new Error("unused")),
+      track: () => Effect.die(new Error("unused")),
       waitForReceipt: (chainId, hash) =>
         Effect.gen(function* () {
           waits.push({ chainId, hash });
@@ -113,10 +113,10 @@ for (const Service of [Erc20AllowanceService, Erc20NoOutputAllowanceService]) {
       const deps = makeDeps(Effect.succeed(makeTestReceipt({ status: "reverted" })));
       return Effect.gen(function* () {
         const service = yield* Service;
-        const result = yield* service.ensureAllowance(PARAMS).pipe(Effect.either);
+        const result = yield* service.ensureAllowance(PARAMS).pipe(Effect.result);
         expect(result).toMatchObject({
-          _tag: "Left",
-          left: { _tag: "TxFailedError", hash: TEST_TX_HASH },
+          _tag: "Failure",
+          failure: { _tag: "TxFailedError", hash: TEST_TX_HASH },
         });
         expect(deps.writes).toEqual([0n]);
       }).pipe(Effect.provide(deps.layer));
@@ -136,20 +136,20 @@ for (const Service of [Erc20AllowanceService, Erc20NoOutputAllowanceService]) {
       const deps = makeDeps(Effect.fail(failure));
       return Effect.gen(function* () {
         const service = yield* Service;
-        const result = yield* service.ensureAllowance(PARAMS).pipe(Effect.either);
-        expect(result).toEqual(Either.left(failure));
+        const result = yield* service.ensureAllowance(PARAMS).pipe(Effect.result);
+        expect(result).toEqual(Result.fail(failure));
         expect(deps.writes).toEqual([0n]);
       }).pipe(Effect.provide(deps.layer));
     });
 
-    it.scoped(
+    it.effect(
       "does not broadcast the final approval if interrupted while the reset is pending",
       () =>
         Effect.gen(function* () {
           const started = yield* Deferred.make<void>();
           const gate = yield* Deferred.make<TransactionReceipt>();
           const deps = makeDeps(
-            Deferred.succeed(started, undefined).pipe(Effect.zipRight(Deferred.await(gate)))
+            Deferred.succeed(started, undefined).pipe(Effect.andThen(Deferred.await(gate)))
           );
           const fiber = yield* Effect.gen(function* () {
             const service = yield* Service;

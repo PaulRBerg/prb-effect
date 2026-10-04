@@ -17,7 +17,7 @@ export type SafeAppsRecoveryAction = "open-in-safe";
 export class NotInSafeAppContextError extends Schema.TaggedError<NotInSafeAppContextError>()(
   "NotInSafeAppContextError",
   {
-    code: Schema.Literal("NO_WINDOW", "NON_RESPONSIVE_SAFE_HOST", "TOP_LEVEL_WINDOW"),
+    code: Schema.Literals(["NO_WINDOW", "NON_RESPONSIVE_SAFE_HOST", "TOP_LEVEL_WINDOW"]),
     message: Schema.String,
     recovery: Schema.optional(Schema.Literal("open-in-safe")),
     userMessage: Schema.optional(Schema.String),

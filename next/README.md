@@ -27,12 +27,63 @@ Effect integration for Next.js - build type-safe, composable Next.js application
 ## Installation
 
 ```bash
-bun add @prb/effect-next effect @effect/platform
+bun add @prb/effect-next effect@^4.0.0
 ```
 
-### Optional Dependencies
+Version 2 requires Effect 4 and supports Next.js 15 or 16 with React and React DOM 18.2 or newer. HTTP and OTLP APIs
+come from Effect itself; telemetry needs no separate platform or OpenTelemetry package.
 
-- `@effect/opentelemetry` for `@prb/effect-next/telemetry/otel`
+### Migrating from 1.x
+
+Use native Effect 4 service keys in application layers. The middleware `Tag` factory remains available and is backed by
+`Context.Service`:
+
+```typescript
+import { Context, Effect } from "effect";
+import { createStatefulContext } from "@prb/effect-next/runtime";
+
+class Database extends Context.Service<Database, { readonly query: () => Effect.Effect<string> }>()("Database") {}
+
+// createStatefulContext returns Effect<Context.Context<R>, E>.
+const program = Effect.gen(function* () {
+  const context = yield* createStatefulContext(runtime);
+  return Context.get(context, Database);
+});
+```
+
+Use `Schema.Codec<A, I, DecodingServices, EncodingServices>` or `Schema.ConstraintCodec` for codec annotations, and
+`Schema.decodeUnknownEffect`, `Schema.decodeEffect`, and `Schema.encodeEffect` for execution. Parameter decoders retain
+only decoding requirements; persistent cache effects retain both decoding and encoding requirements, alongside storage
+requirements. `Duration.Input` replaces `Duration.DurationInput`.
+
+The Effect-returning `reactCache` preserves the first caller's context and tracing span for each argument tuple. Effects
+requiring `Scope.Scope` must be scoped before caching:
+
+```typescript
+import { reactCache } from "@prb/effect-next/react-cache";
+
+const cached = reactCache(() => Effect.scoped(acquireAndUseResource));
+```
+
+OTLP helpers now expose `OtlpExporter.Flusher` when an exporter is configured. Pass `provideHttpClient: false` to keep a
+custom `HttpClient` requirement; disabled layers and layers without configured exporters remain empty. A dynamic
+`OtelLayerOptions` value conservatively retains the client requirement unless `provideHttpClient` is statically `true`.
+
+```typescript
+import { Effect } from "effect";
+import { OtlpExporter } from "effect/observability";
+import { createOtelLayer } from "@prb/effect-next/telemetry/otel";
+
+const otel = createOtelLayer({
+  resource: { serviceName: "my-next-app" },
+  traces: { url: "http://localhost:4318/v1/traces" },
+});
+const flush = Effect.flatMap(OtlpExporter.Flusher, (exporters) => exporters.flush).pipe(Effect.provide(otel));
+```
+
+Effect 4's `NumberFromString` can decode non-finite values. Use `Schema.FiniteFromString` for route parameters that must
+reject invalid or non-finite numbers. Server-action results continue to use `success: true | false`, and navigation
+errors still trigger Next.js control flow at the handler boundary.
 
 ## Quick Start
 

@@ -66,10 +66,9 @@ export type TransferServiceShape = {
   }) => Effect.Effect<bigint, ClientNotFoundError>;
 };
 
-export class TransferService extends Context.Tag("ew3/TransferService")<
-  TransferService,
-  TransferServiceShape
->() {}
+export class TransferService extends Context.Service<TransferService, TransferServiceShape>()(
+  "ew3/TransferService"
+) {}
 
 /**
  * Classify transfer errors into appropriate error types
@@ -126,7 +125,7 @@ export const TransferServiceLive = Layer.effect(
               to: params.to,
               value: params.value,
             }),
-        }).pipe(Effect.catchAll(() => Effect.succeed(MIN_TX_GAS)));
+        }).pipe(Effect.catch(() => Effect.succeed(MIN_TX_GAS)));
       }),
 
       send: Effect.fn("TransferService.send")(function* (params) {

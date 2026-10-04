@@ -11,6 +11,7 @@ import {
   TxFailedError,
   TxReplacedError,
 } from "#src/core/index.js";
+import { fromWatchCallback } from "#src/internal/index.js";
 import { SpanNames } from "#src/telemetry/index.js";
 import { makeReceiptRetrySchedule } from "./internal/receipt-retry.js";
 import type { TxPolicy } from "./policy.js";
@@ -51,7 +52,7 @@ export type TxManagerShape = {
   ) => Effect.Effect<bigint, ClientNotFoundError | TransportError>;
 };
 
-export class TxManager extends Context.Tag("ew3/TxManager")<TxManager, TxManagerShape>() {}
+export class TxManager extends Context.Service<TxManager, TxManagerShape>()("ew3/TxManager") {}
 
 type TxTracker = {
   readonly set: (state: TxState) => Effect.Effect<void>;
@@ -93,9 +94,9 @@ type ReceiptWaiterClient = {
 };
 
 type ReceiptOutcome =
-  | { readonly _tag: "Left"; readonly cause: unknown }
+  | { readonly _tag: "Failure"; readonly cause: unknown }
   | {
-      readonly _tag: "Right";
+      readonly _tag: "Success";
       readonly receipt: TransactionReceipt;
       readonly replacement: ReplacementInfo | undefined;
     };
@@ -114,19 +115,19 @@ function performAutoReplacement(params: {
     params;
 
   return Ref.set(refs.autoReplacingRef, true).pipe(
-    Effect.zipRight(
+    Effect.andThen(
       (replacementStrategy === "cancel"
         ? txReplacement.cancel(chainId, currentHash, policy)
         : txReplacement.speedup(chainId, currentHash, policy)
       ).pipe(
-        Effect.either,
+        Effect.result,
         Effect.ensuring(Ref.set(refs.autoReplacingRef, false)),
         Effect.flatMap((replaced) => {
-          if (replaced._tag === "Left") {
+          if (replaced._tag === "Failure") {
             return Effect.void;
           }
 
-          const newHash = replaced.right;
+          const newHash = replaced.success;
           return Effect.all([
             Ref.set(refs.currentHashRef, newHash),
             Ref.set(refs.confirmationsRef, 0),
@@ -286,16 +287,14 @@ function startPendingBlockTracking(params: {
   const { client, pollingInterval, onPendingBlock } = params;
 
   return Stream.runForEach(
-    Stream.async<bigint, unknown>((emit) => {
-      const unwatch = client.watchBlockNumber({
-        onBlockNumber: (blockNumber: bigint) => emit.single(blockNumber),
-        onError: (error) => emit.fail(error as unknown),
-        pollingInterval,
-      });
-
-      return Effect.sync(() => {
-        unwatch();
-      });
+    fromWatchCallback<bigint, unknown>({
+      mapError: (error) => error,
+      watch: ({ onData, onError }) =>
+        client.watchBlockNumber({
+          onBlockNumber: onData,
+          onError,
+          pollingInterval,
+        }),
     }),
     () => onPendingBlock
   ).pipe(Effect.forkScoped);
@@ -354,25 +353,27 @@ function waitForReceiptWithReplacement(params: {
 
     return yield* attempt.pipe(
       Effect.retry(makeReceiptRetrySchedule()),
-      Effect.timeoutFail({
+      Effect.timeoutOrElse({
         duration: Duration.millis(totalTimeout),
-        onTimeout: () =>
-          new TxFailedError({
-            cause: new WaitForTransactionReceiptTimeoutError({ hash }),
-            hash,
-            message: `Receipt timeout exceeded (${totalTimeout}ms)`,
-          }),
+        orElse: () =>
+          Effect.fail(
+            new TxFailedError({
+              cause: new WaitForTransactionReceiptTimeoutError({ hash }),
+              hash,
+              message: `Receipt timeout exceeded (${totalTimeout}ms)`,
+            })
+          ),
       })
     );
   });
 
   return waitForReceiptWithBudget.pipe(
-    Effect.either,
+    Effect.result,
     Effect.ensuring(Fiber.interrupt(pendingFiber)),
     Effect.map((result) =>
-      result._tag === "Left"
-        ? { _tag: "Left", cause: result.left.cause ?? result.left }
-        : { _tag: "Right", receipt: result.right, replacement }
+      result._tag === "Failure"
+        ? { _tag: "Failure", cause: result.failure.cause ?? result.failure }
+        : { _tag: "Success", receipt: result.success, replacement }
     )
   );
 }
@@ -484,7 +485,7 @@ export function makeTxManagerLive(
                 policy,
               });
 
-              if (receiptOutcome._tag === "Left") {
+              if (receiptOutcome._tag === "Failure") {
                 yield* handleReceiptFailure({
                   cause: receiptOutcome.cause,
                   hash,
@@ -602,9 +603,9 @@ export function makeTxManagerLive(
 
             return yield* waitForReceiptAttempt.pipe(
               Effect.retry(makeReceiptRetrySchedule()),
-              Effect.timeoutFail({
+              Effect.timeoutOrElse({
                 duration: Duration.millis(timeout),
-                onTimeout: makeReceiptTimeoutError,
+                orElse: () => Effect.fail(makeReceiptTimeoutError()),
               }),
               Effect.withSpan(SpanNames.TX_WAIT, {
                 attributes: {

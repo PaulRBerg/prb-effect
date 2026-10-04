@@ -19,7 +19,7 @@ export type WriteExecutionAdapterShape = {
   ) => Effect.Effect<WriteAndTrackExecution<TAbi>, never, Scope.Scope>;
 };
 
-export class WriteExecutionAdapter extends Context.Tag("ew3/WriteExecutionAdapter")<
+export class WriteExecutionAdapter extends Context.Service<
   WriteExecutionAdapter,
   WriteExecutionAdapterShape
->() {}
+>()("ew3/WriteExecutionAdapter") {}
