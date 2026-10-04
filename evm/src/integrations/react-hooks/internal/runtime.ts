@@ -42,10 +42,17 @@ function buildContext(layer: Layer.Layer<never, unknown, never>, scope: Scope.Cl
 }
 
 export async function buildRuntime(
-  layer: Layer.Layer<never, unknown, never>
+  layer: Layer.Layer<never, unknown, never>,
+  options?: { readonly signal?: AbortSignal }
 ): Promise<EffectEvmRuntime> {
   const scope = Scope.makeUnsafe();
-  return makeRuntime(await Effect.runPromise(buildContext(layer, scope)), scope);
+  try {
+    const acquisition = options?.signal?.aborted ? Effect.interrupt : buildContext(layer, scope);
+    return makeRuntime(await Effect.runPromise(acquisition, options), scope);
+  } catch (cause) {
+    await Effect.runPromise(Scope.close(scope, Exit.fail(cause))).catch(noop);
+    throw cause;
+  }
 }
 
 export function buildRuntimeSync(layer: Layer.Layer<never, unknown, never>): EffectEvmRuntime {

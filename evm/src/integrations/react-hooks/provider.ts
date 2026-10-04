@@ -23,42 +23,45 @@ const EffectEvmLayerContext = React.createContext<Layer.Layer<never, unknown, ne
 
 export const EffectEvmProvider = (props: EffectEvmProviderProps): React.ReactElement => {
   const { children, fallback = null, layer, onUnhandledError } = props;
-
-  const [runtime, setRuntime] = React.useState<EffectEvmRuntime | null>(null);
+  const [built, setBuilt] = React.useState<{
+    readonly layer: typeof layer;
+    readonly onUnhandledError: typeof onUnhandledError;
+    readonly runtime: EffectEvmRuntime;
+  } | null>(null);
 
   React.useEffect(() => {
-    let cancelled = false;
+    const controller = new AbortController();
     let current: EffectEvmRuntime | null = null;
 
-    setRuntime(null);
+    setBuilt(null);
 
     (async () => {
-      const built = await buildRuntime(layer);
-      current = built;
+      const runtime = await buildRuntime(layer, { signal: controller.signal });
+      current = runtime;
 
-      if (cancelled) {
-        await closeRuntime(built.scope);
+      if (controller.signal.aborted) {
+        await closeRuntime(runtime.scope);
         return;
       }
 
-      setRuntime(built);
+      setBuilt({ layer, onUnhandledError, runtime });
     })().catch((cause) => {
-      onUnhandledError?.(cause);
+      if (!controller.signal.aborted) onUnhandledError?.(cause);
     });
 
     return () => {
-      cancelled = true;
+      controller.abort();
       if (current) {
-        closeRuntime(current.scope).catch(noop);
+        void closeRuntime(current.scope).catch(noop);
       }
     };
   }, [layer, onUnhandledError]);
 
-  if (runtime === null) {
+  if (built === null || built.layer !== layer || built.onUnhandledError !== onUnhandledError) {
     return React.createElement(React.Fragment, null, fallback);
   }
 
-  return React.createElement(EffectEvmRuntimeContext.Provider, { value: runtime }, children);
+  return React.createElement(EffectEvmRuntimeContext.Provider, { value: built.runtime }, children);
 };
 
 /** Builds synchronous layers after commit; renders fallback until the runtime is ready. */

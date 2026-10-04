@@ -10,6 +10,7 @@ import type { EffectEvmRuntime } from "./internal/runtime.js";
 import { useEffectMemoFactory } from "./primitives.js";
 import {
   EffectEvmLayerProvider,
+  EffectEvmProvider,
   EffectEvmProviderSync,
   useEffectEvmLayer,
   useEffectEvmRuntime,
@@ -293,5 +294,180 @@ describe("EffectEvmProviderSync lifecycle", () => {
     expect(String(onUnhandledError.mock.calls[0]?.[0])).toContain("layer failed");
     expect(acquired).toHaveLength(1);
     expect(acquired[0]?.closed).toBe(true);
+  });
+});
+
+describe("EffectEvmProvider lifecycle", () => {
+  it.each([
+    "unmount",
+    "layer",
+    "onUnhandledError",
+  ] as const)("interrupts pending acquisition on %s without reporting cleanup as a failure", async (change) => {
+    const acquired: Resource[] = [];
+    const interrupted = vi.fn();
+    const firstHandler = vi.fn();
+    const secondHandler = vi.fn();
+    const firstLayer = Layer.effect(
+      Resource,
+      Effect.gen(function* () {
+        const resource = yield* Effect.acquireRelease(
+          Effect.sync(() => {
+            const resource = { closed: false, name: "first" };
+            acquired.push(resource);
+            return resource;
+          }),
+          (resource) =>
+            Effect.sync(() => {
+              resource.closed = true;
+            })
+        );
+        if (acquired.length === 1) {
+          yield* Effect.callback<void>(() => Effect.sync(interrupted));
+        }
+        return resource;
+      })
+    );
+    const secondLayer = resourceLayer("second", acquired);
+    function tree(replaced: boolean) {
+      return React.createElement(EffectEvmProvider, {
+        children: "ready",
+        fallback: "pending",
+        layer: replaced && change === "layer" ? secondLayer : firstLayer,
+        onUnhandledError: replaced && change === "onUnhandledError" ? secondHandler : firstHandler,
+      });
+    }
+    const container = await mount(tree(false));
+    expect(container.textContent).toBe("pending");
+    expect(acquired).toHaveLength(1);
+    expect(acquired[0]?.closed).toBe(false);
+    await act(() => {
+      if (change === "unmount") {
+        root?.unmount();
+        root = undefined;
+      } else {
+        root?.render(tree(true));
+      }
+    });
+    expect(interrupted).toHaveBeenCalledOnce();
+    expect(acquired[0]?.closed).toBe(true);
+    expect(firstHandler).not.toHaveBeenCalled();
+    expect(secondHandler).not.toHaveBeenCalled();
+    if (change !== "unmount") {
+      expect(container.textContent).toBe("ready");
+      expect(acquired).toHaveLength(2);
+      expect(acquired[1]?.closed).toBe(false);
+    }
+  });
+
+  it.each([
+    "layer",
+    "onUnhandledError",
+  ] as const)("hides the previous runtime during render when %s changes", async (dependency) => {
+    const acquired: Resource[] = [];
+    const seen: string[] = [];
+    const firstLayer = resourceLayer("first", acquired);
+    const secondLayer = resourceLayer("second", acquired);
+    const firstHandler = vi.fn();
+    const secondHandler = vi.fn();
+    function Fallback() {
+      seen.push("fallback");
+      return "pending";
+    }
+    function Probe({ expected }: { readonly expected: string }) {
+      const runtime = useEffectEvmRuntime();
+      const resource = Context.get(runtime.context, Resource);
+      seen.push(`${expected}:${resource.name}:${resource.closed}`);
+      return "ready";
+    }
+    function tree(replaced: boolean) {
+      return React.createElement(EffectEvmProvider, {
+        children: React.createElement(Probe, { expected: replaced ? "new" : "old" }),
+        fallback: React.createElement(Fallback),
+        layer: replaced && dependency === "layer" ? secondLayer : firstLayer,
+        onUnhandledError:
+          replaced && dependency === "onUnhandledError" ? secondHandler : firstHandler,
+      });
+    }
+    await mount(tree(false));
+    expect(seen).toEqual(["fallback", "old:first:false"]);
+    seen.length = 0;
+    await act(async () => root?.render(tree(true)));
+    expect(seen).toEqual(["fallback", `new:${dependency === "layer" ? "second" : "first"}:false`]);
+    expect(acquired.map((resource) => resource.closed)).toEqual([true, false]);
+  });
+
+  it("does not reuse a closed runtime when returning to a previous layer during acquisition", async () => {
+    const acquired: Resource[] = [];
+    const seen: boolean[] = [];
+    const firstLayer = resourceLayer("first", acquired);
+    const pendingLayer = Layer.effectDiscard(Effect.never);
+    function Probe() {
+      const runtime = useEffectEvmRuntime();
+      seen.push(Context.get(runtime.context, Resource).closed);
+      return "ready";
+    }
+    function tree(layer: typeof firstLayer | typeof pendingLayer) {
+      return React.createElement(EffectEvmProvider, {
+        children: React.createElement(Probe),
+        fallback: "pending",
+        layer,
+      });
+    }
+    const container = await mount(tree(firstLayer));
+    expect(container.textContent).toBe("ready");
+    await act(async () => root?.render(tree(pendingLayer)));
+    expect(container.textContent).toBe("pending");
+    expect(acquired[0]?.closed).toBe(true);
+    await act(async () => root?.render(tree(firstLayer)));
+    expect(container.textContent).toBe("ready");
+    expect(seen).toEqual([false, false]);
+    expect(acquired.map((resource) => resource.closed)).toEqual([true, false]);
+  });
+
+  it("reports the original build failure after releasing partially acquired resources", async () => {
+    const acquired: Resource[] = [];
+    const onUnhandledError = vi.fn();
+    const error = new Error("async layer failed");
+    const layer = Layer.effectDiscard(
+      Effect.gen(function* () {
+        yield* Layer.build(resourceLayer("failed", acquired));
+        return yield* Effect.fail(error);
+      })
+    );
+    const container = await mount(
+      React.createElement(EffectEvmProvider, {
+        children: "ready",
+        fallback: "pending",
+        layer,
+        onUnhandledError,
+      })
+    );
+    expect(container.textContent).toBe("pending");
+    expect(onUnhandledError).toHaveBeenCalledExactlyOnceWith(error);
+    expect(acquired).toHaveLength(1);
+    expect(acquired[0]?.closed).toBe(true);
+  });
+
+  it("releases replayed acquisitions and keeps the committed runtime live in StrictMode", async () => {
+    const acquired: Resource[] = [];
+    const onUnhandledError = vi.fn();
+    const container = await mount(
+      React.createElement(
+        React.StrictMode,
+        null,
+        React.createElement(EffectEvmProvider, {
+          children: "ready",
+          fallback: "pending",
+          layer: resourceLayer("strict", acquired),
+          onUnhandledError,
+        })
+      )
+    );
+    expect(container.textContent).toBe("ready");
+    expect(acquired.map((resource) => resource.closed)).toEqual([true, false]);
+    expect(onUnhandledError).not.toHaveBeenCalled();
+    await act(async () => root?.unmount());
+    root = undefined;
+    expect(acquired.every((resource) => resource.closed)).toBe(true);
   });
 });

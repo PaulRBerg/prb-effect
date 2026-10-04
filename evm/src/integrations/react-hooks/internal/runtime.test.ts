@@ -50,6 +50,78 @@ describe("react-hooks runtime", () => {
   });
 
   it.each([
+    "failure",
+    "defect",
+  ] as const)("releases a rejected async build and preserves its original %s", async (kind) => {
+    const error = new Error("layer failed");
+    const finalizing = Promise.withResolvers<void>();
+    const release = Promise.withResolvers<void>();
+    const released = vi.fn();
+    const layer = Layer.effectDiscard(
+      Effect.gen(function* () {
+        yield* Effect.acquireRelease(Effect.void, () =>
+          Effect.gen(function* () {
+            finalizing.resolve();
+            yield* Effect.promise(() => release.promise);
+            released();
+          })
+        );
+        return yield* kind === "failure" ? Effect.fail(error) : Effect.die(error);
+      })
+    );
+    let settled = false;
+    const building = buildRuntime(layer).finally(() => {
+      settled = true;
+    });
+    const rejection = expect(building).rejects.toBe(error);
+    try {
+      await finalizing.promise;
+      expect(settled).toBe(false);
+      expect(released).not.toHaveBeenCalled();
+    } finally {
+      release.resolve();
+      await rejection;
+    }
+    expect(released).toHaveBeenCalledOnce();
+  });
+
+  it("interrupts pending async acquisition and releases resources when aborted", async () => {
+    const controller = new AbortController();
+    const started = Promise.withResolvers<void>();
+    const interrupted = vi.fn();
+    const released = vi.fn();
+    const layer = Layer.effectDiscard(
+      Effect.gen(function* () {
+        yield* Effect.acquireRelease(Effect.void, () => Effect.sync(released));
+        yield* Effect.callback<void>(() => {
+          started.resolve();
+          return Effect.sync(interrupted);
+        });
+      })
+    );
+    const rejection = expect(
+      buildRuntime(layer, { signal: controller.signal })
+    ).rejects.toBeDefined();
+    await started.promise;
+    controller.abort();
+    await rejection;
+    expect(interrupted).toHaveBeenCalledOnce();
+    expect(released).toHaveBeenCalledOnce();
+  });
+
+  it("does not acquire resources for an already-aborted build", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const acquire = vi.fn();
+    await expect(
+      buildRuntime(Layer.effectDiscard(Effect.sync(acquire)), {
+        signal: controller.signal,
+      })
+    ).rejects.toBeDefined();
+    expect(acquire).not.toHaveBeenCalled();
+  });
+
+  it.each([
     "child",
     "parent",
   ] as const)("does not start work when the %s scope closes before fork", async (owner) => {
