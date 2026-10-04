@@ -54,12 +54,17 @@ for prereleases:
 
 ```bash
 cd <package-directory>
-bun pm pack --filename release.tgz
+bun pm pack --filename "$PWD/release.tgz"
+test -f ./release.tgz
 npm publish ./release.tgz --tag "$(jq -r '.version | capture("^[^-]+-(?<tag>[^.+]+)").tag // "latest"' package.json)"
 ```
 
 Both commands MUST run from the package directory (e.g., `evm-safe/` for `@prb/effect-evm-safe`), not the monorepo root.
 Publish the Bun-generated tarball, not the source directory.
+
+Use an absolute `--filename`: Bun can resolve relative output paths against the workspace root after `prepack`. Before
+publishing, inspect `package/package.json` inside the archive to confirm its name/version and that no `catalog:` or
+`workspace:` ranges remain. A successful pack exit alone does not verify the archive's location.
 
 If any command exits with a non-zero code, **stop and report the error**. Do not proceed.
 

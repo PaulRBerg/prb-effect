@@ -59,7 +59,7 @@ alias bb := bump-beta
     zsh -ic 'ccbump {{ package }}'
     git push origin
     git push origin "{{ package }}@$(jq -r .version {{ package }}/package.json)"
-    cd {{ package }} && bun pm pack --filename release.tgz
+    cd {{ package }} && bun pm pack --filename "$PWD/release.tgz" && test -f ./release.tgz
     cd {{ package }} && npm publish ./release.tgz --tag "$(jq -r '.version | capture("^[^-]+-(?<tag>[^.+]+)").tag // "latest"' package.json)"
 alias rel := release
 
