@@ -5,6 +5,107 @@ import { buildRuntime, buildRuntimeSync, closeRuntime } from "./runtime.js";
 import { makeScopedRun } from "./scoped-run.js";
 
 describe("react-hooks runtime", () => {
+  it.each([
+    "failure",
+    "defect",
+  ] as const)("releases partial async acquisition before rejecting the original %s", async (failure) => {
+    const error = new Error("layer acquisition failed");
+    const finalizing = Promise.withResolvers<void>();
+    const release = Promise.withResolvers<void>();
+    const settled = vi.fn();
+    let released = false;
+    const layer = Layer.effectDiscard(
+      Effect.gen(function* () {
+        yield* Effect.acquireRelease(Effect.void, () =>
+          Effect.promise(async () => {
+            finalizing.resolve();
+            await release.promise;
+            released = true;
+          })
+        );
+        yield* Effect.promise(() => Promise.resolve());
+        return yield* failure === "failure" ? Effect.fail(error) : Effect.die(error);
+      })
+    );
+    const rejected = buildRuntime(layer).catch((cause) => {
+      settled();
+      return cause;
+    });
+    try {
+      await finalizing.promise;
+      expect(settled).not.toHaveBeenCalled();
+      expect(released).toBe(false);
+    } finally {
+      release.resolve();
+    }
+    expect(await rejected).toBe(error);
+    expect(released).toBe(true);
+  });
+
+  it("preserves the build failure when a resource finalizer defects", async () => {
+    const error = new Error("build failed");
+    const released = vi.fn();
+    const layer = Layer.effectDiscard(
+      Effect.gen(function* () {
+        yield* Effect.acquireRelease(Effect.void, () =>
+          Effect.sync(released).pipe(Effect.andThen(Effect.die(new Error("finalizer failed"))))
+        );
+        return yield* Effect.fail(error);
+      })
+    );
+    await expect(buildRuntime(layer)).rejects.toBe(error);
+    expect(released).toHaveBeenCalledOnce();
+  });
+
+  it("does not acquire a layer with an already-aborted signal", async () => {
+    const controller = new AbortController();
+    const acquire = vi.fn();
+    controller.abort();
+    await expect(
+      buildRuntime(Layer.effectDiscard(Effect.sync(acquire)), { signal: controller.signal })
+    ).rejects.toThrow();
+    expect(acquire).not.toHaveBeenCalled();
+  });
+
+  it("aborts pending acquisition and waits for its delayed resource finalizer", async () => {
+    const controller = new AbortController();
+    const started = Promise.withResolvers<void>();
+    const finalizing = Promise.withResolvers<void>();
+    const release = Promise.withResolvers<void>();
+    const interrupted = vi.fn();
+    const settled = vi.fn();
+    const layer = Layer.effectDiscard(
+      Effect.gen(function* () {
+        yield* Effect.acquireRelease(Effect.void, () =>
+          Effect.promise(() => {
+            finalizing.resolve();
+            return release.promise;
+          })
+        );
+        yield* Effect.callback<void>(() => {
+          started.resolve();
+          return Effect.sync(interrupted);
+        });
+      })
+    );
+    const rejected = buildRuntime(layer, { signal: controller.signal }).catch((cause) => {
+      settled();
+      return cause;
+    });
+    try {
+      await started.promise;
+      controller.abort();
+      await finalizing.promise;
+      expect(interrupted).toHaveBeenCalledOnce();
+      expect(settled).not.toHaveBeenCalled();
+    } finally {
+      controller.abort();
+      release.resolve();
+    }
+    expect(await rejected).toBeInstanceOf(Error);
+    expect(settled).toHaveBeenCalledOnce();
+  });
+
   it("runPromiseExit returns Success on success effects", async () => {
     const runtime = buildRuntimeSync(Layer.empty);
     const exit = await runtime.runPromiseExit(Effect.succeed(123));

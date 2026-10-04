@@ -26,41 +26,49 @@ const EffectSolanaLayerContext = React.createContext<Layer.Layer<never, unknown,
 export const EffectSolanaProvider = (props: EffectSolanaProviderProps): React.ReactElement => {
   const { children, fallback = null, layer, onUnhandledError } = props;
 
-  const [runtime, setRuntime] = React.useState<EffectSolanaRuntime | null>(null);
+  const [built, setBuilt] = React.useState<{
+    readonly layer: typeof layer;
+    readonly onUnhandledError: typeof onUnhandledError;
+    readonly runtime: EffectSolanaRuntime;
+  } | null>(null);
 
   React.useEffect(() => {
-    let cancelled = false;
+    const controller = new AbortController();
     let current: EffectSolanaRuntime | null = null;
 
-    setRuntime(null);
+    setBuilt(null);
 
     (async () => {
-      const built = await buildRuntime(layer);
-      current = built;
+      const runtime = await buildRuntime(layer, { signal: controller.signal });
+      current = runtime;
 
-      if (cancelled) {
-        await closeRuntime(built.scope);
+      if (controller.signal.aborted) {
+        await closeRuntime(runtime.scope);
         return;
       }
 
-      setRuntime(built);
+      setBuilt({ layer, onUnhandledError, runtime });
     })().catch((cause) => {
-      onUnhandledError?.(cause);
+      if (!controller.signal.aborted) onUnhandledError?.(cause);
     });
 
     return () => {
-      cancelled = true;
+      controller.abort();
       if (current) {
-        closeRuntime(current.scope).catch(noop);
+        void closeRuntime(current.scope).catch(noop);
       }
     };
   }, [layer, onUnhandledError]);
 
-  if (runtime === null) {
+  if (built === null || built.layer !== layer || built.onUnhandledError !== onUnhandledError) {
     return React.createElement(React.Fragment, null, fallback);
   }
 
-  return React.createElement(EffectSolanaRuntimeContext.Provider, { value: runtime }, children);
+  return React.createElement(
+    EffectSolanaRuntimeContext.Provider,
+    { value: built.runtime },
+    children
+  );
 };
 
 /** Builds synchronous layers after commit; renders fallback until the runtime is ready. */
