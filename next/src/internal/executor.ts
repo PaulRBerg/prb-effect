@@ -2,7 +2,6 @@
  */
 import { Cause, Chunk, Effect, Exit } from "effect";
 import type * as ManagedRuntime from "effect/ManagedRuntime";
-import { unstable_rethrow } from "next/dist/client/components/unstable-rethrow.server.js";
 import { workAsyncStorage } from "next/dist/server/app-render/work-async-storage.external.js";
 import { workUnitAsyncStorage } from "next/dist/server/app-render/work-unit-async-storage.external.js";
 import { NotFoundError, RedirectError } from "../navigation/index.js";
@@ -82,6 +81,7 @@ export async function executeWithRuntime<A, E, R, ER>(
   if (Exit.isFailure(result)) {
     const defects = Chunk.toArray(Cause.defects(result.cause));
     if (defects.length === 1) {
+      const { unstable_rethrow } = await import("next/navigation.js");
       unstable_rethrow(defects[0]);
     }
 

@@ -18,8 +18,8 @@ vi.mock("react", () => ({
   },
 }));
 
-// Mock Next.js internal modules
-vi.mock("next/dist/client/components/unstable-rethrow.server.js", () => ({
+// Mock Next.js navigation and async storage
+vi.mock("next/navigation.js", () => ({
   unstable_rethrow: vi.fn((error: unknown) => {
     // Just rethrow the error
     throw error;

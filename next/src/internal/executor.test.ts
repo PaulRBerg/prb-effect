@@ -15,7 +15,7 @@ const unstable_rethrow = vi.fn((e) => {
   throw e;
 });
 
-vi.mock("next/dist/client/components/unstable-rethrow.server.js", () => ({
+vi.mock("next/navigation.js", () => ({
   unstable_rethrow,
 }));
 
