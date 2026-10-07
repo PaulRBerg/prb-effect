@@ -1,5 +1,6 @@
 # Creates GitHub releases when package tags (e.g., evm@1.0.0) are pushed.
 # Also syncs the major version branch (e.g., evm@v1) with the release tag.
+# The publish job stages the npm release; it stays unpublished until the maintainer approves it.
 name: Release
 
 concurrency:
@@ -77,3 +78,69 @@ jobs:
           git fetch origin "$MAJOR_BRANCH" 2>/dev/null || true
           git checkout -B "$MAJOR_BRANCH" "$TAG"
           git push origin "$MAJOR_BRANCH" --force
+
+  # Stages the npm release via trusted publishing; the maintainer approves it with 2FA on npmjs.com.
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      # npm >= 11.15.0 provides `npm stage`; Ni provides the na/ni/nlx commands that the justfiles require.
+      - name: Install npm and Ni
+        run: npm install --global npm@11.20.0 @antfu/ni@30.6.0
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          no-cache: true
+
+      - uses: extractions/setup-just@v4
+
+      - name: Parse and validate tag
+        run: | #shell
+          set -euo pipefail
+          PACKAGE="${TAG%@*}"
+          VERSION="${TAG#*@}"
+
+          case "$PACKAGE" in
+            evm|evm-safe|next|solana|xstate) ;;
+            *) echo "::error::Invalid package '$PACKAGE' from tag '$TAG'"; exit 1 ;;
+          esac
+
+          PACKAGE_VERSION="$(jq -r .version "$PACKAGE/package.json")"
+          if [[ "$PACKAGE_VERSION" != "$VERSION" ]]; then
+            echo "::error::Tag version '$VERSION' does not match $PACKAGE/package.json version '$PACKAGE_VERSION'"
+            exit 1
+          fi
+
+          # Stable versions omit --tag, so npm refuses to move `latest` back to an older version.
+          DIST_TAG=""
+          if [[ "$VERSION" == *-* ]]; then
+            PRERELEASE="${VERSION#*-}"
+            DIST_TAG="${PRERELEASE%%[.+]*}"
+          fi
+
+          echo "PACKAGE=$PACKAGE" >> "$GITHUB_ENV"
+          echo "DIST_TAG=$DIST_TAG" >> "$GITHUB_ENV"
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      # bun pm pack runs the prepack build and rewrites workspace: and catalog: dependency specifiers.
+      # The evm-safe build resolves @prb/effect-evm types from evm/dist, so build evm first.
+      - name: Pack package
+        run: | #shell
+          if [[ "$PACKAGE" == "evm-safe" ]]; then just build evm; fi
+          cd "$PACKAGE" && bun pm pack --filename "$RUNNER_TEMP/release.tgz"
+
+      - name: Stage npm release
+        run: npm stage publish "$RUNNER_TEMP/release.tgz" ${DIST_TAG:+--tag "$DIST_TAG"}

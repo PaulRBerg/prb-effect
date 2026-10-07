@@ -54,13 +54,11 @@ alias bb := bump-beta
         "**/*.tsbuildinfo" \
         "**/*.tgz"
 
-# Run Claude to bump release, push the commit and release tag, and publish to npm
+# Run Claude to bump release and push the commit and release tag; CI stages the npm release, approve it on npmjs.com
 @release package:
     zsh -ic 'ccbump {{ package }}'
     git push origin
     git push origin "{{ package }}@$(jq -r .version {{ package }}/package.json)"
-    cd {{ package }} && bun pm pack --filename "$PWD/release.tgz" && test -f ./release.tgz
-    cd {{ package }} && npm publish ./release.tgz --tag "$(jq -r '.version | capture("^[^-]+-(?<tag>[^.+]+)").tag // "latest"' package.json)"
 alias rel := release
 
 # ---------------------------------------------------------------------------- #

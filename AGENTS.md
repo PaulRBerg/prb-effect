@@ -43,6 +43,18 @@ The pre-commit hook runs lint-staged, which formats staged files with Biome (JS/
 External contributors fork the repository, branch from `main`, follow this file and the nearest package `AGENTS.md`, add
 tests for new features or behavior changes, and pass `just full-check` and `just tu` before opening a pull request.
 
+## Releases
+
+- npm publishing runs only in `.github/workflows/release.yml`, through npm trusted publishing in staged mode. Never run
+  `npm publish`, `npm stage approve`, or `npm stage reject` locally.
+- To ship: bump the version and `CHANGELOG.md`, commit, create an annotated tag `<pkg>@X.Y.Z` (prerelease
+  `<pkg>@X.Y.Z-beta.N`), push the commit, then push tags with `git push origin <tag>...`, at most 3 per push (GitHub
+  starts no tag-push workflows above 3). `just release <pkg>` wraps this flow.
+- CI stages each version. It stays unpublished until the maintainer approves it with 2FA on npmjs.com (Staged Packages)
+  or `npm stage approve <stage-id>`. Prereleases use their identifier (`beta`) as the dist-tag.
+- One-time maintainer setup per package:
+  `npm trust github @prb/effect-<pkg> --repo PaulRBerg/prb-effect --file release.yml --allow-stage-publish -y`.
+
 ## Environment Variables (dotenvx)
 
 Secrets are managed with [dotenvx](https://dotenvx.com) (`@dotenvx/dotenvx`, root devDependency):
