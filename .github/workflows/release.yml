@@ -38,13 +38,15 @@ jobs:
 
           if [[ "$VERSION" == *-* ]]; then
             echo "::notice::Skipping prerelease $TAG"
-            echo "skip=true" >> $GITHUB_OUTPUT
+            echo "skip=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          echo "package=$PACKAGE" >> $GITHUB_OUTPUT
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "skip=false" >> $GITHUB_OUTPUT
+          {
+            echo "package=$PACKAGE"
+            echo "version=$VERSION"
+            echo "skip=false"
+          } >> "$GITHUB_OUTPUT"
           echo "Releasing $PACKAGE@$VERSION"
 
           CHANGELOG_PATH="${PACKAGE}/CHANGELOG.md"
@@ -52,7 +54,7 @@ jobs:
             echo "::error::Missing CHANGELOG.md for $PACKAGE at $CHANGELOG_PATH"
             exit 1
           fi
-          echo "changelog_path=$CHANGELOG_PATH" >> $GITHUB_OUTPUT
+          echo "changelog_path=$CHANGELOG_PATH" >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub release
         if: steps.parse.outputs.skip != 'true'
@@ -65,9 +67,10 @@ jobs:
 
       - name: Sync major version branch
         if: steps.parse.outputs.skip != 'true'
+        env:
+          PACKAGE: ${{ steps.parse.outputs.package }}
+          VERSION: ${{ steps.parse.outputs.version }}
         run: | #shell
-          PACKAGE="${{ steps.parse.outputs.package }}"
-          VERSION="${{ steps.parse.outputs.version }}"
           MAJOR="${VERSION%%.*}"
           MAJOR_BRANCH="${PACKAGE}@v${MAJOR}"
 
