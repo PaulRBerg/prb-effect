@@ -30,56 +30,50 @@ package to release using `AskUserQuestion` with these options:
 
 Then `cd` into the package directory before continuing.
 
-## Step 2: Run release commands (publish from package directory)
+## Step 2: Trigger CI staging
 
 Run the release bump first. `ccbump` runs the `release-bumper` skill, which bumps `package.json`, updates the CHANGELOG,
-commits, and creates a `<package-directory>@<new-version>` tag without pushing it:
+commits, and creates an annotated `<package-directory>@<new-version>` tag without pushing it:
 
 ```bash
 zsh -ic 'ccbump <package-name>'
 ```
 
-Read the new version from the package's `package.json`, then push the commit and the tag. The tag push triggers
-`.github/workflows/release.yml`, which creates the GitHub release:
+Read the new version from the package's `package.json`, then push the commit and the tag:
 
 ```bash
 git push origin
 git push origin <package-directory>@<new-version>
 ```
 
-Then pack with Bun and publish the tarball with npm from the released package's directory. Bun resolves `catalog:` and
-`workspace:` dependency ranges in the packed manifest; direct `npm publish` leaves those ranges unresolved. The pack
-step runs the package's `prepack` build. Use `latest` for stable versions and the prerelease identifier (such as `beta`)
-for prereleases:
+Push at most three tags at a time. GitHub does not start tag-push workflows when a push includes more than three tags.
 
-```bash
-cd <package-directory>
-bun pm pack --filename "$PWD/release.tgz"
-test -f ./release.tgz
-npm publish ./release.tgz --tag "$(jq -r '.version | capture("^[^-]+-(?<tag>[^.+]+)").tag // "latest"' package.json)"
-```
+The tag push triggers `.github/workflows/release.yml`. CI packs the package with Bun, which runs the prepack build and
+resolves `catalog:` and `workspace:` dependency ranges. CI stages the tarball through npm trusted publishing. Stable
+releases also create a GitHub release and sync the major version branch. Prereleases use their identifier (such as
+`beta`) as the npm dist-tag and skip those GitHub release steps.
 
-Both commands MUST run from the package directory (e.g., `evm-safe/` for `@prb/effect-evm-safe`), not the monorepo root.
-Publish the Bun-generated tarball, not the source directory.
+Wait for the tag's release workflow to finish successfully. If any command or CI job fails, **stop and report the
+error**. Do not proceed.
 
-Use an absolute `--filename`: Bun can resolve relative output paths against the workspace root after `prepack`. Before
-publishing, inspect `package/package.json` inside the archive to confirm its name/version and that no `catalog:` or
-`workspace:` ranges remain. A successful pack exit alone does not verify the archive's location.
-
-If any command exits with a non-zero code, **stop and report the error**. Do not proceed.
+The staged version stays unpublished until the maintainer approves it with 2FA on npmjs.com (Staged Packages). Report
+the staged release and wait for the maintainer's approval before continuing. Never run `npm publish`,
+`npm stage publish`, `npm stage approve`, or `npm stage reject` locally.
 
 ## Step 3: Verify npm Publication
 
-Verify the package is available on npm:
+After the maintainer approves the staged release, verify that the exact version is available and the intended dist-tag
+points to it (`latest` for stable releases, `beta` for betas):
 
 ```bash
 npm view <package-name>@<new-version> version
+npm view <package-name> dist-tags --json
 ```
 
-Successful publication confirms registry acceptance, not immediate availability. npm's
+Approval does not guarantee immediate availability. npm's
 [publish-time scanning](https://github.blog/changelog/2026-07-28-npm-publish-time-malware-scanning-and-dual-use-metadata/)
-can keep a newly accepted version unavailable for several minutes. If the version lookup returns 404 after a successful
-publish, poll the read-only lookup at 30-second intervals while keeping the user informed:
+can keep a newly approved version unavailable for several minutes. If the exact-version lookup returns 404 after
+approval, poll the read-only lookup at 30-second intervals while keeping the user informed:
 
 ```bash
 sleep 30 && npm view <package-name>@<new-version> version
@@ -87,7 +81,7 @@ sleep 30 && npm view <package-name>@<new-version> version
 
 Do not republish to resolve a scanning delay. Diagnose other lookup errors separately. If availability remains delayed,
 inspect npm's publishing status or notifications and report the concrete state. Continue to consumer updates only after
-the exact version is available and the intended dist-tag points to it (`latest` for stable releases, `beta` for betas).
+the exact version is available and the intended dist-tag points to it.
 
 ## Step 4: Bump in `~/sablier/new-ui`
 

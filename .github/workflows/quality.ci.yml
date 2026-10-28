@@ -1,0 +1,25 @@
+name: Workspace > Quality
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: PaulRBerg/devkit/actions/setup@v1
+        with:
+          save-cache: true
+
+      - name: Run quality checks
+        run: just full-check

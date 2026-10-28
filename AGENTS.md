@@ -43,6 +43,9 @@ The pre-commit hook runs lint-staged, which formats staged files with Biome (JS/
 External contributors fork the repository, branch from `main`, follow this file and the nearest package `AGENTS.md`, add
 tests for new features or behavior changes, and pass `just full-check` and `just tu` before opening a pull request.
 
+The workspace quality workflow (`.github/workflows/quality.ci.yml`) runs `just full-check` once for each push to `main`
+and pull request. Package test workflows run separately.
+
 ## Releases
 
 - npm publishing runs only in `.github/workflows/release.yml`, through npm trusted publishing in staged mode. Never run
