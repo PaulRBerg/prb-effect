@@ -143,7 +143,7 @@ describe("signMessage", () => {
           params?: unknown[] | Record<string, unknown>;
         }) => {
           if (method === "personal_sign") {
-            expect((params as unknown[])?.[0]).toBe("0xabcd");
+            expect((params as unknown[] | undefined)?.[0]).toBe("0xabcd");
             return Promise.resolve("0xsig");
           }
           return Promise.resolve();
@@ -195,7 +195,9 @@ describe("signTypedData", () => {
           params?: unknown[] | Record<string, unknown>;
         }) => {
           if (method === "eth_signTypedData_v4") {
-            expect((params as unknown[])?.[0]).toBe("0x1234567890123456789012345678901234567890");
+            expect((params as unknown[] | undefined)?.[0]).toBe(
+              "0x1234567890123456789012345678901234567890"
+            );
             return Promise.resolve("0xsignature");
           }
           return Promise.resolve();
@@ -233,7 +235,9 @@ describe("signTypedData", () => {
             return Promise.resolve(["0xabcdefabcdefabcdefabcdefabcdefabcdefabcd"] as Address[]);
           }
           if (method === "eth_signTypedData_v4") {
-            expect((params as unknown[])?.[0]).toBe("0xabcdefabcdefabcdefabcdefabcdefabcdefabcd");
+            expect((params as unknown[] | undefined)?.[0]).toBe(
+              "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd"
+            );
             return Promise.resolve("0xsig");
           }
           return Promise.resolve();
@@ -264,7 +268,7 @@ describe("signTypedData", () => {
           params?: unknown[] | Record<string, unknown>;
         }) => {
           if (method === "eth_signTypedData_v4") {
-            const payload = JSON.parse((params as unknown[])?.[1] as string);
+            const payload = JSON.parse((params as unknown[] | undefined)?.[1] as string);
             expect(payload).toEqual({
               domain: { chainId: mainnet.id, name: "Test" },
               message: { test: "value" },
@@ -346,7 +350,7 @@ describe("signTransaction", () => {
           params?: unknown[] | Record<string, unknown>;
         }) => {
           if (method === "eth_signTransaction") {
-            const tx = (params as [{ from: Address; to: Address; value: bigint }])[0];
+            const [tx] = params as [{ from: Address; to: Address; value: bigint }];
             expect(tx.from).toBe("0x1234567890123456789012345678901234567890");
             return Promise.resolve("0xsignedtx");
           }
@@ -378,7 +382,7 @@ describe("signTransaction", () => {
             return Promise.resolve(["0xabcdefabcdefabcdefabcdefabcdefabcdefabcd"] as Address[]);
           }
           if (method === "eth_signTransaction") {
-            const tx = (params as [{ from: Address }])[0];
+            const [tx] = params as [{ from: Address }];
             expect(tx.from).toBe("0xabcdefabcdefabcdefabcdefabcdefabcdefabcd");
             return Promise.resolve("0xsig");
           }
@@ -405,7 +409,7 @@ describe("signTransaction", () => {
           params?: unknown[] | Record<string, unknown>;
         }) => {
           if (method === "eth_signTransaction") {
-            const tx = (params as [{ from: Address; to: Address; value: bigint; data: string }])[0];
+            const [tx] = params as [{ from: Address; to: Address; value: bigint; data: string }];
             expect(tx).toEqual({
               data: "0xabcd",
               from: "0x1234567890123456789012345678901234567890",

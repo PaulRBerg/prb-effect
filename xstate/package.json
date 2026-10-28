@@ -1,43 +1,37 @@
 {
   "name": "@prb/effect-xstate",
-  "description": "Effect-TS and xState v5 workflow utilities",
-  "homepage": "https://github.com/PaulRBerg/prb-effect/tree/main/xstate#readme",
-  "license": "MIT",
-  "main": "./dist/index.js",
-  "sideEffects": false,
-  "type": "module",
-  "types": "./dist/index.d.ts",
   "version": "4.0.0",
-  "scripts": {
-    "build": "just build",
-    "prepack": "bun install --frozen-lockfile && just build"
+  "description": "Effect-TS and xState v5 workflow utilities",
+  "keywords": [
+    "effect",
+    "effect-ts",
+    "react",
+    "state-machine",
+    "typescript",
+    "workflow",
+    "xstate"
+  ],
+  "homepage": "https://github.com/PaulRBerg/prb-effect/tree/main/xstate#readme",
+  "bugs": {
+    "url": "https://github.com/PaulRBerg/prb-effect/issues"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PaulRBerg/prb-effect.git",
+    "directory": "xstate"
+  },
+  "license": "MIT",
   "author": {
     "name": "Paul Razvan Berg",
     "url": "https://github.com/PaulRBerg"
   },
-  "repository": {
-    "directory": "xstate",
-    "type": "git",
-    "url": "git+https://github.com/PaulRBerg/prb-effect.git"
-  },
-  "bugs": {
-    "url": "https://github.com/PaulRBerg/prb-effect/issues"
-  },
-  "devDependencies": {
-    "@biomejs/biome": "catalog:dev",
-    "@effect/vitest": "catalog:dev",
-    "@prb/devkit": "catalog:dev",
-    "@types/node": "catalog:dev",
-    "@types/react": "catalog:dev",
-    "@typescript/native-preview": "catalog:dev",
-    "@vitest/ui": "catalog:dev",
-    "@xstate/react": "^6.0.0",
-    "effect": "catalog:effect",
-    "react": "catalog:",
-    "typescript": "catalog:dev",
-    "vitest": "catalog:dev",
-    "xstate": "^5.25.0"
+  "sideEffects": false,
+  "type": "module",
+  "imports": {
+    "#src/*": {
+      "source": "./src/*",
+      "default": "./dist/*"
+    }
   },
   "exports": {
     ".": {
@@ -52,19 +46,31 @@
       "default": "./dist/*/index.js"
     }
   },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "files": [
     "dist/**",
     "CHANGELOG.md"
   ],
-  "keywords": [
-    "effect",
-    "effect-ts",
-    "react",
-    "state-machine",
-    "typescript",
-    "workflow",
-    "xstate"
-  ],
+  "scripts": {
+    "build": "just build",
+    "prepack": "bun install --frozen-lockfile && just build"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "catalog:dev",
+    "@effect/vitest": "catalog:dev",
+    "@prb/devkit": "catalog:dev",
+    "@types/node": "catalog:dev",
+    "@types/react": "catalog:dev",
+    "@typescript/native-preview": "catalog:dev",
+    "@vitest/ui": "catalog:dev",
+    "@xstate/react": "^6.1.0",
+    "effect": "catalog:effect",
+    "react": "catalog:",
+    "typescript": "catalog:dev",
+    "vitest": "catalog:dev",
+    "xstate": "^5.33.3"
+  },
   "peerDependencies": {
     "@xstate/react": "catalog:peers",
     "effect": "catalog:peers",
@@ -72,17 +78,11 @@
     "xstate": "catalog:peers"
   },
   "peerDependenciesMeta": {
-    "react": {
-      "optional": true
-    },
     "@xstate/react": {
       "optional": true
-    }
-  },
-  "imports": {
-    "#src/*": {
-      "source": "./src/*",
-      "default": "./dist/*"
+    },
+    "react": {
+      "optional": true
     }
   },
   "publishConfig": {

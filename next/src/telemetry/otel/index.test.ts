@@ -81,11 +81,11 @@ describe("OTLP layer", () => {
       expect(recorded.requests).toHaveLength(0);
       await runtime.runPromise(Effect.flatMap(OtlpExporter.Flusher, (flusher) => flusher.flush));
       expect(recorded.requests).toHaveLength(1);
-      const request = recorded.requests[0];
+      const [request] = recorded.requests;
       expect(request.url).toBe("https://telemetry.invalid/traces");
       expect(request.headers["x-test-token"]).toBe("local-fixture");
       expect(request.headers["content-type"]).toContain("application/json");
-      const trace = payload(request).resourceSpans[0];
+      const [trace] = payload(request).resourceSpans;
       expect(trace.resource.attributes).toEqual(
         expect.arrayContaining([
           { key: "service.name", value: { stringValue: "next-test" } },

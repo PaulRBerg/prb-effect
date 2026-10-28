@@ -50,125 +50,128 @@ async function mount(node: React.ReactNode) {
 }
 
 describe("EffectSolanaProvider lifecycle", () => {
-  it.each([
-    "unmount",
-    "layer",
-    "onUnhandledError",
-  ] as const)("interrupts pending acquisition on %s and releases resources without reporting cleanup", async (change) => {
-    const acquired: Resource[] = [];
-    const started = Promise.withResolvers<void>();
-    const finalizing = Promise.withResolvers<void>();
-    const release = Promise.withResolvers<void>();
-    const finalized = Promise.withResolvers<void>();
-    const interrupted = vi.fn();
-    const firstHandler = vi.fn();
-    const secondHandler = vi.fn();
-    const pendingLayer = Layer.effect(
-      Resource,
-      Effect.gen(function* () {
-        const resource = yield* Effect.acquireRelease(
-          Effect.sync(() => {
-            const value = { closed: false, name: acquired.length === 0 ? "pending" : "replayed" };
-            acquired.push(value);
-            return value;
-          }),
-          (value) =>
-            Effect.promise(async () => {
-              if (value.name === "pending") {
-                finalizing.resolve();
-                await release.promise;
-              }
-              value.closed = true;
-              if (value.name === "pending") finalized.resolve();
-            })
-        );
-        if (resource.name === "pending") {
-          yield* Effect.callback<void>(() => {
-            started.resolve();
-            return Effect.sync(interrupted);
-          });
-        }
-        return resource;
-      })
-    );
-    function tree(replaced: boolean) {
-      return React.createElement(EffectSolanaProvider, {
-        children: "ready",
-        fallback: "pending",
-        layer:
-          replaced && change === "layer" ? resourceLayer("replacement", acquired) : pendingLayer,
-        onUnhandledError: replaced && change === "onUnhandledError" ? secondHandler : firstHandler,
-      });
-    }
-    const container = await mount(tree(false));
-    try {
-      await started.promise;
-      expect(container.textContent).toBe("pending");
-      await act(() => {
-        if (change === "unmount") {
-          root?.unmount();
-          root = undefined;
-        } else {
-          root?.render(tree(true));
-        }
-      });
-      await finalizing.promise;
-      expect(interrupted).toHaveBeenCalledOnce();
-      expect(acquired[0]?.closed).toBe(false);
-      expect(container.textContent).toBe(change === "unmount" ? "" : "ready");
-      await act(async () => {
-        release.resolve();
-        await finalized.promise;
-      });
-      expect(acquired[0]?.closed).toBe(true);
-      expect(firstHandler).not.toHaveBeenCalled();
-      expect(secondHandler).not.toHaveBeenCalled();
-      if (change !== "unmount") {
-        expect(acquired).toHaveLength(2);
-        expect(acquired[1]?.closed).toBe(false);
-        expect(container.textContent).toBe("ready");
+  it.each(["unmount", "layer", "onUnhandledError"] as const)(
+    "interrupts pending acquisition on %s and releases resources without reporting cleanup",
+    async (change) => {
+      const acquired: Resource[] = [];
+      const started = Promise.withResolvers<void>();
+      const finalizing = Promise.withResolvers<void>();
+      const release = Promise.withResolvers<void>();
+      const finalized = Promise.withResolvers<void>();
+      const interrupted = vi.fn();
+      const firstHandler = vi.fn();
+      const secondHandler = vi.fn();
+      const pendingLayer = Layer.effect(
+        Resource,
+        Effect.gen(function* () {
+          const resource = yield* Effect.acquireRelease(
+            Effect.sync(() => {
+              const value = { closed: false, name: acquired.length === 0 ? "pending" : "replayed" };
+              acquired.push(value);
+              return value;
+            }),
+            (value) =>
+              Effect.promise(async () => {
+                if (value.name === "pending") {
+                  finalizing.resolve();
+                  await release.promise;
+                }
+                value.closed = true;
+                if (value.name === "pending") finalized.resolve();
+              })
+          );
+          if (resource.name === "pending") {
+            yield* Effect.callback<void>(() => {
+              started.resolve();
+              return Effect.sync(interrupted);
+            });
+          }
+          return resource;
+        })
+      );
+      function tree(replaced: boolean) {
+        return React.createElement(EffectSolanaProvider, {
+          children: "ready",
+          fallback: "pending",
+          layer:
+            replaced && change === "layer" ? resourceLayer("replacement", acquired) : pendingLayer,
+          onUnhandledError:
+            replaced && change === "onUnhandledError" ? secondHandler : firstHandler,
+        });
       }
-    } finally {
-      release.resolve();
+      const container = await mount(tree(false));
+      try {
+        await started.promise;
+        expect(container.textContent).toBe("pending");
+        await act(() => {
+          if (change === "unmount") {
+            root?.unmount();
+            root = undefined;
+          } else {
+            root?.render(tree(true));
+          }
+        });
+        await finalizing.promise;
+        expect(interrupted).toHaveBeenCalledOnce();
+        expect(acquired[0]?.closed).toBe(false);
+        expect(container.textContent).toBe(change === "unmount" ? "" : "ready");
+        await act(async () => {
+          release.resolve();
+          await finalized.promise;
+        });
+        expect(acquired[0]?.closed).toBe(true);
+        expect(firstHandler).not.toHaveBeenCalled();
+        expect(secondHandler).not.toHaveBeenCalled();
+        if (change !== "unmount") {
+          expect(acquired).toHaveLength(2);
+          expect(acquired[1]?.closed).toBe(false);
+          expect(container.textContent).toBe("ready");
+        }
+      } finally {
+        release.resolve();
+      }
     }
-  });
+  );
 
-  it.each([
-    "layer",
-    "onUnhandledError",
-  ] as const)("hides the stale runtime during child render when %s changes", async (dependency) => {
-    const acquired: Resource[] = [];
-    const seen: string[] = [];
-    const firstLayer = resourceLayer("first", acquired);
-    const secondLayer = resourceLayer("second", acquired);
-    const firstHandler = vi.fn();
-    const secondHandler = vi.fn();
-    function Fallback() {
-      seen.push("fallback");
-      return "pending";
+  it.each(["layer", "onUnhandledError"] as const)(
+    "hides the stale runtime during child render when %s changes",
+    async (dependency) => {
+      const acquired: Resource[] = [];
+      const seen: string[] = [];
+      const firstLayer = resourceLayer("first", acquired);
+      const secondLayer = resourceLayer("second", acquired);
+      const firstHandler = vi.fn();
+      const secondHandler = vi.fn();
+      function Fallback() {
+        seen.push("fallback");
+        return "pending";
+      }
+      function Probe({ expected }: { readonly expected: string }) {
+        const runtime = useEffectSolanaRuntime();
+        const resource = Effect.runSyncWith(runtime.context)(Resource);
+        seen.push(`${expected}:${resource.name}:${resource.closed}`);
+        return "ready";
+      }
+      function tree(replaced: boolean) {
+        return React.createElement(EffectSolanaProvider, {
+          children: React.createElement(Probe, { expected: replaced ? "new" : "old" }),
+          fallback: React.createElement(Fallback),
+          layer: replaced && dependency === "layer" ? secondLayer : firstLayer,
+          onUnhandledError:
+            replaced && dependency === "onUnhandledError" ? secondHandler : firstHandler,
+        });
+      }
+      await mount(tree(false));
+      expect(seen).toEqual(["fallback", "old:first:false"]);
+      seen.length = 0;
+      await act(async () => root?.render(tree(true)));
+      expect(seen).toEqual([
+        "fallback",
+        `new:${dependency === "layer" ? "second" : "first"}:false`,
+      ]);
+      expect(acquired.map((resource) => resource.closed)).toEqual([true, false]);
     }
-    function Probe({ expected }: { readonly expected: string }) {
-      const runtime = useEffectSolanaRuntime();
-      const resource = Effect.runSyncWith(runtime.context)(Resource);
-      seen.push(`${expected}:${resource.name}:${resource.closed}`);
-      return "ready";
-    }
-    function tree(replaced: boolean) {
-      return React.createElement(EffectSolanaProvider, {
-        children: React.createElement(Probe, { expected: replaced ? "new" : "old" }),
-        fallback: React.createElement(Fallback),
-        layer: replaced && dependency === "layer" ? secondLayer : firstLayer,
-        onUnhandledError:
-          replaced && dependency === "onUnhandledError" ? secondHandler : firstHandler,
-      });
-    }
-    await mount(tree(false));
-    expect(seen).toEqual(["fallback", "old:first:false"]);
-    seen.length = 0;
-    await act(async () => root?.render(tree(true)));
-    expect(seen).toEqual(["fallback", `new:${dependency === "layer" ? "second" : "first"}:false`]);
-    expect(acquired.map((resource) => resource.closed)).toEqual([true, false]);
-  });
+  );
 
   it("does not revive a closed runtime when returning from pending replacement to the original layer", async () => {
     const acquired: Resource[] = [];
@@ -337,46 +340,49 @@ describe("EffectSolanaProviderSync lifecycle", () => {
     expect(acquired.every((resource) => resource.closed)).toBe(true);
   });
 
-  it.each([
-    "layer",
-    "onUnhandledError",
-  ] as const)("shows fallback instead of a stale runtime when %s changes", async (dependency) => {
-    const acquired: Resource[] = [];
-    const seen: string[] = [];
-    const firstLayer = resourceLayer("first", acquired);
-    const secondLayer = resourceLayer("second", acquired);
-    const firstHandler = vi.fn();
-    const secondHandler = vi.fn();
-    function Fallback() {
-      seen.push("fallback");
-      return "pending";
+  it.each(["layer", "onUnhandledError"] as const)(
+    "shows fallback instead of a stale runtime when %s changes",
+    async (dependency) => {
+      const acquired: Resource[] = [];
+      const seen: string[] = [];
+      const firstLayer = resourceLayer("first", acquired);
+      const secondLayer = resourceLayer("second", acquired);
+      const firstHandler = vi.fn();
+      const secondHandler = vi.fn();
+      function Fallback() {
+        seen.push("fallback");
+        return "pending";
+      }
+      function Probe({ expected }: { readonly expected: string }) {
+        const runtime = useEffectSolanaRuntime();
+        React.useLayoutEffect(() => {
+          void runtime
+            .runPromise(Resource)
+            .then((resource) => seen.push(`${expected}:${resource.name}:${resource.closed}`));
+        }, [runtime, expected]);
+        return "ready";
+      }
+      function tree(replaced: boolean) {
+        const layer = replaced && dependency === "layer" ? secondLayer : firstLayer;
+        return React.createElement(EffectSolanaProviderSync, {
+          children: React.createElement(Probe, { expected: replaced ? "new" : "old" }),
+          fallback: React.createElement(Fallback),
+          layer,
+          onUnhandledError:
+            replaced && dependency === "onUnhandledError" ? secondHandler : firstHandler,
+        });
+      }
+      await mount(tree(false));
+      expect(seen).toEqual(["fallback", "old:first:false"]);
+      seen.length = 0;
+      await act(async () => root?.render(tree(true)));
+      expect(seen).toEqual([
+        "fallback",
+        `new:${dependency === "layer" ? "second" : "first"}:false`,
+      ]);
+      expect(acquired.map((resource) => resource.closed)).toEqual([true, false]);
     }
-    function Probe({ expected }: { readonly expected: string }) {
-      const runtime = useEffectSolanaRuntime();
-      React.useLayoutEffect(() => {
-        void runtime
-          .runPromise(Resource)
-          .then((resource) => seen.push(`${expected}:${resource.name}:${resource.closed}`));
-      }, [runtime, expected]);
-      return "ready";
-    }
-    function tree(replaced: boolean) {
-      const layer = replaced && dependency === "layer" ? secondLayer : firstLayer;
-      return React.createElement(EffectSolanaProviderSync, {
-        children: React.createElement(Probe, { expected: replaced ? "new" : "old" }),
-        fallback: React.createElement(Fallback),
-        layer,
-        onUnhandledError:
-          replaced && dependency === "onUnhandledError" ? secondHandler : firstHandler,
-      });
-    }
-    await mount(tree(false));
-    expect(seen).toEqual(["fallback", "old:first:false"]);
-    seen.length = 0;
-    await act(async () => root?.render(tree(true)));
-    expect(seen).toEqual(["fallback", `new:${dependency === "layer" ? "second" : "first"}:false`]);
-    expect(acquired.map((resource) => resource.closed)).toEqual([true, false]);
-  });
+  );
 
   it("reports build failure to the callback and React boundary while releasing partial resources", async () => {
     const acquired: Resource[] = [];
@@ -389,7 +395,7 @@ describe("EffectSolanaProviderSync lifecycle", () => {
       })
     );
     class Boundary extends React.Component<React.PropsWithChildren, { failed: boolean }> {
-      state = { failed: false };
+      state: { failed: boolean } = { failed: false };
       static getDerivedStateFromError() {
         return { failed: true };
       }

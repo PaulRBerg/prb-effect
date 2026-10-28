@@ -1,6 +1,6 @@
 const METAMASK_EXTENSION_ID = "nkbihfbeogaeaoehlefnkodbefgpgknn";
-const CHROME_EXTENSION_STACK_PATTERN = /chrome-extension:\/\//i;
-const METAMASK_CONNECTION_MESSAGE_PATTERN = /failed to connect to metamask/i;
+const CHROME_EXTENSION_STACK_PATTERN = /chrome-extension:\/\//iu;
+const METAMASK_CONNECTION_MESSAGE_PATTERN = /failed to connect to metamask/iu;
 const DEFAULT_METAMASK_CONNECTION_MESSAGE = "Failed to connect to MetaMask";
 
 /** Typed detail payload describing a wallet extension bridge failure. */

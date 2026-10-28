@@ -1,6 +1,6 @@
 import type { Hex } from "viem";
 
-const SIGNATURE_PATTERN = /^0x[0-9a-fA-F]{130}$/;
+const SIGNATURE_PATTERN = /^0x[0-9a-fA-F]{130}$/u;
 
 /**
  * Validates if a hex string is a valid signature (65 bytes)

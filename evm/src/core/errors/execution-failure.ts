@@ -9,14 +9,14 @@ export type DecodedExecutionFailure = {
   readonly revertData?: string;
 };
 
-const REVERT_REASON_RE = /reverted with reason: (.+?)(?:\n|$)/i;
-const REVERT_REASON_STRING_RE = /reverted with reason string ['"](.+?)['"]/i;
-const REVERT_CUSTOM_ERROR_RE = /reverted with custom error ['"](.+?)['"]/i;
-const EXECUTION_REVERTED_RE = /execution reverted(?::?\s*)(.+?)(?:\n|$)/i;
-const EXECUTION_REVERTED_GENERIC_RE = /execution reverted/i;
-const REVERT_DATA_RE = /(?:revert data|return data|data)\s*[:=]\s*(0x[a-fA-F0-9]+)/i;
-const HEX_RE = /^0x[a-fA-F0-9]+$/;
-const CUSTOM_ERROR_NAME_RE = /^([A-Za-z_][A-Za-z0-9_]*)(?:\(.*\))?$/;
+const REVERT_REASON_RE = /reverted with reason: (?<reason>.+?)(?:\n|$)/iu;
+const REVERT_REASON_STRING_RE = /reverted with reason string ['"](?<reason>.+?)['"]/iu;
+const REVERT_CUSTOM_ERROR_RE = /reverted with custom error ['"](?<reason>.+?)['"]/iu;
+const EXECUTION_REVERTED_RE = /execution reverted(?::?\s*)(?<reason>.+?)(?:\n|$)/iu;
+const EXECUTION_REVERTED_GENERIC_RE = /execution reverted/iu;
+const REVERT_DATA_RE = /(?:revert data|return data|data)\s*[:=]\s*(?<data>0x[a-fA-F0-9]+)/iu;
+const HEX_RE = /^0x[a-fA-F0-9]+$/u;
+const CUSTOM_ERROR_NAME_RE = /^(?<errorName>[A-Za-z_][A-Za-z0-9_]*)(?:\(.*\))?$/u;
 
 type MutableDecodedExecutionFailure = {
   hasSignal: boolean;
@@ -31,13 +31,13 @@ function normalizeReason(value: string): string | undefined {
 }
 
 function normalizeCustomErrorName(value: string): string | undefined {
-  const trimmed = value.trim().replace(/^['"]|['"]$/g, "");
+  const trimmed = value.trim().replace(/^['"]|['"]$/gu, "");
   const match = trimmed.match(CUSTOM_ERROR_NAME_RE);
   return match?.[1];
 }
 
 function getHexLike(value: unknown, depth = 0): string | undefined {
-  if (depth > 4 || value == null) {
+  if (depth > 4 || value === null || value === undefined) {
     return undefined;
   }
 
@@ -167,7 +167,7 @@ function walkExecutionFailure(
   out: MutableDecodedExecutionFailure,
   depth = 0
 ): void {
-  if (depth > 4 || error == null) {
+  if (depth > 4 || error === null || error === undefined) {
     return;
   }
 
@@ -212,9 +212,9 @@ export function decodeExecutionFailure(
 
   if (
     !parsed.hasSignal &&
-    parsed.revertReason == null &&
-    parsed.customErrorName == null &&
-    parsed.revertData == null
+    (parsed.revertReason === null || parsed.revertReason === undefined) &&
+    (parsed.customErrorName === null || parsed.customErrorName === undefined) &&
+    (parsed.revertData === null || parsed.revertData === undefined)
   ) {
     return undefined;
   }

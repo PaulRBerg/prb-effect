@@ -121,9 +121,9 @@ const Proto = {
     this: AnyWithProps,
     handler: (...args: A) => Effect.Effect<O, unknown, unknown>
   ) {
-    const runtime = this.runtime;
+    const { runtime } = this;
     return (...args: A) => {
-      const middlewares = this.middlewares;
+      const { middlewares } = this;
 
       const program = Effect.gen(function* () {
         const context = yield* Effect.context<never>();

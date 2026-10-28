@@ -71,38 +71,38 @@ function makeScope(runtime: EffectEvmRuntime) {
 }
 
 describe("contract hook ownership", () => {
-  it.each([
-    "unmount",
-    "new send",
-  ] as const)("does not start a late write after %s", async (stop) => {
-    const runtime = mocks.runtime;
-    if (!runtime) throw new Error("Missing test runtime");
-    const gate = Promise.withResolvers<ScopedRun>();
-    const secondGate = Promise.withResolvers<ScopedRun>();
-    const first = makeScope(runtime);
-    const second = makeScope(runtime);
-    mocks.makeScopedRun.mockReturnValueOnce(gate.promise).mockReturnValueOnce(secondGate.promise);
-    const api = useWriteAndTrack(params);
-    const cleanup = mocks.effects[0]?.();
-    try {
-      api.send();
-      if (stop === "unmount") cleanup?.();
-      else api.send();
-      gate.resolve(first.scoped);
-      await gate.promise;
-      expect(first.close).toHaveBeenCalledOnce();
-      expect(writeAndTrack).not.toHaveBeenCalled();
-    } finally {
-      cleanup?.();
-      secondGate.resolve(second.scoped);
-      await secondGate.promise;
-      first.close();
-      second.close();
+  it.each(["unmount", "new send"] as const)(
+    "does not start a late write after %s",
+    async (stop) => {
+      const { runtime } = mocks;
+      if (!runtime) throw new Error("Missing test runtime");
+      const gate = Promise.withResolvers<ScopedRun>();
+      const secondGate = Promise.withResolvers<ScopedRun>();
+      const first = makeScope(runtime);
+      const second = makeScope(runtime);
+      mocks.makeScopedRun.mockReturnValueOnce(gate.promise).mockReturnValueOnce(secondGate.promise);
+      const api = useWriteAndTrack(params);
+      const cleanup = mocks.effects[0]?.();
+      try {
+        api.send();
+        if (stop === "unmount") cleanup?.();
+        else api.send();
+        gate.resolve(first.scoped);
+        await gate.promise;
+        expect(first.close).toHaveBeenCalledOnce();
+        expect(writeAndTrack).not.toHaveBeenCalled();
+      } finally {
+        cleanup?.();
+        secondGate.resolve(second.scoped);
+        await secondGate.promise;
+        first.close();
+        second.close();
+      }
     }
-  });
+  );
 
   it("interrupts pending pipeline startup on unmount", async () => {
-    const runtime = mocks.runtime;
+    const { runtime } = mocks;
     if (!runtime) throw new Error("Missing test runtime");
     const started = Promise.withResolvers<void>();
     const finalized = vi.fn();

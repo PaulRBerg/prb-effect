@@ -146,7 +146,7 @@ export const CursorStreamLive = Layer.effect(
       cursor: StreamCursor | null,
       event: Pick<DecodedEvent, "blockNumber" | "logIndex">
     ): boolean => {
-      if (cursor == null) {
+      if (cursor === null || cursor === undefined) {
         return true;
       }
       if (event.blockNumber !== cursor.lastBlockNumber) {
@@ -162,7 +162,8 @@ export const CursorStreamLive = Layer.effect(
         // Resume inclusively from the cursor block (not +1) and filter out the
         // already-delivered events; a `0n` cursor is honored via `!= null`.
         const cursor = yield* cursorStore.get(params.cursorKey);
-        const fromBlock = cursor == null ? params.fromBlock : cursor.lastBlockNumber;
+        const fromBlock =
+          cursor === null || cursor === undefined ? params.fromBlock : cursor.lastBlockNumber;
 
         const stream = yield* eventStream.watch({
           ...params,
@@ -181,7 +182,8 @@ export const CursorStreamLive = Layer.effect(
       Effect.gen(function* () {
         // Resume inclusively from the cursor block (not +1); `0n` honored.
         const cursor = yield* cursorStore.get(params.cursorKey);
-        const fromBlock = cursor == null ? params.fromBlock : cursor.lastBlockNumber;
+        const fromBlock =
+          cursor === null || cursor === undefined ? params.fromBlock : cursor.lastBlockNumber;
 
         // Resolve an explicit head block so backfill and live watch share a
         // single boundary: backfill ends at `head`, the live watch starts at

@@ -62,7 +62,7 @@ export function createOtelLayer(options: OtelLayerOptions) {
     return Layer.empty;
   }
 
-  const resource = options.resource;
+  const { resource } = options;
 
   const tracesLayer: RawOtelLayer | Layer.Layer<never> = options.traces
     ? OtlpTracer.layer({

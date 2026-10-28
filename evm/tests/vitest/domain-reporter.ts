@@ -1,4 +1,4 @@
-import type { SerializedError, TestModule, TestRunEndReason, TestSpecification } from "vitest/node";
+import type { SerializedError, TestModule, TestRunEndReason } from "vitest/node";
 import { DefaultReporter } from "vitest/node";
 
 type DomainReporterOptions = {
@@ -24,8 +24,8 @@ type TopStat = {
   seconds: Set<string>;
 };
 
-const LEADING_DOT_SLASH = /^\.\/+/;
-const TRAILING_SLASH = /\/+$/;
+const LEADING_DOT_SLASH = /^\.\/+/u;
+const TRAILING_SLASH = /\/+$/u;
 
 const normalizeModuleId = (id: string): string =>
   id.replaceAll("\\", "/").replace(LEADING_DOT_SLASH, "");
@@ -100,19 +100,13 @@ function groupByDomain(parsed: Parsed[], promoted: Map<string, string>): Map<str
 export default class DomainReporter extends DefaultReporter {
   private readonly srcDir: string;
   private readonly promoteSingleSubdomain: boolean;
-  private printingGroupedResults = false;
+  private printingGroupedResults: boolean;
 
   constructor(options: DomainReporterOptions = {}) {
     super({ isTTY: options.isTTY });
+    this.printingGroupedResults = false;
     this.srcDir = options.srcDir ?? "src";
     this.promoteSingleSubdomain = options.promoteSingleSubdomain ?? true;
-  }
-
-  override onTestRunStart(specifications: readonly TestSpecification[]): void {
-    if (this.renderSucceed === undefined) {
-      this.renderSucceed = specifications.length <= 1;
-    }
-    super.onTestRunStart(specifications);
   }
 
   override onTestModuleEnd(testModule: TestModule): void {

@@ -44,7 +44,7 @@ export function useEffectMemo<A, E, R>(
     const effect = effectFn();
     const fiber = runtime.runFork(effect);
 
-    runtime.runPromise(Fiber.await(fiber)).then((exit) => {
+    void runtime.runPromise(Fiber.await(fiber)).then((exit) => {
       // Don't update state if unmounted
       if (!active) {
         return;

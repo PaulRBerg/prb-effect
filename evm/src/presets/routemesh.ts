@@ -148,11 +148,8 @@ export const makeRouteMeshTransports = (
   apiKey: string,
   chains: readonly RouteMeshFallbackChainEntry[]
 ): Record<number, Transport> =>
-  chains.reduce(
-    (acc, entry) => {
-      const urls = routemeshWithFallback(entry.chainId, apiKey, entry.fallbackUrls ?? []);
-      acc[entry.chainId] = makeFallbackTransport(urls);
-      return acc;
-    },
-    {} as Record<number, Transport>
-  );
+  chains.reduce<Record<number, Transport>>((acc, entry) => {
+    const urls = routemeshWithFallback(entry.chainId, apiKey, entry.fallbackUrls ?? []);
+    acc[entry.chainId] = makeFallbackTransport(urls);
+    return acc;
+  }, {});

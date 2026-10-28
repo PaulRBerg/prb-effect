@@ -34,7 +34,7 @@ describe("BalanceService (Live)", () => {
         );
       },
       readContract: (params: unknown) => {
-        const functionName = (params as { functionName?: string }).functionName;
+        const { functionName } = params as { functionName?: string };
         if (functionName === "balanceOf") {
           return Promise.resolve(1000000000n);
         }

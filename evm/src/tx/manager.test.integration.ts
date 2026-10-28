@@ -260,8 +260,8 @@ describe("TxManager", () => {
         expect(events[0]?.status).toBe("replaced");
         expect(events[1]?.status).toBe("mined");
 
-        const replaced = events[0];
-        const mined = events[1];
+        const [replaced] = events;
+        const [, mined] = events;
 
         if (replaced?.status === "replaced") {
           expect(replaced.oldHash).toBe(TEST_TX_HASH);

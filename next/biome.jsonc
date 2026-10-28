@@ -1,5 +1,23 @@
 {
   "root": false,
   "$schema": "../node_modules/@biomejs/biome/configuration_schema.json",
-  "extends": "//"
+  "extends": "//",
+  "overrides": [
+    // Preserve bivariance in published methods for consumer compatibility.
+    {
+      "includes": ["src/handlers/next.ts", "src/middleware/index.ts"],
+      "linter": {
+        "rules": {
+          "style": {
+            "useConsistentMethodSignatures": {
+              "level": "error",
+              "options": {
+                "style": "method"
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
 }

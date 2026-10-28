@@ -281,7 +281,7 @@ describe("GasService", () => {
               return (params: unknown) => {
                 const { blockTag } = params as { blockTag: string };
                 if (blockTag === "latest") {
-                  latestCallCount++;
+                  latestCallCount += 1;
                   if (latestCallCount === 1) {
                     return Promise.resolve(makeBlock(DEFAULT_BASE_FEE));
                   }

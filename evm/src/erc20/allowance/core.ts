@@ -138,7 +138,7 @@ export const Erc20AllowanceServiceLive = Layer.effect(
       // revert (ApprovalError). Wallet-level failures — user rejection,
       // insufficient funds, resource exhaustion, missing client — must pass
       // through untouched; retrying would re-prompt the user for more signatures.
-      const failure = directResult.failure;
+      const { failure } = directResult;
       if (failure._tag !== "ApprovalError" || !zeroFirst || currentAllowance === 0n) {
         return yield* Effect.fail(failure);
       }

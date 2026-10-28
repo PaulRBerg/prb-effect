@@ -62,7 +62,7 @@ export const makeRpcServiceLive = (config: ClusterConfig) =>
         getRpc: () => Effect.succeed(rpcClient),
 
         getRpcSubscriptions: () => {
-          const wsUrl = config.wsUrl;
+          const { wsUrl } = config;
           if (!wsUrl) {
             return Effect.fail(
               new ConnectionNotFoundError({

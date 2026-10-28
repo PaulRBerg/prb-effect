@@ -46,11 +46,8 @@ export function makeChainTransports(
     http?: HttpTransportOptions | undefined;
   }[]
 ): Record<number, Transport> {
-  return chains.reduce(
-    (acc, chain) => {
-      acc[chain.chainId] = makeFallbackTransport(chain.rpcUrls, chain.http ?? {});
-      return acc;
-    },
-    {} as Record<number, Transport>
-  );
+  return chains.reduce<Record<number, Transport>>((acc, chain) => {
+    acc[chain.chainId] = makeFallbackTransport(chain.rpcUrls, chain.http ?? {});
+    return acc;
+  }, {});
 }

@@ -34,13 +34,13 @@ import {
   WatchAssetError,
 } from "#src/wallet/index.js";
 
-const TX_HASH_RE = /0x[a-fA-F0-9]{64}/;
+const TX_HASH_RE = /0x[a-fA-F0-9]{64}/u;
 const ERROR_MESSAGE_FIELDS = ["message", "shortMessage", "details"] as const;
-const NONCE_TOO_LOW_RE = /nonce (?:is )?too low|nonce has already been used|already used nonce/i;
+const NONCE_TOO_LOW_RE = /nonce (?:is )?too low|nonce has already been used|already used nonce/iu;
 const NONCE_TOO_LOW_FALSE_POSITIVE_RE =
-  /account nonce too high|replacement transaction underpriced|transaction underpriced|already known/i;
-const RAW_TRANSACTION_METHOD_RE = /\beth_sendRawTransaction\b/i;
-const RAW_TRANSACTION_DECODING_RE = /\btransaction decoding error\b/i;
+  /account nonce too high|replacement transaction underpriced|transaction underpriced|already known/iu;
+const RAW_TRANSACTION_METHOD_RE = /\beth_sendRawTransaction\b/iu;
+const RAW_TRANSACTION_DECODING_RE = /\btransaction decoding error\b/iu;
 const RAW_TRANSACTION_ERROR_FIELDS = [...ERROR_MESSAGE_FIELDS, "metaMessages", "cause"] as const;
 
 type TransactionErrorContext = {
@@ -182,7 +182,7 @@ export function isNonceTooLowError(error: unknown): boolean {
   return visit(error);
 }
 
-const RESOURCE_EXHAUSTION_RE = /cannot allocate memory|ENOMEM|out of memory/i;
+const RESOURCE_EXHAUSTION_RE = /cannot allocate memory|ENOMEM|out of memory/iu;
 
 /**
  * Check if an error represents device/environment resource exhaustion.
@@ -237,8 +237,8 @@ export function isTxReplaced(error: unknown): { newHash: Hash; replaced: true } 
   return false;
 }
 
-function getReplacementHashFromExecutionError(error: TransactionExecutionError): Hash | undefined {
-  const cause = error.cause;
+function getReplacementHashFromExecutionError(error: { cause?: unknown }): Hash | undefined {
+  const { cause } = error;
   if (!cause || typeof cause !== "object") {
     return;
   }
@@ -247,7 +247,7 @@ function getReplacementHashFromExecutionError(error: TransactionExecutionError):
     return;
   }
 
-  const details = (cause as { details?: string }).details;
+  const { details } = cause as { details?: string };
   if (!details) {
     return;
   }
@@ -261,7 +261,7 @@ function getReplacementHashFromMessage(message: string): Hash | undefined {
     return;
   }
 
-  const hashes = message.match(/0x[a-fA-F0-9]{64}/g);
+  const hashes = message.match(/0x[a-fA-F0-9]{64}/gu);
   if (!hashes || hashes.length === 0) {
     return;
   }

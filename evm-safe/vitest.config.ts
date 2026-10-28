@@ -16,7 +16,7 @@ export default mergeConfig(
     resolve: {
       alias: [
         {
-          find: /^#src\/(.+)$/,
+          find: /^#src\/(?<path>.+)$/u,
           replacement: "$1",
           // `#src/*` self-imports appear both in evm-safe's own sources (→ ./src)
           // and inside the built @prb/effect-evm dist (→ ../evm/dist). Vite does

@@ -141,7 +141,7 @@ describe("MulticallBatcher accounts", () => {
         { batching: true, concurrency: "unbounded" }
       );
       expect(results[0]).toEqual(Result.succeed(1n));
-      const failed = results[1];
+      const [, failed] = results;
       expect(failed && Result.isFailure(failed) && failed.failure.message).toContain(
         "second call failed"
       );

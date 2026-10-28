@@ -1,4 +1,4 @@
-import { Array as Arr, Context, Effect, Layer, Stream } from "effect";
+import { Array as Arr, BigInt as BigIntMath, Context, Effect, Layer, Stream } from "effect";
 import type { Abi, AbiEvent, Address } from "viem";
 import type { ClientNotFoundError } from "#src/core/index.js";
 import { EventBackfillError, PublicClientService } from "#src/core/index.js";
@@ -100,8 +100,7 @@ export const EventBackfillLive = Layer.effect(
         let currentFrom = params.fromBlock;
 
         while (currentFrom <= toBlock) {
-          const currentTo =
-            currentFrom + batchSize - 1n > toBlock ? toBlock : currentFrom + batchSize - 1n;
+          const currentTo = BigIntMath.min(currentFrom + batchSize - 1n, toBlock);
           batches.push({ from: currentFrom, to: currentTo });
           currentFrom = currentTo + 1n;
         }

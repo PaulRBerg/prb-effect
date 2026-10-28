@@ -14,8 +14,8 @@ export type NumberFormatOptions = Intl.NumberFormatOptions & {
 const numberFormatterCache = new Map<string, Intl.NumberFormat>();
 
 // Regex patterns
-const HEX_PATTERN = /^[0-9a-f]+$/i;
-const HEX_BYTE_PATTERN = /^[0-9a-fA-F]{2}$/;
+const HEX_PATTERN = /^[0-9a-f]+$/iu;
+const HEX_BYTE_PATTERN = /^[0-9a-fA-F]{2}$/u;
 
 function getNumberFormatter(options: NumberFormatOptions = {}): Intl.NumberFormat {
   const { locale = DEFAULT_LOCALE, ...intlOptions } = options;

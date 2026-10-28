@@ -224,7 +224,7 @@ describe("WalletService", () => {
             makeMockWalletProvider({
               request: ({ method, params }) => {
                 if (method === "eth_signTypedData_v4") {
-                  expect((params as unknown[])?.[0]).toBe(
+                  expect((params as unknown[] | undefined)?.[0]).toBe(
                     "0x1234567890123456789012345678901234567890"
                   );
                   return Promise.resolve("0xsignature");
@@ -254,7 +254,7 @@ describe("WalletService", () => {
             makeMockWalletProvider({
               request: ({ method, params }) => {
                 if (method === "eth_signTransaction") {
-                  const tx = (params as [{ from: Address; to: Address }])[0];
+                  const [tx] = params as [{ from: Address; to: Address }];
                   expect(tx.from).toBe("0x1234567890123456789012345678901234567890");
                   expect(tx.to).toBe("0xabcdefabcdefabcdefabcdefabcdefabcdefabcd");
                   return Promise.resolve("0xsignedtx");

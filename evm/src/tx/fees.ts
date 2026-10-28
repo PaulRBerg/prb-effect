@@ -30,7 +30,7 @@ export const deriveTxType = (params: {
   GasService
 > =>
   Effect.gen(function* () {
-    const userOverrides = params.userOverrides;
+    const { userOverrides } = params;
 
     if (userOverrides?.type) {
       return userOverrides.type;
@@ -57,8 +57,8 @@ export const deriveFeeOverrides = (params: {
   userOverrides?: TxOverrides | undefined;
 }): Effect.Effect<FeeOverrides, GasPriceUnavailableError | ClientNotFoundError, GasService> =>
   Effect.gen(function* () {
-    const policy = params.policy;
-    const userOverrides = params.userOverrides;
+    const { policy } = params;
+    const { userOverrides } = params;
 
     if (hasLegacyFeeOverride(userOverrides)) {
       return { gasPrice: userOverrides.gasPrice };

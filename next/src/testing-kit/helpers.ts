@@ -98,7 +98,7 @@ export function expectTaggedFailure<E extends { _tag: string }>(
     );
   }
 
-  const error = failures[0];
+  const [error] = failures;
   if (!("_tag" in error) || error._tag !== tag) {
     throw new Error(
       `Expected failure with tag "${tag}" but got "${("_tag" in error && String(error._tag)) || "no _tag"}"`

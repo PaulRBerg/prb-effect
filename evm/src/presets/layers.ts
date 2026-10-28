@@ -218,7 +218,7 @@ const withDedup =
     const inflight = new Map<string, ReturnType<typeof inner.request>>();
 
     const request = ((rpcRequest: unknown) => {
-      const method = (rpcRequest as { method?: unknown }).method;
+      const { method } = rpcRequest as { method?: unknown };
       if (typeof method !== "string" || !safeMethodAllowlist.has(method)) {
         return inner.request(rpcRequest as never);
       }
@@ -239,7 +239,7 @@ const withDedup =
       // derived promise rejects too and surfaces as an unhandled rejection (fatal
       // under `--unhandled-rejections=strict`). Handle it here, then evict the key.
       // The original `promise` is still returned so real callers observe the error.
-      (promise as Promise<unknown>).then(noop, noop).then(() => {
+      void (promise as Promise<unknown>).then(noop, noop).then(() => {
         inflight.delete(key);
       });
 

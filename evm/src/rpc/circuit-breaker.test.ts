@@ -44,7 +44,7 @@ describe("CircuitBreaker", () => {
       const breaker = yield* makeCircuitBreaker({ failureThreshold: 5 });
 
       // Fail exactly 5 times
-      for (let i = 0; i < 5; i++) {
+      for (let i = 0; i < 5; i += 1) {
         yield* breaker.execute(Effect.fail(new Error("fail"))).pipe(Effect.ignore);
       }
 
@@ -58,7 +58,7 @@ describe("CircuitBreaker", () => {
       const breaker = yield* makeCircuitBreaker({ failureThreshold: 3 });
 
       // Open the circuit
-      for (let i = 0; i < 3; i++) {
+      for (let i = 0; i < 3; i += 1) {
         yield* breaker.execute(Effect.fail(new Error("fail"))).pipe(Effect.ignore);
       }
 
@@ -248,7 +248,7 @@ describe("CircuitBreaker", () => {
 
       // Default: failureThreshold=5, resetTimeout=30000, successThreshold=3
       // Verify circuit opens after 5 failures
-      for (let i = 0; i < 5; i++) {
+      for (let i = 0; i < 5; i += 1) {
         yield* breaker.execute(Effect.fail(new Error("fail"))).pipe(Effect.ignore);
       }
 
@@ -266,7 +266,7 @@ describe("CircuitBreaker", () => {
       });
 
       // Should not open after 5 failures (threshold is 10)
-      for (let i = 0; i < 5; i++) {
+      for (let i = 0; i < 5; i += 1) {
         yield* breaker.execute(Effect.fail(new Error("fail"))).pipe(Effect.ignore);
       }
 
@@ -274,7 +274,7 @@ describe("CircuitBreaker", () => {
       expect(state).toBe("closed");
 
       // But should open after 10
-      for (let i = 0; i < 5; i++) {
+      for (let i = 0; i < 5; i += 1) {
         yield* breaker.execute(Effect.fail(new Error("fail"))).pipe(Effect.ignore);
       }
 

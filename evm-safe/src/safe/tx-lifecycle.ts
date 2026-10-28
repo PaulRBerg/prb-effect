@@ -211,7 +211,7 @@ export const waitForSafeMultisigTx = Effect.fn("waitForSafeMultisigTx")(function
   const lastInfoRef = yield* Ref.make<SafeMultisigTxInfo | null>(null);
 
   const completed = yield* Effect.gen(function* () {
-    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
       // --- Fetch tx status, classifying errors ---
       const queuedResult = yield* safeApps
         .getTx(safeTxHash)

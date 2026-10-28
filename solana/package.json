@@ -1,28 +1,61 @@
 {
   "name": "@prb/effect-solana",
-  "description": "Effect-TS integration for Solana frontend development",
-  "homepage": "https://github.com/PaulRBerg/prb-effect/tree/main/solana#readme",
-  "license": "MIT",
-  "main": "./dist/index.js",
-  "sideEffects": false,
-  "type": "module",
-  "types": "./dist/index.d.ts",
   "version": "1.0.0",
-  "scripts": {
-    "build": "just build",
-    "prepack": "bun install --frozen-lockfile && just build"
+  "description": "Effect-TS integration for Solana frontend development",
+  "keywords": [
+    "anchor",
+    "effect",
+    "effect-ts",
+    "react",
+    "solana",
+    "spl-token",
+    "typescript",
+    "web3"
+  ],
+  "homepage": "https://github.com/PaulRBerg/prb-effect/tree/main/solana#readme",
+  "bugs": {
+    "url": "https://github.com/PaulRBerg/prb-effect/issues"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PaulRBerg/prb-effect.git",
+    "directory": "solana"
+  },
+  "license": "MIT",
   "author": {
     "name": "Paul Razvan Berg",
     "url": "https://github.com/PaulRBerg"
   },
-  "repository": {
-    "directory": "solana",
-    "type": "git",
-    "url": "git+https://github.com/PaulRBerg/prb-effect.git"
+  "sideEffects": false,
+  "type": "module",
+  "imports": {
+    "#src/*": {
+      "source": "./src/*",
+      "default": "./dist/*"
+    }
   },
-  "bugs": {
-    "url": "https://github.com/PaulRBerg/prb-effect/issues"
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./internal/*": null,
+    "./*/internal/*": null,
+    "./*": {
+      "types": "./dist/*/index.d.ts",
+      "import": "./dist/*/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist/**",
+    "DOCS.md",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "build": "just build",
+    "prepack": "bun install --frozen-lockfile && just build"
   },
   "dependencies": {
     "bn.js": "^5.2.3",
@@ -46,33 +79,6 @@
     "typescript": "catalog:dev",
     "vitest": "catalog:dev"
   },
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
-    },
-    "./internal/*": null,
-    "./*/internal/*": null,
-    "./*": {
-      "types": "./dist/*/index.d.ts",
-      "import": "./dist/*/index.js"
-    }
-  },
-  "files": [
-    "dist/**",
-    "DOCS.md",
-    "CHANGELOG.md"
-  ],
-  "keywords": [
-    "anchor",
-    "effect",
-    "effect-ts",
-    "react",
-    "solana",
-    "spl-token",
-    "typescript",
-    "web3"
-  ],
   "peerDependencies": {
     "@coral-xyz/anchor": "^0.32.1",
     "@solana/web3.js": "^1.98.4",
@@ -89,12 +95,6 @@
     },
     "react-dom": {
       "optional": true
-    }
-  },
-  "imports": {
-    "#src/*": {
-      "source": "./src/*",
-      "default": "./dist/*"
     }
   },
   "publishConfig": {

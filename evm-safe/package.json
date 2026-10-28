@@ -1,28 +1,61 @@
 {
   "name": "@prb/effect-evm-safe",
-  "description": "Effect-TS integration for Safe Apps",
-  "homepage": "https://github.com/PaulRBerg/prb-effect/tree/main/evm-safe#readme",
-  "main": "./dist/index.js",
-  "sideEffects": false,
-  "type": "module",
-  "types": "./dist/index.d.ts",
   "version": "6.0.0",
-  "scripts": {
-    "build": "just build",
-    "prepack": "bun install --frozen-lockfile && just build"
+  "description": "Effect-TS integration for Safe Apps",
+  "keywords": [
+    "effect",
+    "effect-ts",
+    "evm",
+    "safe",
+    "safe-apps",
+    "multisig",
+    "typescript",
+    "web3"
+  ],
+  "homepage": "https://github.com/PaulRBerg/prb-effect/tree/main/evm-safe#readme",
+  "bugs": {
+    "url": "https://github.com/PaulRBerg/prb-effect/issues"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PaulRBerg/prb-effect.git",
+    "directory": "evm-safe"
+  },
+  "license": "MIT",
   "author": {
     "name": "Paul Razvan Berg",
     "url": "https://github.com/PaulRBerg"
   },
-  "license": "MIT",
-  "repository": {
-    "directory": "evm-safe",
-    "type": "git",
-    "url": "git+https://github.com/PaulRBerg/prb-effect.git"
+  "sideEffects": false,
+  "type": "module",
+  "imports": {
+    "#src/*": {
+      "source": "./src/*",
+      "default": "./dist/*"
+    }
   },
-  "bugs": {
-    "url": "https://github.com/PaulRBerg/prb-effect/issues"
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./internal/*": null,
+    "./*": {
+      "types": "./dist/*/index.d.ts",
+      "import": "./dist/*/index.js",
+      "default": "./dist/*/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist/**",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "build": "just build",
+    "prepack": "bun install --frozen-lockfile && just build"
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:dev",
@@ -41,37 +74,10 @@
     "react": "catalog:",
     "react-dom": "catalog:",
     "typescript": "catalog:dev",
-    "viem": "^2.43.1",
+    "viem": "^2.57.7",
     "vitest": "catalog:dev",
     "wagmi": "^2.19.5"
   },
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "default": "./dist/index.js"
-    },
-    "./internal/*": null,
-    "./*": {
-      "types": "./dist/*/index.d.ts",
-      "import": "./dist/*/index.js",
-      "default": "./dist/*/index.js"
-    }
-  },
-  "files": [
-    "dist/**",
-    "CHANGELOG.md"
-  ],
-  "keywords": [
-    "effect",
-    "effect-ts",
-    "evm",
-    "safe",
-    "safe-apps",
-    "multisig",
-    "typescript",
-    "web3"
-  ],
   "peerDependencies": {
     "@prb/effect-evm": "^5.0.0",
     "@safe-global/safe-apps-sdk": "catalog:peers",
@@ -94,12 +100,6 @@
     },
     "wagmi": {
       "optional": true
-    }
-  },
-  "imports": {
-    "#src/*": {
-      "source": "./src/*",
-      "default": "./dist/*"
     }
   },
   "publishConfig": {

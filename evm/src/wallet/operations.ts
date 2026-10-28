@@ -26,7 +26,7 @@ const errorCode = (error: unknown): number | undefined => {
   if (!error || typeof error !== "object") {
     return;
   }
-  const code = (error as { code?: unknown }).code;
+  const { code } = error as { code?: unknown };
   return typeof code === "number" ? code : undefined;
 };
 
@@ -85,25 +85,23 @@ const signTypedDataFallbacks = async (
     { method: "eth_signTypedData", params: [account, typedDataPayload] },
   ];
 
-  let lastError: unknown;
-  for (const attempt of attempts) {
+  const tryAttempt = async (index: number): Promise<Hex> => {
+    const attempt = attempts[index] as (typeof attempts)[number];
     try {
       return await requestHex(provider, attempt.method, [...attempt.params]);
-    } catch (e) {
-      if (isUserRejection(e)) {
-        throw e;
+    } catch (cause) {
+      if (isUserRejection(cause)) {
+        throw cause;
       }
-      lastError = e;
-
-      const shouldTryNext = attempt.method !== "eth_signTypedData" && isMethodNotFound(e);
-
-      if (!shouldTryNext) {
-        throw e;
+      const shouldTryNext = attempt.method !== "eth_signTypedData" && isMethodNotFound(cause);
+      if (!shouldTryNext || index + 1 >= attempts.length) {
+        throw cause;
       }
+      return tryAttempt(index + 1);
     }
-  }
+  };
 
-  throw lastError;
+  return await tryAttempt(0);
 };
 
 /**

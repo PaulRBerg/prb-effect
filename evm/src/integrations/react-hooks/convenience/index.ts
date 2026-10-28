@@ -145,6 +145,10 @@ export const useWriteAndTrack = <
     []
   );
 
+  function ignoreRejection(promise: Promise<unknown>): void {
+    void promise.catch(noop);
+  }
+
   const send = React.useCallback(() => {
     runIdRef.current += 1;
     const runId = runIdRef.current;
@@ -176,10 +180,14 @@ export const useWriteAndTrack = <
       setStateRef(started.stateRef);
       setActions({
         cancel: () => {
-          runtime.runPromise(Scope.provide(scoped.scope)(started.actions.cancel())).catch(noop);
+          ignoreRejection(
+            runtime.runPromise(Scope.provide(scoped.scope)(started.actions.cancel()))
+          );
         },
         speedup: () => {
-          runtime.runPromise(Scope.provide(scoped.scope)(started.actions.speedup())).catch(noop);
+          ignoreRejection(
+            runtime.runPromise(Scope.provide(scoped.scope)(started.actions.speedup()))
+          );
         },
       });
 

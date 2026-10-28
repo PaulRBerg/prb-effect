@@ -107,7 +107,8 @@ describe("safeWriteAndTrack", () => {
         waitOptions: {
           interval: "10 millis",
           maxWait: "5 seconds",
-          onProgress: (info) => Ref.update(progress, (statuses) => [...statuses, info.status]),
+          onProgress: (info) =>
+            Ref.update(progress, (previousStatuses) => [...previousStatuses, info.status]),
         },
       }).pipe(Effect.provide(layer));
 

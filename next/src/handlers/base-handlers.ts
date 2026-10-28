@@ -47,10 +47,13 @@ const applyMiddlewares = <M extends readonly NextMiddleware.TagClassAny[] | unde
     return handler as Next.Next<string, Layer.Any | RuntimeLayer | undefined, MiddlewareUnion<M>>;
   }
 
-  return middlewares.reduce(
-    (acc, middleware) => acc.middleware(middleware),
-    handler as Next.Next<string, Layer.Any | RuntimeLayer | undefined, NextMiddleware.TagClassAny>
-  ) as Next.Next<string, Layer.Any | RuntimeLayer | undefined, MiddlewareUnion<M>>;
+  return middlewares.reduce<
+    Next.Next<string, Layer.Any | RuntimeLayer | undefined, NextMiddleware.TagClassAny>
+  >((acc, middleware) => acc.middleware(middleware), handler) as Next.Next<
+    string,
+    Layer.Any | RuntimeLayer | undefined,
+    MiddlewareUnion<M>
+  >;
 };
 
 /**

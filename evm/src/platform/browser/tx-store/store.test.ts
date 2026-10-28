@@ -254,7 +254,7 @@ describe("LocalStorageTxStore", () => {
     ["invalid tags", { ...makeTestTx(), tags: [1] }],
   ])("quarantines valid JSON containing %s", ([_label, invalid]) => {
     const mockStorage = makeMockLocalStorage();
-    const id = makeTestTx().id;
+    const { id } = makeTestTx();
     const raw = JSON.stringify(invalid);
     mockStorage.setItem(`ew3:v1:tx:${id}`, raw);
     mockStorage.setItem("ew3:v1:tx:index", JSON.stringify([id]));
@@ -346,7 +346,7 @@ describe("LocalStorageTxStore", () => {
       const store = yield* TxStore;
 
       // Create 5 transactions (below limit of 10)
-      for (let i = 0; i < 5; i++) {
+      for (let i = 0; i < 5; i += 1) {
         const tx = makeTestTx({
           id: `1:0x${i.toString().padStart(64, "0")}`,
           rootHash: `0x${i.toString().padStart(64, "0")}`,
@@ -370,7 +370,7 @@ describe("LocalStorageTxStore", () => {
       const now = Date.now();
 
       // Create 3 old mined transactions
-      for (let i = 0; i < 3; i++) {
+      for (let i = 0; i < 3; i += 1) {
         const tx = makeTestTx({
           createdAt: now - 3000 + i * 100,
           id: `1:0x${i.toString().padStart(64, "0")}`,
@@ -382,7 +382,7 @@ describe("LocalStorageTxStore", () => {
       }
 
       // Create 2 in-flight transactions
-      for (let i = 3; i < 5; i++) {
+      for (let i = 3; i < 5; i += 1) {
         const tx = makeTestTx({
           createdAt: now - 1000,
           id: `1:0x${i.toString().padStart(64, "0")}`,
@@ -394,7 +394,7 @@ describe("LocalStorageTxStore", () => {
       }
 
       // Create 3 more mined transactions (exceeds limit of 5)
-      for (let i = 5; i < 8; i++) {
+      for (let i = 5; i < 8; i += 1) {
         const tx = makeTestTx({
           createdAt: now,
           id: `1:0x${i.toString().padStart(64, "0")}`,
@@ -414,7 +414,7 @@ describe("LocalStorageTxStore", () => {
       expect(inFlight).toHaveLength(2);
 
       // Oldest mined should be pruned (txs 0, 1, 2)
-      for (let i = 0; i < 3; i++) {
+      for (let i = 0; i < 3; i += 1) {
         const tx = yield* store.get(`1:0x${i.toString().padStart(64, "0")}`);
         expect(tx).toBeNull();
       }
@@ -481,7 +481,7 @@ describe("LocalStorageTxStore", () => {
       const store = yield* TxStore;
 
       // Create 10 in-flight transactions (exceeds limit of 5)
-      for (let i = 0; i < 10; i++) {
+      for (let i = 0; i < 10; i += 1) {
         const tx = makeTestTx({
           id: `1:0x${i.toString().padStart(64, "0")}`,
           rootHash: `0x${i.toString().padStart(64, "0")}`,
@@ -517,7 +517,7 @@ describe("LocalStorageTxStore", () => {
 
       // Verify corrupt data was quarantined
       const keys: string[] = [];
-      for (let i = 0; i < mockStorage.length; i++) {
+      for (let i = 0; i < mockStorage.length; i += 1) {
         const key = mockStorage.key(i);
         if (key !== null) {
           keys.push(key);

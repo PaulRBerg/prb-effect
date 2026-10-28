@@ -131,7 +131,7 @@ function pushTraceChildren(
     return;
   }
 
-  for (let i = children.length - 1; i >= 0; i--) {
+  for (let i = children.length - 1; i >= 0; i -= 1) {
     const child = children[i];
     if (child) {
       stack.push({ call: child, indent });
@@ -140,7 +140,7 @@ function pushTraceChildren(
 }
 
 function pushTraceRootCalls(stack: TraceStackItem[], trace: readonly TraceCall[]): void {
-  for (let i = trace.length - 1; i >= 0; i--) {
+  for (let i = trace.length - 1; i >= 0; i -= 1) {
     const call = trace[i];
     if (call) {
       stack.push({ call, indent: 2 });

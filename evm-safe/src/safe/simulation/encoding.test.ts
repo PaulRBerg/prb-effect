@@ -9,7 +9,7 @@ function makeTx(data: string): { data: Hex; operation: 0; to: Address; value: bi
   return { data: data as Hex, operation: 0, to: TO, value: 0n };
 }
 
-const HEX_BODY = /^[0-9a-f]+$/;
+const HEX_BODY = /^[0-9a-f]+$/u;
 
 describe("encodeInternalTx", () => {
   it("encodes an empty-calldata transaction", () => {

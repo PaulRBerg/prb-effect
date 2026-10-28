@@ -58,13 +58,13 @@ const PROVIDER_NONCE_FLOOR_FIELDS = [
 ] as const;
 
 const PROVIDER_NONCE_FLOOR_PATTERNS = [
-  /\btx\s*:\s*\d+\s+state\s*:\s*(\d+)\b/gi,
-  /\btx\s+nonce\s+\d+[\s\S]{0,120}?\bstate\s+(\d+)\b/gi,
-  /\bcurrent\s+nonce\s*\(?\s*(\d+)\s*\)?\s*>\s*tx\s+nonce\s*\(?\s*\d+\s*\)?/gi,
-  /\bexpected\s+nonce(?:\s+to\s+be)?\s*[:=]?\s*\(?\s*(\d+)\s*\)?\s+(?:but\s+)?got\s*\(?\s*\d+\s*\)?/gi,
-  /\bgot\s+nonce\s*\(?\s*\d+\s*\)?\s+expected\s*\(?\s*(\d+)\s*\)?/gi,
-  /\baccount\s+has\s+nonce\s+of\s*[:=]?\s*\(?\s*(\d+)\s*\)?/gi,
-  /\b(?:next|state|account)\s+nonce\s*[:=]?\s*\(?\s*(\d+)\s*\)?/gi,
+  /\btx\s*:\s*\d+\s+state\s*:\s*(?<nonce>\d+)\b/giu,
+  /\btx\s+nonce\s+\d+[\s\S]{0,120}?\bstate\s+(?<nonce>\d+)\b/giu,
+  /\bcurrent\s+nonce\s*\(?\s*(?<nonce>\d+)\s*\)?\s*>\s*tx\s+nonce\s*\(?\s*\d+\s*\)?/giu,
+  /\bexpected\s+nonce(?:\s+to\s+be)?\s*[:=]?\s*\(?\s*(?<nonce>\d+)\s*\)?\s+(?:but\s+)?got\s*\(?\s*\d+\s*\)?/giu,
+  /\bgot\s+nonce\s*\(?\s*\d+\s*\)?\s+expected\s*\(?\s*(?<nonce>\d+)\s*\)?/giu,
+  /\baccount\s+has\s+nonce\s+of\s*[:=]?\s*\(?\s*(?<nonce>\d+)\s*\)?/giu,
+  /\b(?:next|state|account)\s+nonce\s*[:=]?\s*\(?\s*(?<nonce>\d+)\s*\)?/giu,
 ] as const;
 
 type SubmittedNonce = {
@@ -239,7 +239,7 @@ export const makeWriteAndTrack = (deps: WriteAndTrackDeps) =>
         mode: preflightMode,
         onSimulating: () => tracker.set({ status: "simulating" }),
       });
-      preflightWarning = preflight.preflightWarning;
+      ({ preflightWarning } = preflight);
 
       const explicitNonce = params.overrides?.nonce;
 
@@ -373,7 +373,7 @@ export const makeWriteAndTrack = (deps: WriteAndTrackDeps) =>
           const receipt = yield* Effect.gen(function* () {
             let waitHash = hash;
 
-            while (true) {
+            for (;;) {
               const exit = yield* txManager
                 .waitForReceipt(params.chainId, waitHash, policy)
                 .pipe(Effect.result);
@@ -526,7 +526,7 @@ export const makeWriteAndTrack = (deps: WriteAndTrackDeps) =>
               type: overridesWithGasAndNonce.type,
             } as const;
 
-            if (preflight.finalGas != null) {
+            if (preflight.finalGas !== null && preflight.finalGas !== undefined) {
               yield* tracker.set({
                 gas: preflight.finalGas,
                 preflightWarning,
@@ -585,7 +585,7 @@ export const makeWriteAndTrack = (deps: WriteAndTrackDeps) =>
               type: overridesWithoutNonce.type,
             } as const;
 
-            if (preflight.finalGas != null) {
+            if (preflight.finalGas !== null && preflight.finalGas !== undefined) {
               yield* tracker.set({
                 gas: preflight.finalGas,
                 preflightWarning,

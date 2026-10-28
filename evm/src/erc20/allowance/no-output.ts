@@ -135,7 +135,7 @@ export const Erc20NoOutputAllowanceServiceLive = Layer.effect(
         } as const;
       }
 
-      const failure = directResult.failure;
+      const { failure } = directResult;
       if (failure._tag !== "ApprovalError" || !zeroFirst || currentAllowance === 0n) {
         return yield* Effect.fail(failure);
       }

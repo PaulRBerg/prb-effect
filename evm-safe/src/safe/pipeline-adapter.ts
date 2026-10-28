@@ -17,11 +17,11 @@ import type { SafeMultisigWaitOptions } from "./tx-lifecycle.js";
 import type { SafeWriteAndTrackState } from "./write-and-track.js";
 import { safeWriteAndTrack } from "./write-and-track.js";
 
-function toFailedState(hash: string, message: string): TxState {
+function toFailedState(hash: string, message: string | null | undefined): TxState {
   return {
     error: new TxFailedError({
       hash,
-      message,
+      message: message ?? "Safe transaction failed",
     }),
     phase: "receipt",
     status: "failed",
@@ -66,10 +66,7 @@ function mapSafeStateToTxState(state: SafeWriteAndTrackState): TxState {
     case "failed":
       // Prefer the on-chain hash (known for reverted txs) so consumers link the
       // real transaction, not the Safe-internal hash.
-      return toFailedState(
-        state.onchainHash ?? state.safeTxHash ?? "unknown",
-        state.error ?? "Safe transaction failed"
-      );
+      return toFailedState(state.onchainHash ?? state.safeTxHash ?? "unknown", state.error);
   }
 }
 
@@ -105,7 +102,11 @@ export const SafeWriteExecutionAdapterLive = (config: SafeWriteExecutionAdapterC
       return WriteExecutionAdapter.of({
         canHandle: (params) =>
           safeApps.getInfo().pipe(
-            Effect.map((info) => (params.chainId == null ? true : info.chainId === params.chainId)),
+            Effect.map((info) =>
+              params.chainId === null || params.chainId === undefined
+                ? true
+                : info.chainId === params.chainId
+            ),
             Effect.catch(() => Effect.succeed(false))
           ),
         writeAndTrack: <

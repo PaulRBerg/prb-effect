@@ -273,7 +273,7 @@ const rehydrateAll = Effect.gen(function* () {
           yield* Effect.forkScoped(
             Effect.gen(function* () {
               let lastStatus = tx.status;
-              let currentHash = tx.currentHash;
+              let { currentHash } = tx;
 
               yield* Stream.runForEach(SubscriptionRef.changes(stateRef), (state) =>
                 Effect.gen(function* () {

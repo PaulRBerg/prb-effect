@@ -88,7 +88,7 @@ type RunPreflightOptions = {
 };
 
 function withGas(baseOverrides: BaseOverrides, gas?: bigint): BaseOverrides & { gas?: bigint } {
-  return gas == null ? { ...baseOverrides } : { ...baseOverrides, gas };
+  return gas === null || gas === undefined ? { ...baseOverrides } : { ...baseOverrides, gas };
 }
 
 function isRecoverablePreflightError(

@@ -200,7 +200,7 @@ const signAuthorizationIfSupported = (
   if (typeof account === "string") {
     return Effect.succeed(authorization);
   }
-  const signAuthorization = account.signAuthorization;
+  const { signAuthorization } = account;
   if (!signAuthorization) {
     return Effect.succeed(authorization);
   }

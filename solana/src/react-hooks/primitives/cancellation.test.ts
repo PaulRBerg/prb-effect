@@ -72,7 +72,7 @@ describe("hook cancellation", () => {
   });
 
   it("useStreamEffect interrupts stream acquisition during cleanup", async () => {
-    const runtime = mocks.runtime;
+    const { runtime } = mocks;
     if (!runtime) {
       throw new Error("Test runtime was not initialized");
     }

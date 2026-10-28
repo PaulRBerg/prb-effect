@@ -252,16 +252,14 @@ describe("WalletLifecycle", () => {
             makeMockWalletProvider({
               request: ({ method, params }) => {
                 if (method === "wallet_addEthereumChain") {
-                  const chainParams = (
-                    params as [
-                      {
-                        chainId: string;
-                        chainName: string;
-                        nativeCurrency: unknown;
-                        rpcUrls: unknown;
-                      },
-                    ]
-                  )[0];
+                  const [chainParams] = params as [
+                    {
+                      chainId: string;
+                      chainName: string;
+                      nativeCurrency: unknown;
+                      rpcUrls: unknown;
+                    },
+                  ];
                   expect(chainParams.chainId).toBe("0x89"); // polygon.id in hex
                   expect(chainParams.chainName).toBe("Polygon");
                   expect(chainParams.nativeCurrency).toEqual({

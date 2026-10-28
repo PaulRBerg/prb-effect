@@ -12,7 +12,13 @@ actEnvironment.IS_REACT_ACT_ENVIRONMENT = true;
 const cleanup: Array<() => void | Promise<void>> = [];
 
 afterEach(async () => {
-  for (const dispose of cleanup.splice(0).reverse()) await dispose();
+  await cleanup
+    .splice(0)
+    .reverse()
+    .reduce(async (previous, dispose) => {
+      await previous;
+      await dispose();
+    }, Promise.resolve());
 });
 
 async function makeRuntime() {
@@ -164,7 +170,7 @@ describe("effect hooks", () => {
       return React.createElement("span", null, "running");
     }
     class Boundary extends React.Component<{ children?: React.ReactNode }, { failed: boolean }> {
-      state = { failed: false };
+      state: { failed: boolean } = { failed: false };
       static getDerivedStateFromError() {
         return { failed: true };
       }

@@ -156,7 +156,7 @@ export function useTxWorkflow<
 
   const typedSnapshot = snapshot as TxMachineSnapshot<TPayload, TPreprocess, TSignResult, TResult>;
   const state = typedSnapshot.value;
-  const context = typedSnapshot.context;
+  const { context } = typedSnapshot;
 
   const status = {
     isCheckingGas: snapshot.matches("gasCheck"),

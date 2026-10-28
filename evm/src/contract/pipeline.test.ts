@@ -1445,7 +1445,7 @@ describe("ContractPipeline", () => {
         return;
       }
 
-      const nonce = params.nonce;
+      const { nonce } = params;
       return typeof nonce === "bigint" || typeof nonce === "number" ? nonce : undefined;
     };
 

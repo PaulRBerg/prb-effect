@@ -38,7 +38,7 @@ const txRequestOverridesFromWriteParams = <
 >(
   params: WriteParams<TAbi, TFunctionName>
 ) => {
-  const overrides = params.overrides;
+  const { overrides } = params;
   return {
     accessList: overrides?.accessList,
     gas: overrides?.gas ?? params.gas,

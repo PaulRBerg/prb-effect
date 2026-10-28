@@ -1,4 +1,4 @@
-import { Context, Effect, Layer } from "effect";
+import { BigInt as BigIntMath, Context, Effect, Layer } from "effect";
 import type { Hash, PublicClient, Transaction } from "viem";
 import { MIN_TX_GAS } from "#src/constants/index.js";
 import type {
@@ -64,9 +64,9 @@ const computeFeeBump = (params: {
   };
   policy?: TxPolicy | undefined;
 }): FeeBump => {
-  const tx = params.tx;
-  const estimate = params.estimate;
-  const policy = params.policy;
+  const { tx } = params;
+  const { estimate } = params;
+  const { policy } = params;
 
   const looksEip1559 =
     tx.type === "eip1559" || tx.maxFeePerGas !== undefined || tx.maxPriorityFeePerGas !== undefined;
@@ -76,7 +76,7 @@ const computeFeeBump = (params: {
     const candidateGasPrice = bumpByPercent(oldGasPrice, 1250n);
     const estimatedGasPrice = estimate.gasPrice ?? estimate.maxFeePerGas;
     const gasPrice = cap(
-      candidateGasPrice > estimatedGasPrice ? candidateGasPrice : estimatedGasPrice,
+      BigIntMath.max(candidateGasPrice, estimatedGasPrice),
       policy?.maxFeePerGas
     );
 
@@ -90,13 +90,11 @@ const computeFeeBump = (params: {
   const candidatePriority = bumpByPercent(oldPriority, 1250n);
 
   const maxFeePerGas = cap(
-    candidateMaxFee > estimate.maxFeePerGas ? candidateMaxFee : estimate.maxFeePerGas,
+    BigIntMath.max(candidateMaxFee, estimate.maxFeePerGas),
     policy?.maxFeePerGas
   );
   const maxPriorityFeePerGas = cap(
-    candidatePriority > estimate.maxPriorityFeePerGas
-      ? candidatePriority
-      : estimate.maxPriorityFeePerGas,
+    BigIntMath.max(candidatePriority, estimate.maxPriorityFeePerGas),
     policy?.maxPriorityFeePerGas
   );
 

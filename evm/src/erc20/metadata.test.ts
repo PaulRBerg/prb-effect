@@ -65,7 +65,7 @@ describe("ERC-20 Metadata", () => {
         });
 
         expect(records).toHaveLength(1);
-        const record = records[0];
+        const [record] = records;
         expect(record?.chainId).toBe(TEST_CHAIN_ID);
         expect(record?.calls.map((call) => call.functionName)).toEqual([
           "decimals",

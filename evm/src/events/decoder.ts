@@ -23,13 +23,14 @@ export function tryDecodeLog<TAbi extends Abi>(
 ): Option.Option<DecodedEvent<TAbi, ContractEventName<TAbi>>> {
   try {
     const decoded = decodeEventLog({ abi, data: log.data, topics: log.topics });
+    const { removed } = log as { removed?: boolean };
     return Option.some({
       address: log.address,
       args: decoded.args,
       blockNumber: log.blockNumber ?? 0n,
       eventName: decoded.eventName,
       logIndex: log.logIndex ?? 0,
-      removed: log.removed ?? false,
+      removed: removed ?? false,
       transactionHash: log.transactionHash ?? "0x",
     } as DecodedEvent<TAbi, ContractEventName<TAbi>>);
   } catch {

@@ -155,7 +155,7 @@ export const BlockServiceLive = Layer.effect(
         Effect.gen(function* () {
           const client = yield* publicClientService.get(params.chainId);
           const blockNumbers: bigint[] = [];
-          for (let i = params.fromBlock; i <= params.toBlock; i++) {
+          for (let i = params.fromBlock; i <= params.toBlock; i += 1n) {
             blockNumbers.push(i);
           }
 
@@ -227,7 +227,7 @@ export const BlockServiceLive = Layer.effect(
           const timeout = params.timeout ?? DEFAULT_BLOCK_WAIT_TIMEOUT;
 
           const poll = Effect.gen(function* () {
-            while (true) {
+            for (;;) {
               const currentBlock = yield* Effect.tryPromise({
                 catch: (cause) =>
                   new TransportError({

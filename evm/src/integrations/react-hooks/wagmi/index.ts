@@ -38,7 +38,8 @@ const WagmiWalletProviderRefSync = (props: { readonly config: Config }): null =>
     let syncId = 0;
 
     const sync = async (account: ReturnType<typeof getAccount>): Promise<void> => {
-      const currentSyncId = ++syncId;
+      syncId += 1;
+      const currentSyncId = syncId;
       if (!account.connector || account.chainId === undefined) {
         clearProvider();
         return;

@@ -89,7 +89,7 @@ export type TxState =
 export const initialTxState: TxState = { status: "idle" };
 
 function isNotNullish<T>(value: T): value is NonNullable<T> {
-  return value != null;
+  return value !== null && value !== undefined;
 }
 
 /** Create a TxState tracker with subscription capabilities */

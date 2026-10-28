@@ -140,7 +140,7 @@ function processTokenBalanceResults(
   const tokenCount = tokenAddresses.length;
   const tokenBalances: TokenBalance[] = [];
 
-  for (let i = 0; i < tokenCount; i++) {
+  for (let i = 0; i < tokenCount; i += 1) {
     const balanceResult = results[i];
     const decimalsResult = results[tokenCount + i];
     const symbolResult = results[tokenCount * 2 + i];

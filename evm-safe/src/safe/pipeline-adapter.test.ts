@@ -22,29 +22,30 @@ vi.mock(
 // self-contained `decodeReceiptLogs` (same semantics as evm/src/events/decoder.ts) so the adapter's
 // production codepath is exercised without dragging in the barrel.
 vi.mock("@prb/effect-evm/events", async () => {
-  const { Array: Arr, Effect, Option } = await import("effect");
+  const { Array: Arr, Effect: MockEffect, Option: MockOption } = await import("effect");
   const { decodeEventLog } = await import("viem");
 
   const tryDecodeLog = (log: Log, abi: readonly unknown[]) => {
     try {
       const decoded = decodeEventLog({ abi, data: log.data, topics: log.topics });
-      return Option.some({
+      const { removed } = log as { removed?: boolean };
+      return MockOption.some({
         address: log.address,
         args: decoded.args,
         blockNumber: log.blockNumber ?? 0n,
         eventName: decoded.eventName,
         logIndex: log.logIndex ?? 0,
-        removed: log.removed ?? false,
+        removed: removed ?? false,
         transactionHash: log.transactionHash ?? "0x",
       });
     } catch {
-      return Option.none();
+      return MockOption.none();
     }
   };
 
   return {
     decodeReceiptLogs: (receipt: TransactionReceipt, abi: readonly unknown[]) =>
-      Effect.sync(() => Arr.getSomes(receipt.logs.map((log) => tryDecodeLog(log, abi)))),
+      MockEffect.sync(() => Arr.getSomes(receipt.logs.map((log) => tryDecodeLog(log, abi)))),
   };
 });
 

@@ -46,37 +46,40 @@ async function mount() {
       React.createElement(WagmiEffectEvmProvider, { children: null, config: {} as Config })
     );
   });
-  return (mocks.watchAccount.mock.calls[0]?.[1] as { onChange: (account: unknown) => void })
-    .onChange;
+  const [, { onChange }] = mocks.watchAccount.mock.calls[0] as [
+    unknown,
+    { onChange: (account: unknown) => void },
+  ];
+  return onChange;
 }
 
 describe("Wagmi wallet provider synchronization", () => {
-  it.each([
-    "resolve",
-    "reject",
-  ] as const)("ignores an obsolete provider request that later %s", async (outcome) => {
-    const oldRequest = Promise.withResolvers<unknown>();
-    const newRequest = Promise.withResolvers<unknown>();
-    const oldProvider = { request: vi.fn() };
-    const newProvider = { request: vi.fn() };
-    mocks.getAccount.mockReturnValue({
-      chainId: 1,
-      connector: { getProvider: () => oldRequest.promise },
-    });
-    const change = await mount();
-    change({ chainId: 2, connector: { getProvider: () => newRequest.promise } });
-    await act(async () => {
-      newRequest.resolve(newProvider);
-      await newRequest.promise;
-    });
-    await act(async () => {
-      if (outcome === "resolve") oldRequest.resolve(oldProvider);
-      else oldRequest.reject(new Error("obsolete provider failed"));
-      await oldRequest.promise.catch(() => undefined);
-    });
-    expect(mocks.setProvider.mock.calls).toEqual([[newProvider]]);
-    expect(mocks.clearProvider).not.toHaveBeenCalled();
-  });
+  it.each(["resolve", "reject"] as const)(
+    "ignores an obsolete provider request that later %s",
+    async (outcome) => {
+      const oldRequest = Promise.withResolvers<unknown>();
+      const newRequest = Promise.withResolvers<unknown>();
+      const oldProvider = { request: vi.fn() };
+      const newProvider = { request: vi.fn() };
+      mocks.getAccount.mockReturnValue({
+        chainId: 1,
+        connector: { getProvider: () => oldRequest.promise },
+      });
+      const change = await mount();
+      change({ chainId: 2, connector: { getProvider: () => newRequest.promise } });
+      await act(async () => {
+        newRequest.resolve(newProvider);
+        await newRequest.promise;
+      });
+      await act(async () => {
+        if (outcome === "resolve") oldRequest.resolve(oldProvider);
+        else oldRequest.reject(new Error("obsolete provider failed"));
+        await oldRequest.promise.catch(() => undefined);
+      });
+      expect(mocks.setProvider.mock.calls).toEqual([[newProvider]]);
+      expect(mocks.clearProvider).not.toHaveBeenCalled();
+    }
+  );
 
   it("does not restore a provider after disconnect", async () => {
     const request = Promise.withResolvers<unknown>();

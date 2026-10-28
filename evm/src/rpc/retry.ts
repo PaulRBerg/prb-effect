@@ -55,14 +55,14 @@ export const defaultRetryableErrors = [
  * such as a 0x-prefixed tx hash that happens to embed "429". Multi-word phrases
  * ("rate limit", "timeout") still use substring matching.
  */
-const WORDLIKE_PATTERN = /^\w+$/;
+const WORDLIKE_PATTERN = /^\w+$/u;
 
 const isWordlikePattern = (pattern: string): boolean => WORDLIKE_PATTERN.test(pattern);
 
 const patternMatches = (message: string, pattern: string): boolean => {
   const needle = pattern.toLowerCase();
   if (isWordlikePattern(needle)) {
-    return new RegExp(`\\b${needle}\\b`).test(message);
+    return new RegExp(`\\b${needle}\\b`, "u").test(message);
   }
   return message.includes(needle);
 };

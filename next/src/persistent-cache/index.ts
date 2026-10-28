@@ -282,7 +282,7 @@ const refreshValue = <A, R, StoreR, RD, RE>(
       return yield* Effect.fail(makeRefreshError(options.key, exit.cause));
     }
 
-    const schema = options.schema;
+    const { schema } = options;
     const decoded = yield* decodeValue(
       options.key,
       exit.value,

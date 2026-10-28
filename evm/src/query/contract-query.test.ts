@@ -30,7 +30,11 @@ describe("ContractQuery.watchRead", () => {
       Layer.mergeAll(
         queryLayer,
         Layer.succeed(MulticallBatcher, {
-          enqueue: <A>() => Effect.sync(() => BigInt(++reads) as A),
+          enqueue: <A>() =>
+            Effect.sync(() => {
+              reads += 1;
+              return BigInt(reads) as A;
+            }),
         })
       )
     );

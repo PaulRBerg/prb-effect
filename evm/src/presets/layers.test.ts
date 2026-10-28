@@ -132,7 +132,7 @@ describe("Preset Layers", () => {
       return Effect.gen(function* () {
         const service = yield* PublicClientService;
         const client = yield* service.get(1);
-        const request = client.request;
+        const { request } = client;
 
         yield* Effect.promise(() =>
           Promise.all([request({ method: "eth_chainId" }), request({ method: "eth_chainId" })])
@@ -175,7 +175,7 @@ describe("Preset Layers", () => {
       return Effect.gen(function* () {
         const service = yield* PublicClientService;
         const client = yield* service.get(1);
-        const request = client.request;
+        const { request } = client;
 
         const first = yield* Effect.tryPromise({
           catch: (e) => e,
@@ -354,9 +354,11 @@ describe("Preset Layers", () => {
       };
 
       // Five reverts must NOT open the breaker: every call reaches the transport.
-      for (let i = 0; i < 5; i++) {
-        await revert();
-      }
+      await revert();
+      await revert();
+      await revert();
+      await revert();
+      await revert();
       expect(calls).toBe(5);
     });
 

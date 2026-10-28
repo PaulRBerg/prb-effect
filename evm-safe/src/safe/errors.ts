@@ -88,7 +88,7 @@ export class SafeMultiSendUnavailableError extends Schema.TaggedError<SafeMultiS
 
 // MultiSend error detection
 
-const MULTISEND_ERROR_PATTERN = /MultiSend contract not deployed|MultiSend call failed/i;
+const MULTISEND_ERROR_PATTERN = /MultiSend contract not deployed|MultiSend call failed/iu;
 const MAX_ERROR_DEPTH = 10;
 const USER_REJECTION_CODE = 4001;
 const MAX_ERROR_MESSAGE_DEPTH = 10;

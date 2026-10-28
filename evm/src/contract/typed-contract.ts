@@ -147,7 +147,7 @@ export function typedContract<TAbi extends Abi>(abi: TAbi, address: Address): Ty
     ) =>
       Effect.gen(function* () {
         const reader = yield* ContractReader;
-        const options = args[1];
+        const [, options] = args;
         return yield* reader.read({
           abi,
           account: options?.account,

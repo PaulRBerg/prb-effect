@@ -1,43 +1,19 @@
 {
   "name": "@prb/effect",
+  "version": "1.0.0",
+  "private": true,
   "description": "Effect-TS libraries monorepo",
   "homepage": "https://github.com/PaulRBerg/prb-effect#readme",
-  "license": "MIT",
-  "private": true,
-  "type": "module",
-  "version": "1.0.0",
-  "engines": {
-    "node": "^24.0.0 || >=26.0.0"
-  },
-  "author": {
-    "name": "Paul Razvan Berg",
-    "url": "https://github.com/PaulRBerg"
-  },
-  "devDependencies": {
-    "@biomejs/biome": "^2.5.0",
-    "@dotenvx/dotenvx": "^1.71.2",
-    "@effect/vitest": "^4.0.0",
-    "@prb/devkit": "^1.0.0",
-    "@types/bs58": "^5.0.0",
-    "@typescript/native-preview": "^7.0.0-dev.20260118.1",
-    "@vitest/ui": "^5.0.2",
-    "husky": "^9.1.7",
-    "lint-staged": "^16.2.7",
-    "prettier": "^3.7.4",
-    "typescript": "^5.9.3",
-    "ultracite": "^7.8.3",
-    "vitest": "^5.0.2"
-  },
-  "overrides": {
-    "bn.js": "5.2.3"
-  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/PaulRBerg/prb-effect.git"
   },
-  "scripts": {
-    "prepare": "husky"
+  "license": "MIT",
+  "author": {
+    "name": "Paul Razvan Berg",
+    "url": "https://github.com/PaulRBerg"
   },
+  "type": "module",
   "workspaces": {
     "packages": [
       "evm",
@@ -47,34 +23,34 @@
       "xstate"
     ],
     "catalog": {
-      "@xstate/react": "^6.0.0",
-      "effect": "^4.0.0",
-      "next": "^15.1.3",
-      "react": "^19.2.3",
-      "react-dom": "^19.2.3",
+      "@xstate/react": "^6.1.0",
+      "effect": "^4.0.7",
+      "next": "^16.4.2",
+      "react": "^19.3.1",
+      "react-dom": "^19.3.1",
       "server-only": "^0.0.1",
-      "viem": "^2.43.1",
-      "xstate": "^5.25.0"
+      "viem": "^2.57.7",
+      "xstate": "^5.33.3"
     },
     "catalogs": {
       "dev": {
-        "@biomejs/biome": "^2.5.0",
-        "@effect/vitest": "^4.0.0",
-        "@prb/devkit": "^1.0.0",
-        "@types/node": "^25.0.2",
-        "@types/react": "^19.0.0",
-        "@types/react-dom": "^19.0.0",
-        "@typescript/native-preview": "^7.0.0-dev.20260118.1",
-        "@vitest/ui": "^5.0.2",
-        "jsdom": "^24.1.3",
-        "lint-staged": "^16.2.7",
-        "prettier": "^3.7.4",
+        "@biomejs/biome": "^2.6.2",
+        "@effect/vitest": "^4.0.7",
+        "@prb/devkit": "^1.2.0",
+        "@types/node": "^26.6.5",
+        "@types/react": "^19.3.0",
+        "@types/react-dom": "^19.3.0",
+        "@typescript/native-preview": "^7.0.0-dev.20260707.2",
+        "@vitest/ui": "^5.0.5",
+        "jsdom": "^30.1.3",
+        "lint-staged": "^17.6.0",
+        "prettier": "^3.9.10",
         "typescript": "^5.9.3",
-        "vitest": "^5.0.2"
+        "vitest": "^5.0.5"
       },
       "effect": {
-        "@effect/vitest": "^4.0.0",
-        "effect": "^4.0.0"
+        "@effect/vitest": "^4.0.7",
+        "effect": "^4.0.7"
       },
       "peers": {
         "@safe-global/safe-apps-sdk": "9.1.0",
@@ -88,5 +64,29 @@
         "xstate": "^5"
       }
     }
+  },
+  "scripts": {
+    "prepare": "husky"
+  },
+  "overrides": {
+    "bn.js": "5.2.3"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.6.2",
+    "@dotenvx/dotenvx": "^2.38.2",
+    "@effect/vitest": "^4.0.7",
+    "@prb/devkit": "^1.2.0",
+    "@types/bs58": "^5.0.0",
+    "@typescript/native-preview": "^7.0.0-dev.20260707.2",
+    "@vitest/ui": "^5.0.5",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.6.0",
+    "prettier": "^3.9.10",
+    "typescript": "^5.9.3",
+    "ultracite": "^8.1.0",
+    "vitest": "^5.0.5"
+  },
+  "engines": {
+    "node": "^24.15.0 || >=26.0.0"
   }
 }

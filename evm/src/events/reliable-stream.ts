@@ -148,7 +148,7 @@ export const ReliableEventStreamLive = Layer.effect(
             // Helper: add new event to pending
             const addPendingEvent = (event: DecodedEvent<TAbi, TEventName>) =>
               Ref.update(stateRef, (state) => {
-                const blockNumber = event.blockNumber;
+                const { blockNumber } = event;
                 const key = serializeKey({
                   logIndex: event.logIndex,
                   txHash: event.transactionHash,

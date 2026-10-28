@@ -8,7 +8,15 @@ describe("balance polling lifecycle", () => {
   it.effect("keeps polling until its consumer is interrupted", () => {
     let calls = 0;
     const rpcLayer = makeMockRpcServiceLayer({
-      getRpc: () => Effect.succeed(makeMockRpc({ getBalance: () => Promise.resolve(++calls) })),
+      getRpc: () =>
+        Effect.succeed(
+          makeMockRpc({
+            getBalance: () => {
+              calls += 1;
+              return Promise.resolve(calls);
+            },
+          })
+        ),
     });
     return Effect.gen(function* () {
       const first = yield* Deferred.make<void>();

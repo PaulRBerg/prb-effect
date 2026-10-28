@@ -25,7 +25,7 @@ export const waitForReceiptFollowingReplacements = (
   Effect.gen(function* () {
     let waitHash = params.hash;
 
-    while (true) {
+    for (;;) {
       const exit = yield* txManager
         .waitForReceipt(params.chainId, waitHash, params.policy)
         .pipe(Effect.result);

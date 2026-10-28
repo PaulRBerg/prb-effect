@@ -54,7 +54,7 @@ type TenderlySimulationResponse = {
     id: string;
     status: boolean;
   };
-  logs: Array<{
+  logs?: Array<{
     address: Address;
     topics: Hex[];
     data: Hex;
@@ -146,13 +146,10 @@ function mapTenderlyResponse(response: TenderlySimulationResponse): SimulationRe
         decoded: log.name
           ? {
               args:
-                log.inputs?.reduce(
-                  (acc, input) => {
-                    acc[input.name] = input.value;
-                    return acc;
-                  },
-                  {} as Record<string, unknown>
-                ) ?? {},
+                log.inputs?.reduce<Record<string, unknown>>((acc, input) => {
+                  acc[input.name] = input.value;
+                  return acc;
+                }, {}) ?? {},
               eventName: log.name,
             }
           : undefined,
@@ -208,8 +205,7 @@ function parseRetryAfterSeconds(value: string | undefined): number | undefined {
     const deltaMs = asDate - Date.now();
     return deltaMs > 0 ? Math.ceil(deltaMs / 1000) : 0;
   }
-
-  return;
+  return undefined;
 }
 
 function toTenderlyStateObjects(

@@ -20,8 +20,8 @@ type GatewayConfig = {
   ipfs?: string;
 };
 
-const DATA_URI_BASE64_JSON_RE = /^data:application\/json;base64,(.+)$/;
-const DATA_URI_PLAIN_JSON_RE = /^data:application\/json,(.+)$/;
+const DATA_URI_BASE64_JSON_RE = /^data:application\/json;base64,(?<payload>.+)$/u;
+const DATA_URI_PLAIN_JSON_RE = /^data:application\/json,(?<payload>.+)$/u;
 
 const DEFAULT_GATEWAYS: GatewayConfig = {
   arweave: "https://arweave.net/",

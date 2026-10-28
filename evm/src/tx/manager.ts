@@ -495,7 +495,7 @@ export function makeTxManagerLive(
                 return;
               }
 
-              const receipt = receiptOutcome.receipt;
+              const { receipt } = receiptOutcome;
 
               yield* applyReplacement({
                 currentHashRef,

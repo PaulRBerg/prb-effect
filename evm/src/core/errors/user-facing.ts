@@ -43,12 +43,12 @@ type TaggedErrorShape = {
   readonly message?: unknown;
 };
 
-const GAS_ALLOWANCE_EXCEEDED_PATTERN = /gas required exceeds allowance/i;
-const MISSING_OR_INVALID_PARAMETERS_PATTERN = /missing or invalid parameters/i;
+const GAS_ALLOWANCE_EXCEEDED_PATTERN = /gas required exceeds allowance/iu;
+const MISSING_OR_INVALID_PARAMETERS_PATTERN = /missing or invalid parameters/iu;
 const INSUFFICIENT_FUNDS_PATTERNS: RegExp[] = [
-  /insufficient funds/i,
-  /insufficient balance/i,
-  /total cost \(gas \* gas fee \+ value\).*exceeds the balance/i,
+  /insufficient funds/iu,
+  /insufficient balance/iu,
+  /total cost \(gas \* gas fee \+ value\).*exceeds the balance/iu,
 ];
 
 function getMessage(error: unknown): string | undefined {
@@ -61,7 +61,7 @@ function getMessage(error: unknown): string | undefined {
   }
 
   if (typeof error === "object" && error !== null) {
-    const message = (error as TaggedErrorShape).message;
+    const { message } = error as TaggedErrorShape;
     if (typeof message === "string") {
       return message;
     }

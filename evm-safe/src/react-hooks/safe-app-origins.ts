@@ -16,7 +16,7 @@ export const DEFAULT_SAFE_APP_ORIGINS = [
   "https://safe.optimism.io",
 ] as const;
 
-const ORIGIN_PROTOCOL_PATTERN = /^[a-z]+:\/\//i;
+const ORIGIN_PROTOCOL_PATTERN = /^[a-z]+:\/\//iu;
 let safeAppOrigins = normalizeOrigins(DEFAULT_SAFE_APP_ORIGINS);
 let safeAppOriginSet = new Set(safeAppOrigins);
 const safeAppOriginListeners = new Set<() => void>();

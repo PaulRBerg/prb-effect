@@ -165,7 +165,7 @@ const checkSignatureStatus = (
       try: () => connection.getSignatureStatuses([signature], { searchTransactionHistory }),
     });
 
-    const status = response.value[0];
+    const [status] = response.value;
     if (!status) {
       return null;
     }
