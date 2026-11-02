@@ -73,10 +73,10 @@ describe("GasService (Live)", () => {
           chainId: mainnet.id,
         });
 
-        expect(estimates.slow.maxPriorityFeePerGas).toBe(2500000000n);
-        expect(estimates.standard.maxPriorityFeePerGas).toBe(3000000000n);
-        expect(estimates.fast.maxPriorityFeePerGas).toBe(4000000000n);
-        expect(estimates.instant.maxPriorityFeePerGas).toBe(6500000000n);
+        expect(estimates.slow.maxPriorityFeePerGas).toBe(1350000000n); // 0.9x
+        expect(estimates.standard.maxPriorityFeePerGas).toBe(1500000000n); // 1x
+        expect(estimates.fast.maxPriorityFeePerGas).toBe(1875000000n); // 1.25x
+        expect(estimates.instant.maxPriorityFeePerGas).toBe(2250000000n); // 1.5x
 
         expect(estimates.instant.maxPriorityFeePerGas).toBeGreaterThan(
           estimates.fast.maxPriorityFeePerGas
@@ -107,7 +107,7 @@ describe("GasService (Live)", () => {
           chainId: mainnet.id,
         });
 
-        const expectedPriority = 1500000000n + 1500000000n;
+        const expectedPriority = 1500000000n; // standard tier equals the RPC suggestion
         const baseFee = 30000000000n; // DEFAULT_BLOCK.baseFeePerGas
         expect(estimates.standard.estimatedBaseFee).toBe(baseFee);
         expect(estimates.standard.maxFeePerGas).toBe(baseFee * 2n + expectedPriority);

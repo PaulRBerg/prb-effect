@@ -48,9 +48,12 @@ function makeGasLayer(config: MockPublicClientConfig = {}): Layer.Layer<GasServi
   return Layer.provide(GasServiceLive, makeMockPublicClientLayer(config));
 }
 
-function makeEip1559Layer(baseFee = DEFAULT_BASE_FEE): Layer.Layer<GasService> {
+function makeEip1559Layer(
+  baseFee = DEFAULT_BASE_FEE,
+  priorityFee = DEFAULT_PRIORITY_FEE
+): Layer.Layer<GasService> {
   return makeGasLayer({
-    estimateMaxPriorityFeePerGas: () => Promise.resolve(DEFAULT_PRIORITY_FEE),
+    estimateMaxPriorityFeePerGas: () => Promise.resolve(priorityFee),
     getBlock: () => Promise.resolve(makeBlock(baseFee)),
   });
 }
@@ -140,6 +143,69 @@ describe("GasService", () => {
         expect(estimates.standard.maxPriorityFeePerGas).toBeGreaterThan(0n);
         expect(estimates.standard.maxFeePerGas).toBeGreaterThan(0n);
       }).pipe(Effect.provide(makeEip1559Layer()))
+    );
+
+    it.effect("scales the RPC priority fee proportionally per speed tier", () =>
+      Effect.gen(function* () {
+        const gasService = yield* GasService;
+        const estimates = yield* gasService.getAllFeeEstimates({ chainId: TEST_CHAIN_ID });
+
+        // 1.5 gwei suggestion: 0.9x / 1x / 1.25x / 1.5x
+        expect(estimates.slow.maxPriorityFeePerGas).toBe(1_350_000_000n);
+        expect(estimates.standard.maxPriorityFeePerGas).toBe(DEFAULT_PRIORITY_FEE);
+        expect(estimates.fast.maxPriorityFeePerGas).toBe(1_875_000_000n);
+        expect(estimates.instant.maxPriorityFeePerGas).toBe(2_250_000_000n);
+
+        for (const speed of ["slow", "standard", "fast", "instant"] as const) {
+          const estimate = estimates[speed];
+          expect(estimate.estimatedBaseFee).toBe(DEFAULT_BASE_FEE);
+          expect(estimate.maxFeePerGas).toBe(DEFAULT_BASE_FEE * 2n + estimate.maxPriorityFeePerGas);
+          expect(estimate.gasPrice).toBeUndefined();
+        }
+      }).pipe(Effect.provide(makeEip1559Layer()))
+    );
+
+    it.effect("does not add a fixed gwei surcharge on low-fee L2 chains", () =>
+      Effect.gen(function* () {
+        const gasService = yield* GasService;
+        const estimates = yield* gasService.getAllFeeEstimates({ chainId: TEST_CHAIN_ID });
+
+        // Base/OP-style market: ~200 wei base fee, 0.001 gwei tip
+        expect(estimates.slow.maxPriorityFeePerGas).toBe(900_000n);
+        expect(estimates.standard.maxPriorityFeePerGas).toBe(1_000_000n);
+        expect(estimates.fast.maxPriorityFeePerGas).toBe(1_250_000n);
+        expect(estimates.instant.maxPriorityFeePerGas).toBe(1_500_000n);
+
+        expect(estimates.standard.maxFeePerGas).toBe(200n * 2n + 1_000_000n);
+        // The former +1.5 gwei standard surcharge overcharged by ~1500x
+        expect(estimates.instant.maxFeePerGas).toBeLessThan(1_000_000_000n);
+      }).pipe(Effect.provide(makeEip1559Layer(200n, 1_000_000n)))
+    );
+
+    it.effect("keeps a zero RPC priority fee at zero for every tier", () =>
+      Effect.gen(function* () {
+        const gasService = yield* GasService;
+        const estimates = yield* gasService.getAllFeeEstimates({ chainId: TEST_CHAIN_ID });
+
+        for (const speed of ["slow", "standard", "fast", "instant"] as const) {
+          expect(estimates[speed].maxPriorityFeePerGas).toBe(0n);
+          expect(estimates[speed].maxFeePerGas).toBe(500n * 2n);
+        }
+      }).pipe(Effect.provide(makeEip1559Layer(500n, 0n)))
+    );
+
+    it.effect("rounds a tiny positive priority fee up so no tier drops to zero", () =>
+      Effect.gen(function* () {
+        const gasService = yield* GasService;
+        const estimates = yield* gasService.getAllFeeEstimates({ chainId: TEST_CHAIN_ID });
+
+        // 1 wei suggestion: ceil(0.9) / 1 / ceil(1.25) / ceil(1.5)
+        expect(estimates.slow.maxPriorityFeePerGas).toBe(1n);
+        expect(estimates.standard.maxPriorityFeePerGas).toBe(1n);
+        expect(estimates.fast.maxPriorityFeePerGas).toBe(2n);
+        expect(estimates.instant.maxPriorityFeePerGas).toBe(2n);
+        expect(estimates.standard.maxFeePerGas).toBe(100n * 2n + 1n);
+      }).pipe(Effect.provide(makeEip1559Layer(100n, 1n)))
     );
 
     it.effect("falls back to latest block when pending block fails (L2 chains)", () =>

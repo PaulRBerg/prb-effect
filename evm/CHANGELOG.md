@@ -27,6 +27,15 @@ The format is based on [Common Changelog](https://common-changelog.org/).
 [4.0.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm@4.0.0
 [5.0.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm@5.0.0
 [5.0.1]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm@5.0.1
+[5.0.2]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm@5.0.2
+
+## [5.0.2] - 2026-11-02
+
+### Fixed
+
+- Scale EIP-1559 priority fees proportionally to the RPC suggestion (0.9x / 1x / 1.25x / 1.5x) instead of adding fixed
+  1–5 gwei tips; the fixed tips overcharged low-fee chains such as Base and OP Mainnet by orders of magnitude and caused
+  valid claims to fail the affordability estimate
 
 ## [5.0.1] - 2026-11-02
 

@@ -16,12 +16,13 @@ export type FeeEstimate = {
   maxPriorityFeePerGas: bigint;
 };
 
-// Priority fee adjustments in gwei
-const SPEED_ADJUSTMENTS: Record<GasSpeed, bigint> = {
-  fast: 2_500_000_000n, // 2.5 gwei
-  instant: 5_000_000_000n, // 5 gwei
-  slow: 1_000_000_000n, // 1 gwei
-  standard: 1_500_000_000n, // 1.5 gwei
+// Priority fee multipliers (percent) applied to the RPC-suggested tip. Proportional scaling keeps
+// tips market-based on low-fee chains, where a fixed gwei surcharge dwarfs the real tip.
+const SPEED_PRIORITY_MULTIPLIERS: Record<GasSpeed, bigint> = {
+  fast: 125n,
+  instant: 150n,
+  slow: 90n,
+  standard: 100n,
 };
 
 // Confidence levels for each speed tier
@@ -222,9 +223,10 @@ export const getAllFeeEstimatesImpl = (
         return yield* getLegacyFeeEstimates(client, chainId);
       }
 
-      // Build estimates for each speed tier
+      // Build estimates for each speed tier. Ceiling division keeps a positive tip from rounding
+      // to zero; a zero suggestion stays zero.
       const makeEstimate = (speed: GasSpeed): FeeEstimate => {
-        const priority = maxPriorityFeePerGas + SPEED_ADJUSTMENTS[speed];
+        const priority = (maxPriorityFeePerGas * SPEED_PRIORITY_MULTIPLIERS[speed] + 99n) / 100n;
         return {
           confidence: SPEED_CONFIDENCE[speed],
           estimatedBaseFee: baseFee,
