@@ -82,8 +82,10 @@ export const isTaggedUserRejectedError = isTaggedError<UserRejectedError>("UserR
 const USER_REJECTION_CODE = 4001;
 const USER_REJECTION_MESSAGE_FRAGMENTS = [
   "user rejected",
+  "user reject this request",
   "user denied",
   "user cancelled",
+  "user canceled",
   "rejected by user",
   "denied by user",
   "rejected the request",

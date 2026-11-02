@@ -6,6 +6,11 @@ import {
   UserRejectedError,
 } from "./tx.js";
 import { toUserFacingTxError } from "./user-facing.js";
+import {
+  classifyContractError,
+  classifyGasEstimationError,
+  classifyWriteError,
+} from "./viem-mapper.js";
 
 describe("toUserFacingTxError", () => {
   it("handles cyclic arrays in provider causes without hanging", () => {
@@ -54,6 +59,23 @@ describe("toUserFacingTxError", () => {
     expect(mapped.message).toBe(error.message);
     expect(mapped.raw).toBe(error);
   });
+
+  it.each([
+    { classify: classifyContractError, operation: "simulate" },
+    { classify: classifyGasEstimationError, operation: "estimate" },
+    { classify: classifyWriteError, operation: "write" },
+  ])(
+    "keeps token-balance reverts in the transaction failure category during $operation",
+    ({ classify }) => {
+      const error = classify(
+        new Error("execution reverted: ERC20: transfer amount exceeds balance"),
+        { address: "0x1234567890123456789012345678901234567890", functionName: "withdrawMultiple" }
+      );
+      const mapped = toUserFacingTxError(error);
+      expect(mapped.category).toBe("tx-failed");
+      expect(mapped.raw).toBe(error);
+    }
+  );
 
   it("maps user rejection to cancelled", () => {
     const mapped = toUserFacingTxError(new UserRejectedError({ message: "Rejected by user" }));

@@ -114,6 +114,23 @@ describe("isLikelyUserRejectedError", () => {
     expect(isLikelyUserRejectedError(viemError)).toBe(true);
   });
 
+  it.each(["User canceled", "User reject this request"])(
+    "recognizes wallet message variant: %s",
+    (message) => {
+      const error = new Error("Wallet request failed", { cause: new Error(message) });
+      expect(isLikelyUserRejectedError(error)).toBe(true);
+      expect(isUserRejectedError(error)).toBe(false);
+    }
+  );
+
+  it.each([
+    "Request canceled by provider",
+    "Provider rejected this request",
+    "User requested cancellation",
+  ])("does not infer user rejection from unrelated cancellation wording: %s", (message) => {
+    expect(isLikelyUserRejectedError(new Error(message))).toBe(false);
+  });
+
   it("returns false for unrelated errors", () => {
     expect(isLikelyUserRejectedError(new Error("network timeout"))).toBe(false);
   });

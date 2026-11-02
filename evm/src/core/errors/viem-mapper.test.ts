@@ -1,4 +1,10 @@
-import { BaseError, UnknownRpcError } from "viem";
+import {
+  BaseError,
+  ContractFunctionExecutionError,
+  ContractFunctionRevertedError,
+  UnknownRpcError,
+  InsufficientFundsError as ViemInsufficientFundsError,
+} from "viem";
 import { describe, expect, it } from "vitest";
 import { ContractWriteError } from "./contract.js";
 import { TransactionSubmissionError } from "./tx.js";
@@ -59,6 +65,16 @@ describe("viem error classification", () => {
     });
   });
 
+  it.each(["User canceled", "User reject this request"])(
+    "classifies wallet rejection variant across operations: %s",
+    (message) => {
+      const error = new BaseError("Wallet request failed", { cause: new Error(message) });
+      expect(classifyContractError(error, WRITE_CONTEXT)._tag).toBe("UserRejectedError");
+      expect(classifyWriteError(error, WRITE_CONTEXT)._tag).toBe("UserRejectedError");
+      expect(classifyGasEstimationError(error, WRITE_CONTEXT)._tag).toBe("UserRejectedError");
+    }
+  );
+
   describe("isInsufficientFunds", () => {
     it("detects insufficient funds from error message", () => {
       const error = new Error("insufficient funds for gas");
@@ -73,6 +89,37 @@ describe("viem error classification", () => {
     it("detects exceeds balance message", () => {
       const error = new Error("Amount exceeds balance");
       expect(isInsufficientFunds(error)).toBe(true);
+    });
+
+    it.each([
+      "execution reverted: ERC20: transfer amount exceeds balance",
+      "execution reverted: insufficient balance",
+      "execution reverted: insufficient funds",
+    ])("does not classify an identifiable contract revert as native funds: %s", (message) => {
+      expect(isInsufficientFunds(new Error(message))).toBe(false);
+    });
+
+    it("does not classify viem contract reverts as native funds", () => {
+      const error = new ContractFunctionExecutionError(
+        new ContractFunctionRevertedError({
+          abi: [],
+          functionName: "withdrawMultiple",
+          message: "ERC20: transfer amount exceeds balance",
+        }),
+        { abi: [], functionName: "withdrawMultiple" }
+      );
+      expect(isInsufficientFunds(error)).toBe(false);
+    });
+
+    it("retains native gas failures wrapped as contract execution errors", () => {
+      const error = new ContractFunctionExecutionError(new ViemInsufficientFundsError(), {
+        abi: [],
+        functionName: "withdrawMultiple",
+      });
+      expect(isInsufficientFunds(error)).toBe(true);
+      expect(classifyContractError(error, WRITE_CONTEXT)._tag).toBe("InsufficientFundsError");
+      expect(classifyWriteError(error, WRITE_CONTEXT)._tag).toBe("InsufficientFundsError");
+      expect(classifyGasEstimationError(error, WRITE_CONTEXT)._tag).toBe("InsufficientFundsError");
     });
 
     it("returns false for other errors", () => {
@@ -212,6 +259,29 @@ describe("viem error classification", () => {
       const reason = extractRevertReason(error);
       expect(reason).toBe("SablierLockup_DepositAmountZero");
     });
+  });
+
+  it("preserves withdrawMultiple contract context when a token transfer exceeds balance", () => {
+    const context = { ...WRITE_CONTEXT, calldata: "0x1234", functionName: "withdrawMultiple" };
+    const source = new Error("execution reverted: ERC20: transfer amount exceeds balance");
+    const simulated = classifyContractError(source, context);
+    const estimated = classifyGasEstimationError(source, context);
+    const written = classifyWriteError(source, context);
+
+    expect(simulated).toMatchObject({
+      _tag: "SimulationFailedError",
+      ...context,
+      phase: "simulate",
+      revertReason: "ERC20: transfer amount exceeds balance",
+    });
+    expect(estimated).toMatchObject({
+      _tag: "GasEstimationError",
+      ...context,
+      cause: source,
+      phase: "estimate",
+      revertReason: "ERC20: transfer amount exceeds balance",
+    });
+    expect(written).toMatchObject({ _tag: "ContractWriteError", ...context, cause: source });
   });
 
   describe("classifyContractError", () => {

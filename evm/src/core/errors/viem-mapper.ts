@@ -62,17 +62,22 @@ export function isUserRejection(error: unknown): boolean {
  * Check if an error represents insufficient funds
  */
 export function isInsufficientFunds(error: unknown): boolean {
-  if (error instanceof ViemInsufficientFundsError) {
+  if (
+    error instanceof ViemInsufficientFundsError ||
+    (error instanceof CoreError &&
+      error.walk((cause) => cause instanceof ViemInsufficientFundsError) !== null)
+  ) {
     return true;
   }
 
-  // Fallback: check error message
+  // Token-balance reverts belong to contract execution failures, not native gas funding.
   if (error instanceof Error) {
     const message = error.message.toLowerCase();
     return (
-      message.includes("insufficient funds") ||
-      message.includes("insufficient balance") ||
-      message.includes("exceeds balance")
+      (message.includes("insufficient funds") ||
+        message.includes("insufficient balance") ||
+        message.includes("exceeds balance")) &&
+      !decodeExecutionFailure(error, "simulate")
     );
   }
 

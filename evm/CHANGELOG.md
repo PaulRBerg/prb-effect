@@ -26,6 +26,15 @@ The format is based on [Common Changelog](https://common-changelog.org/).
 [3.0.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm@3.0.0
 [4.0.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm@4.0.0
 [5.0.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm@5.0.0
+[5.0.1]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm@5.0.1
+
+## [5.0.1] - 2026-11-02
+
+### Fixed
+
+- Recognize wallet rejection messages `User canceled` and `User reject this request`
+- Preserve contract failure context for token-balance reverts instead of classifying them as insufficient native funds
+- Recognize native gas funding failures wrapped in viem contract execution errors
 
 ## [5.0.0] - 2026-10-04
 
