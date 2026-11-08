@@ -1,6 +1,6 @@
 {
   "name": "@prb/effect-evm",
-  "version": "5.0.2",
+  "version": "5.0.3",
   "description": "Effect-TS integration for Ethereum Virtual Machine (EVM) frontend development",
   "keywords": [
     "effect",

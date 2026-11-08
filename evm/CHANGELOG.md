@@ -28,6 +28,15 @@ The format is based on [Common Changelog](https://common-changelog.org/).
 [5.0.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm@5.0.0
 [5.0.1]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm@5.0.1
 [5.0.2]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm@5.0.2
+[5.0.3]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm@5.0.3
+
+## [5.0.3] - 2026-11-08
+
+### Fixed
+
+- Classify revm `EVM error: OutOfFunds` rejections (for example BSC via RouteMesh) as insufficient native funds in
+  `toUserFacingTxError` and `isInsufficientFunds`
+- Recognize Coinbase Wallet's `User disapproved requested methods` as a likely user rejection
 
 ## [5.0.2] - 2026-11-02
 
