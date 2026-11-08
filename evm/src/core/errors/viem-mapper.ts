@@ -76,7 +76,8 @@ export function isInsufficientFunds(error: unknown): boolean {
     return (
       (message.includes("insufficient funds") ||
         message.includes("insufficient balance") ||
-        message.includes("exceeds balance")) &&
+        message.includes("exceeds balance") ||
+        message.includes("outoffunds")) &&
       !decodeExecutionFailure(error, "simulate")
     );
   }

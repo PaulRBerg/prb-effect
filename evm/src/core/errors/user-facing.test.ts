@@ -99,6 +99,23 @@ describe("toUserFacingTxError", () => {
     expect(mapped.raw).toBe(source);
   });
 
+  it("infers insufficient funds from revm OutOfFunds rejections", () => {
+    const source = {
+      _tag: "GasEstimationError",
+      message: "Failed to estimate gas",
+      cause: {
+        code: -32_003,
+        details: "EVM error: OutOfFunds",
+        message: "Transaction creation failed.",
+      },
+    };
+    const mapped = toUserFacingTxError(source);
+
+    expect(mapped.category).toBe("insufficient-funds");
+    expect(mapped.retryable).toBe(false);
+    expect(mapped.raw).toBe(source);
+  });
+
   it("does not promote standalone gas-allowance failures to insufficient funds", () => {
     const source = {
       _tag: "GasEstimationError",

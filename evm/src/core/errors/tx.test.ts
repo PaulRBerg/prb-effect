@@ -103,6 +103,13 @@ describe("isLikelyUserRejectedError", () => {
     expect(isLikelyUserRejectedError(error)).toBe(true);
   });
 
+  it("returns true for Coinbase Wallet disapproval inside an unknown RPC error", () => {
+    const error = new Error(
+      "An unknown RPC error occurred.\n\nRequest Arguments:\n  from: 0x1\n\nDetails: User disapproved requested methods\nVersion: viem@2.57.7"
+    );
+    expect(isLikelyUserRejectedError(error)).toBe(true);
+  });
+
   it("returns true for Safe SDK rejection message", () => {
     expect(isLikelyUserRejectedError(new Error("Transaction was rejected"))).toBe(true);
   });

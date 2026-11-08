@@ -91,6 +91,11 @@ describe("viem error classification", () => {
       expect(isInsufficientFunds(error)).toBe(true);
     });
 
+    it("detects revm OutOfFunds rejections", () => {
+      const error = new Error("Transaction creation failed.\n\nDetails: EVM error: OutOfFunds");
+      expect(isInsufficientFunds(error)).toBe(true);
+    });
+
     it.each([
       "execution reverted: ERC20: transfer amount exceeds balance",
       "execution reverted: insufficient balance",

@@ -90,6 +90,7 @@ const USER_REJECTION_MESSAGE_FRAGMENTS = [
   "denied by user",
   "rejected the request",
   "transaction was rejected", // Safe SDK rejection
+  "user disapproved", // Coinbase Wallet: "User disapproved requested methods"
 ];
 
 type UserRejectionRecord = {

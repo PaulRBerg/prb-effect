@@ -49,6 +49,8 @@ const INSUFFICIENT_FUNDS_PATTERNS: RegExp[] = [
   /insufficient funds/iu,
   /insufficient balance/iu,
   /total cost \(gas \* gas fee \+ value\).*exceeds the balance/iu,
+  // revm-based nodes (for example BSC via RouteMesh) reject unfunded senders with -32003 "EVM error: OutOfFunds".
+  /\bOutOfFunds\b/u,
 ];
 
 function getMessage(error: unknown): string | undefined {
