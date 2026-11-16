@@ -29,6 +29,14 @@ The format is based on [Common Changelog](https://common-changelog.org/).
 [5.0.1]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm@5.0.1
 [5.0.2]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm@5.0.2
 [5.0.3]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm@5.0.3
+[5.0.4]: https://github.com/PaulRBerg/prb-effect/releases/tag/evm@5.0.4
+
+## [5.0.4] - 2026-11-16
+
+### Fixed
+
+- Preserve the connector failure as `cause` on `WalletNotConnectedError` from `makeWalletClientLayerFromWagmi`, and
+  describe non-`Error` rejections in its message
 
 ## [5.0.3] - 2026-11-08
 
