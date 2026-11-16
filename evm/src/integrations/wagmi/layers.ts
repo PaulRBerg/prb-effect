@@ -65,6 +65,22 @@ export function makePublicClientLayerFromWagmi(config: Config): Layer.Layer<Publ
   });
 }
 
+/** Summarizes a non-`Error` rejection (wallets often reject with plain RPC objects). */
+function describeCause(cause: unknown): string {
+  if (typeof cause === "object" && cause !== null) {
+    const { code, message } = cause as { code?: unknown; message?: unknown };
+    const parts = [
+      code === undefined ? undefined : `code ${String(code)}`,
+      typeof message === "string" ? message : undefined,
+    ].filter((part) => part !== undefined);
+    if (parts.length > 0) {
+      return parts.join(", ");
+    }
+  }
+
+  return String(cause);
+}
+
 export function makeWalletClientLayerFromWagmi(
   config: Config,
   options: WagmiWalletClientOptions = {}
@@ -74,11 +90,12 @@ export function makeWalletClientLayerFromWagmi(
       Effect.tryPromise({
         catch: (cause) =>
           new WalletNotConnectedError({
+            cause,
             chainId,
             message:
               cause instanceof Error
                 ? cause.message
-                : `No wallet client available for chain ${chainId}`,
+                : `No wallet client available for chain ${chainId}: ${describeCause(cause)}`,
           }),
         try: () => {
           const params = options.account ? { account: options.account, chainId } : { chainId };
@@ -96,8 +113,9 @@ export function makeWalletClientLayerFromWagmi(
           }
 
           return Effect.tryPromise({
-            catch: () =>
+            catch: (cause) =>
               new WalletNotConnectedError({
+                cause,
                 chainId,
                 message: `Failed to read wallet chainId for ${chainId}`,
               }),

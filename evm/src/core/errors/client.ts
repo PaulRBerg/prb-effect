@@ -11,6 +11,8 @@ export class ClientNotFoundError extends Schema.TaggedError<ClientNotFoundError>
 export class WalletNotConnectedError extends Schema.TaggedError<WalletNotConnectedError>()(
   "WalletNotConnectedError",
   {
+    /** The connector failure behind the missing client, when wagmi threw one. */
+    cause: Schema.optional(Schema.Unknown),
     chainId: Schema.Number,
     message: Schema.String,
   }
