@@ -75,6 +75,14 @@ export class CacheRefreshError extends Schema.TaggedError<CacheRefreshError>()(
 ) {}
 
 /**
+ * Classification of one caller's cache read. A `fresh` or `stale` read returns
+ * the stored value. A `miss` starts or joins a computation.
+ *
+ * @category models
+ */
+export type CacheLookupOutcome = "fresh" | "stale" | "miss";
+
+/**
  * @category models
  */
 export type CachedEffectOptions<A, StoreR = never, RD = never, RE = never> = {
@@ -84,6 +92,14 @@ export type CachedEffectOptions<A, StoreR = never, RD = never, RE = never> = {
   readonly staleWhileRevalidate?: Duration.Input;
   readonly schema?: Schema.ConstraintCodec<A, unknown, RD, RE>;
   readonly failurePolicy?: CacheFailurePolicy;
+  /**
+   * Synchronous observer called once per caller after its cache read is
+   * classified and before any refresh starts. Thrown exceptions are ignored.
+   *
+   * A fail-open read error reports `miss`. A read that fails closed has no
+   * classification. Background refreshes do not notify the observer again.
+   */
+  readonly onLookup?: (outcome: CacheLookupOutcome) => void;
 };
 
 /**
@@ -383,6 +399,12 @@ export function cachedEffect<A, E, R, StoreR = never, RD = never, RE = never>(
 
   return Effect.gen(function* () {
     const cached = yield* readCachedValue(options, policy);
+
+    const { onLookup } = options;
+    if (onLookup !== undefined) {
+      // The observer must never alter the caller's result, so its exceptions are dropped.
+      yield* Effect.ignore(Effect.try(() => onLookup(cached._tag)));
+    }
 
     if (cached._tag === "fresh") {
       return cached.value;

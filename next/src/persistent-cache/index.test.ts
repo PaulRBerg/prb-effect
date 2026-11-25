@@ -2,16 +2,28 @@ import { describe, expect, it } from "@effect/vitest";
 import { Cause, Context, Deferred, Effect, Exit, Fiber, Schema, SchemaGetter } from "effect";
 import { TestClock } from "effect/testing";
 import { expectTypeOf, vi } from "vitest";
+import type { CacheLookupOutcome } from "./index.js";
 
 vi.mock("server-only", () => ({}));
 
 const {
   CacheReadError,
+  CacheRefreshError,
   CacheWriteError,
   cachedEffect,
   cachedEffectWithKey,
   makeInMemoryPersistentCacheStore,
 } = await import("./index.js");
+
+function recordLookups() {
+  const outcomes: CacheLookupOutcome[] = [];
+  return {
+    onLookup: (outcome: CacheLookupOutcome) => {
+      outcomes.push(outcome);
+    },
+    outcomes,
+  };
+}
 
 describe("persistent cache", () => {
   it.effect("keeps separate codec decoding and encoding service requirements", () => {
@@ -45,13 +57,14 @@ describe("persistent cache", () => {
   it.effect("returns cache hits without rerunning the refresh effect", () =>
     Effect.gen(function* () {
       const store = makeInMemoryPersistentCacheStore();
+      const { onLookup, outcomes } = recordLookups();
       let calls = 0;
       const cached = cachedEffect(
         Effect.sync(() => {
           calls += 1;
           return `value-${calls}`;
         }),
-        { key: "hit", store, ttl: "1 minute" }
+        { key: "hit", onLookup, store, ttl: "1 minute" }
       );
 
       const first = yield* cached;
@@ -60,19 +73,21 @@ describe("persistent cache", () => {
       expect(first).toBe("value-1");
       expect(second).toBe("value-1");
       expect(calls).toBe(1);
+      expect(outcomes).toEqual(["miss", "fresh"]);
     })
   );
 
   it.effect("refreshes after TTL expiry", () =>
     Effect.gen(function* () {
       const store = makeInMemoryPersistentCacheStore();
+      const { onLookup, outcomes } = recordLookups();
       let calls = 0;
       const cached = cachedEffect(
         Effect.sync(() => {
           calls += 1;
           return `value-${calls}`;
         }),
-        { key: "ttl", store, ttl: "50 millis" }
+        { key: "ttl", onLookup, store, ttl: "50 millis" }
       );
 
       const first = yield* cached;
@@ -82,6 +97,7 @@ describe("persistent cache", () => {
       expect(first).toBe("value-1");
       expect(second).toBe("value-2");
       expect(calls).toBe(2);
+      expect(outcomes).toEqual(["miss", "miss"]);
     })
   );
 
@@ -90,6 +106,7 @@ describe("persistent cache", () => {
       const store = makeInMemoryPersistentCacheStore();
       const started = yield* Deferred.make<void>();
       const gate = yield* Deferred.make<void>();
+      const { onLookup, outcomes } = recordLookups();
       let calls = 0;
       const cached = cachedEffect(
         Effect.gen(function* () {
@@ -102,6 +119,7 @@ describe("persistent cache", () => {
         }),
         {
           key: "swr",
+          onLookup,
           staleWhileRevalidate: "1 minute",
           store,
           ttl: "50 millis",
@@ -122,6 +140,7 @@ describe("persistent cache", () => {
       expect(stale1).toBe("value-1");
       expect(stale2).toBe("value-1");
       expect(calls).toBe(2);
+      expect(outcomes).toEqual(["miss", "stale", "stale"]);
 
       yield* Deferred.succeed(gate, undefined);
       yield* TestClock.adjust("1 millis");
@@ -129,6 +148,7 @@ describe("persistent cache", () => {
 
       expect(refreshed).toBe("value-2");
       expect(calls).toBe(2);
+      expect(outcomes).toEqual(["miss", "stale", "stale", "fresh"]);
     })
   );
 
@@ -136,6 +156,7 @@ describe("persistent cache", () => {
     Effect.gen(function* () {
       const store = makeInMemoryPersistentCacheStore();
       const started = yield* Deferred.make<void>();
+      const outcomes: CacheLookupOutcome[] = [];
       let finalized = false;
       const cached = cachedEffect(
         Effect.andThen(Deferred.succeed(started, undefined), Effect.never).pipe(
@@ -145,7 +166,15 @@ describe("persistent cache", () => {
             })
           )
         ),
-        { key: "interrupted", store, ttl: "1 minute" }
+        {
+          key: "interrupted",
+          onLookup: (outcome) => {
+            outcomes.push(outcome);
+            throw new Error("observer-down");
+          },
+          store,
+          ttl: "1 minute",
+        }
       );
       const leader = yield* Effect.forkChild(cached);
       yield* Deferred.await(started);
@@ -156,6 +185,7 @@ describe("persistent cache", () => {
       expect(Exit.isFailure(interrupted) && Cause.hasInterruptsOnly(interrupted.cause)).toBe(true);
       expect(Exit.isFailure(waited) && Cause.hasInterruptsOnly(waited.cause)).toBe(true);
       expect(finalized).toBe(true);
+      expect(outcomes).toEqual(["miss", "miss"]);
       expect(yield* store.get("interrupted")).toBeNull();
       const retried = yield* cachedEffect(Effect.succeed("retry"), {
         key: "interrupted",
@@ -171,6 +201,7 @@ describe("persistent cache", () => {
       const store = makeInMemoryPersistentCacheStore();
       const started = yield* Deferred.make<void>();
       const gate = yield* Deferred.make<void>();
+      const { onLookup, outcomes } = recordLookups();
       let calls = 0;
       const cached = cachedEffect(
         Effect.gen(function* () {
@@ -179,15 +210,16 @@ describe("persistent cache", () => {
           yield* Deferred.await(gate);
           return "shared";
         }),
-        { key: "miss", store, ttl: "1 minute" }
+        { key: "miss", onLookup, store, ttl: "1 minute" }
       );
 
-      const fiber1 = yield* Effect.forkChild(cached);
-      const fiber2 = yield* Effect.forkChild(cached);
-      const fiber3 = yield* Effect.forkChild(cached);
+      const fiber1 = yield* Effect.forkChild(cached, { startImmediately: true });
+      const fiber2 = yield* Effect.forkChild(cached, { startImmediately: true });
+      const fiber3 = yield* Effect.forkChild(cached, { startImmediately: true });
 
       yield* Deferred.await(started);
       expect(calls).toBe(1);
+      expect(outcomes).toEqual(["miss", "miss", "miss"]);
       yield* Deferred.succeed(gate, undefined);
 
       const result1 = yield* Fiber.join(fiber1);
@@ -198,6 +230,7 @@ describe("persistent cache", () => {
       expect(result2).toBe("shared");
       expect(result3).toBe("shared");
       expect(calls).toBe(1);
+      expect(outcomes).toEqual(["miss", "miss", "miss"]);
     })
   );
 
@@ -273,6 +306,7 @@ describe("persistent cache", () => {
   it.effect("supports derived keys", () =>
     Effect.gen(function* () {
       const store = makeInMemoryPersistentCacheStore();
+      const { onLookup, outcomes } = recordLookups();
       let calls = 0;
       const cached = cachedEffectWithKey(
         (id: string) =>
@@ -281,7 +315,7 @@ describe("persistent cache", () => {
             return `user-${id}-${calls}`;
           }),
         (id) => `user:${id}`,
-        { store, ttl: "1 minute" }
+        { onLookup, store, ttl: "1 minute" }
       );
 
       const first = yield* cached("1");
@@ -292,6 +326,7 @@ describe("persistent cache", () => {
       expect(second).toBe("user-1-1");
       expect(third).toBe("user-2-2");
       expect(calls).toBe(2);
+      expect(outcomes).toEqual(["miss", "fresh", "miss"]);
     })
   );
 
@@ -308,19 +343,24 @@ describe("persistent cache", () => {
         set: () => Effect.fail("write-down"),
       };
 
+      const { onLookup, outcomes } = recordLookups();
+
       const readResult = yield* cachedEffect(Effect.succeed("read-open"), {
         key: "read",
+        onLookup,
         store: readFailingStore,
         ttl: "1 minute",
       });
       const writeResult = yield* cachedEffect(Effect.succeed("write-open"), {
         key: "write",
+        onLookup,
         store: writeFailingStore,
         ttl: "1 minute",
       });
 
       expect(readResult).toBe("read-open");
       expect(writeResult).toBe("write-open");
+      expect(outcomes).toEqual(["miss", "miss"]);
     })
   );
 
@@ -337,18 +377,26 @@ describe("persistent cache", () => {
         set: () => Effect.fail("write-down"),
       };
 
+      const readLookups = recordLookups();
+      const writeLookups = recordLookups();
+
       const readExit = yield* cachedEffect(Effect.succeed("read-closed"), {
         failurePolicy: "fail-closed",
         key: "read",
+        onLookup: readLookups.onLookup,
         store: readFailingStore,
         ttl: "1 minute",
       }).pipe(Effect.result);
       const writeExit = yield* cachedEffect(Effect.succeed("write-closed"), {
         failurePolicy: "fail-closed",
         key: "write",
+        onLookup: writeLookups.onLookup,
         store: writeFailingStore,
         ttl: "1 minute",
       }).pipe(Effect.result);
+
+      expect(readLookups.outcomes).toEqual([]);
+      expect(writeLookups.outcomes).toEqual(["miss"]);
 
       expect(readExit._tag).toBe("Failure");
       expect(writeExit._tag).toBe("Failure");
@@ -358,6 +406,52 @@ describe("persistent cache", () => {
       if (writeExit._tag === "Failure") {
         expect(writeExit.failure).toBeInstanceOf(CacheWriteError);
       }
+    })
+  );
+
+  it.effect("ignores a throwing lookup observer without extra store calls", () =>
+    Effect.gen(function* () {
+      const inner = makeInMemoryPersistentCacheStore();
+      const storeCalls = { delete: 0, get: 0, set: 0 };
+      const store = {
+        delete: (key: string) =>
+          Effect.suspend(() => {
+            storeCalls.delete += 1;
+            return inner.delete(key);
+          }),
+        get: (key: string) =>
+          Effect.suspend(() => {
+            storeCalls.get += 1;
+            return inner.get(key);
+          }),
+        set: (key: string, entry: Parameters<typeof inner.set>[1]) =>
+          Effect.suspend(() => {
+            storeCalls.set += 1;
+            return inner.set(key, entry);
+          }),
+      };
+      const outcomes: CacheLookupOutcome[] = [];
+      const onLookup = (outcome: CacheLookupOutcome) => {
+        outcomes.push(outcome);
+        throw new Error("observer-down");
+      };
+      const options = { key: "observer", onLookup, store, ttl: "1 minute" } as const;
+
+      const missed = yield* cachedEffect(Effect.succeed("value"), options);
+      const hit = yield* cachedEffect(Effect.succeed("unused"), options);
+      const failed = yield* cachedEffect(Effect.fail("compute-down"), {
+        ...options,
+        key: "observer-failure",
+      }).pipe(Effect.result);
+
+      expect(missed).toBe("value");
+      expect(hit).toBe("value");
+      expect(failed._tag).toBe("Failure");
+      if (failed._tag === "Failure") {
+        expect(failed.failure).toBeInstanceOf(CacheRefreshError);
+      }
+      expect(outcomes).toEqual(["miss", "fresh", "miss"]);
+      expect(storeCalls).toEqual({ delete: 0, get: 3, set: 1 });
     })
   );
 });

@@ -1,6 +1,6 @@
 {
   "name": "@prb/effect-next",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Effect-TS integration for Next.js",
   "keywords": [
     "effect",

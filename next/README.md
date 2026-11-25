@@ -239,6 +239,11 @@ export const getUser = (id: string) =>
 Production Redis, Upstash, KV, or SQL adapters should live in application code and implement the `PersistentCacheStore`
 contract.
 
+Both `cachedEffect` and `cachedEffectWithKey` accept an optional synchronous `onLookup(outcome)` callback. Each caller
+receives `fresh`, `stale`, or `miss` as soon as its read is classified. Concurrent misses each report `miss` even when
+they share one computation. A stale read reports `stale` once, before the background refresh. A fail-open read error
+counts as a miss. If the read fails closed, the callback does not run. The cache ignores exceptions from the callback.
+
 ### 7. Cache-Control
 
 Set browser and CDN cache headers explicitly in route handlers:

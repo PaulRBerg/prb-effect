@@ -11,6 +11,14 @@ The format is based on [Common Changelog](https://common-changelog.org/).
 [1.2.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/next%401.2.0
 [1.2.1]: https://github.com/PaulRBerg/prb-effect/releases/tag/next@1.2.1
 [2.0.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/next@2.0.0
+[2.1.0]: https://github.com/PaulRBerg/prb-effect/releases/tag/next@2.1.0
+
+## [2.1.0] - 2026-11-25
+
+### Added
+
+- Add an optional synchronous `onLookup` observer to `cachedEffect` and `cachedEffectWithKey`, reporting each caller's
+  cache read as `fresh`, `stale`, or `miss` through the new `CacheLookupOutcome` type.
 
 ## [2.0.0] - 2026-10-04
 
